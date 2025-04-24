@@ -1,0 +1,2 @@
+# shaman
+Agent Manager
