@@ -1,0 +1,28 @@
+{
+  "name": "@codespin/shaman-webapp",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "license": "BSD-3-Clause",
+  "description": "Frontend for Lesser app (similar to Craigslist)",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview",
+    "lint": "eslint src --ext ts,tsx",
+    "check": "tsc --noEmit",
+    "start": "node server.cjs"
+  },
+  "dependencies": {
+    "magic-loop": "^0.0.20",
+    "webjsx": "^0.0.72",
+    "webjsx-router": "^0.0.20"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.24.0",
+    "eslint": "^9.24.0",
+    "typescript": "^5.8.3",
+    "typescript-eslint": "^8.29.1",
+    "vite": "^6.2.6"
+  }
+}
