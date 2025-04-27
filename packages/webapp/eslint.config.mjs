@@ -9,6 +9,7 @@ export default tseslint.config(
   {
     rules: {
       "require-yield": "off",
+      "@typescript-eslint/no-empty-object-type": "off",
     },
   }
 );
