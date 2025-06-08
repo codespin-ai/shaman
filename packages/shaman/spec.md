@@ -4,19 +4,21 @@
 
 Shaman is a comprehensive, enterprise-grade backend framework designed to be the central orchestration hub in a federated agent ecosystem. It serves simultaneously as:
 
-- **Internal Agent Orchestrator:** A robust platform for defining, versioning, and executing complex workflows with native agents.
-- **A2A Gateway:** A fully compliant Agent2Agent (A2A) protocol implementation that can both consume external agents and expose internal agents.
-- **Enterprise Control Plane:** A manageable, observable, and scalable system with directories, tags, permissions, and comprehensive audit trails.
+- **Git-Based Agent Platform:** A robust platform for managing AI agents as code through git repositories, enabling version control, collaboration, and deployment workflows.
+- **A2A Gateway:** A fully compliant Agent2Agent (A2A) protocol implementation that can both expose internal git-based agents and consume external A2A agents.
+- **Enterprise Control Plane:** A manageable, observable, and scalable system with git synchronization, permissions, and comprehensive audit trails.
 
 ### Core Principles:
 
-- **API-First Architecture:** Every operation is accessible via a comprehensive GraphQL API, ensuring language-agnostic integration.
+- **Agents as Code:** AI agents are defined in git repositories as markdown files with frontmatter, enabling familiar development workflows.
 - **Protocol Interoperability:** Native support for MCP (Model Context Protocol) and A2A (Agent2Agent) standards.
+- **Bidirectional Federation:** Internal git-based agents can be exposed via A2A while consuming external A2A agents seamlessly.
 - **Dynamic Execution:** Workflows unfold dynamically based on agent decisions, forming complex DAGs at runtime.
 - **Pluggable Infrastructure:** All critical components (workflow engines, providers, storage) are swappable via adapter patterns.
 - **Observable by Design:** OpenTelemetry-first architecture with structured logging and comprehensive metrics.
-- **Enterprise-Ready:** Built-in support for directories, tagging, versioning, authentication, authorization, and audit trails.
+- **Enterprise-Ready:** Built-in support for git synchronization, agent namespacing, authentication, authorization, and audit trails.
 - **Explicit Agent Completion:** Agents explicitly signal completion using standardized tools, enabling reliable parent-child coordination.
+- **Unified Tool/Agent Interface:** Agents call both tools and other agents through the same mechanism, providing a consistent programming model.
 
 ## 2. Comprehensive Concepts & Terminology
 
@@ -24,11 +26,13 @@ Shaman is a comprehensive, enterprise-grade backend framework designed to be the
 
 - **Provider:** A configured LLM service endpoint (OpenAI, Anthropic, Groq, local Ollama). Defined statically in configuration with connection details and authentication credentials.
 
-- **Prompt Template:** A versioned, reusable template for system prompts. Contains instructions with `{{prompt}}` placeholder for dynamic user input injection.
+- **Agent Repository:** A git repository containing agent definitions as markdown files with frontmatter. Repositories can be root (unnamespaced) or namespaced.
 
-- **Directory:** A hierarchical organizational structure for agents, supporting nested folders with full path-based navigation (e.g., `/enterprise/customer-service/billing`).
+- **Agent Definition:** A markdown file with YAML frontmatter containing agent configuration (name, description, model, permissions) and a prompt template.
 
-- **Tag:** A keyword-based classification system with optional hierarchy, descriptions, and usage analytics. Supports semantic relationships and discovery algorithms.
+- **Directory:** A hierarchical organizational structure within git repositories, enabling nested folder navigation (e.g., `/sales/pr-agent`, `/support/billing-agent`).
+
+- **Tag:** A keyword-based classification system defined in agent frontmatter, supporting discovery and categorization.
 
 - **MCP Server:** A service exposing tools via the Model Context Protocol. Can be:
 
@@ -38,12 +42,7 @@ Shaman is a comprehensive, enterprise-grade backend framework designed to be the
 
 - **Tool:** A function exposed by an MCP Server, with JSON Schema definition, usage statistics, and permission controls.
 
-- **Agent:** A comprehensive blueprint for an AI worker, including:
-  - Core configuration (prompt template, model, providers)
-  - Permissions (accessible tools, callable agents)
-  - Metadata (version, description, examples, documentation)
-  - Organization (directory, tags)
-  - A2A exposure settings
+- **External A2A Agent:** An agent from an external system that implements the A2A protocol, registered in Shaman for consumption by internal agents.
 
 ### 2.2 Execution Entities
 
@@ -55,6 +54,7 @@ Shaman is a comprehensive, enterprise-grade backend framework designed to be the
   - Token usage and cost tracking
   - Execution timeline
   - Parent-child relationships (forms the DAG)
+  - Git version reference for traceability
 
 - **Memory:** Persistent data saved by agents, with:
 
@@ -69,7 +69,61 @@ Shaman is a comprehensive, enterprise-grade backend framework designed to be the
 
 - **Input Request:** User input requirements generated by agents using the `request_user_input` tool, stored with context for later resolution.
 
-### 2.3 Agent Completion Model
+### 2.3 Agent Management Model
+
+#### 2.3.1 Git-Based Agent Definitions
+
+Agents are defined as markdown files with YAML frontmatter in git repositories:
+
+```markdown
+---
+name: "CustomerSupportAgent"
+description: "Handles customer inquiries about orders, returns, and account issues"
+version: "2.1.0"
+tags: ["customer-support", "tier-1", "orders"]
+model: "gpt-4-turbo"
+providers: ["openai_gpt4"]
+mcpServers: ["order-management", "customer-db", "refund-processor"]
+allowedAgents: ["BillingSpecialist", "EscalationManager"]
+examples:
+  - "Help customer with order status inquiry"
+  - "Process return request for damaged item"
+---
+
+You are a Tier 1 Customer Support Agent for an e-commerce platform...
+
+## Available Tools
+Your tools will be automatically injected based on configured MCP servers.
+
+## Available Agents
+You can delegate to: {{allowed_agents}}
+
+Your task: {{prompt}}
+```
+
+#### 2.3.2 Repository Structure and Namespacing
+
+```
+Root Repository (unnamespaced):
+main-agents/
+├── sales/pr-agent/prompt.md          → "sales/pr-agent"
+├── support/billing-agent/prompt.md   → "support/billing-agent"
+└── public/demo-agent/prompt.md       → "public/demo-agent"
+
+Namespaced Repository:
+experimental-agents/
+├── nlp/sentiment/prompt.md           → "experimental/nlp/sentiment"  
+└── vision/object-detect/prompt.md    → "experimental/vision/object-detect"
+```
+
+#### 2.3.3 Agent Resolution Strategy
+
+1. **Root Repository Lookup:** Check unnamespaced agents first
+2. **Namespaced Repository Lookup:** Parse namespace and check specific repository  
+3. **External A2A Lookup:** Check registered external A2A agents
+4. **Error:** Agent not found
+
+#### 2.3.4 Explicit Completion Model
 
 All agent-to-agent calls use **explicit completion**, where child agents must call a `complete_agent_execution` tool to signal task completion. This provides:
 
@@ -78,433 +132,511 @@ All agent-to-agent calls use **explicit completion**, where child agents must ca
 - **Partial Completion Support:** Agents can signal partial completion when blocked or uncertain
 - **Parent Coordination:** Parents wait for explicit completion before proceeding
 
+### 2.4 Standard System Tools
+
+All agents have automatic access to these system tools:
+
+#### 2.4.1 Agent Coordination Tools
+
+```typescript
+interface AgentCoordinationTools {
+  call_agent: {
+    name: "call_agent",
+    description: "Delegate a task to another specialized agent (internal or external)",
+    schema: {
+      type: "object",
+      properties: {
+        agent_name: { type: "string", description: "Name of agent to call (e.g., 'sales/pr-agent', 'external/legal-expert')" },
+        input: { type: "string", description: "Task description for the agent" },
+        context_scope: { 
+          type: "string", 
+          enum: ["FULL", "NONE", "SPECIFIC"],
+          default: "FULL",
+          description: "How much context to share with child agent"
+        }
+      },
+      required: ["agent_name", "input"]
+    }
+  };
+  
+  complete_agent_execution: {
+    name: "complete_agent_execution",
+    description: "Signal completion of agent task - REQUIRED to finish execution",
+    schema: {
+      type: "object",
+      properties: {
+        result: { type: "string", description: "Final result of the task" },
+        status: { 
+          type: "string", 
+          enum: ["SUCCESS", "PARTIAL", "FAILED"],
+          description: "Completion status"
+        },
+        confidence: { 
+          type: "number", 
+          minimum: 0, 
+          maximum: 1,
+          description: "Confidence in the result (0-1)"
+        },
+        requiresFollowup: { 
+          type: "boolean", 
+          default: false,
+          description: "Whether this task needs additional work"
+        },
+        metadata: { 
+          type: "object", 
+          description: "Additional structured data about the completion"
+        }
+      },
+      required: ["result", "status"]
+    }
+  };
+}
+```
+
+#### 2.4.2 User Interaction Tools
+
+```typescript
+interface UserInteractionTools {
+  request_user_input: {
+    name: "request_user_input",
+    description: "Request input from user - pauses execution until response received",
+    schema: {
+      type: "object",
+      properties: {
+        prompt: { type: "string", description: "Question or prompt to show the user" },
+        inputType: { 
+          type: "string", 
+          enum: ["text", "choice", "file", "approval"],
+          default: "text",
+          description: "Type of input expected"
+        },
+        choices: { 
+          type: "array", 
+          items: { type: "string" },
+          description: "Available choices if inputType is 'choice'"
+        },
+        required: { 
+          type: "boolean", 
+          default: true,
+          description: "Whether input is required to continue"
+        },
+        timeoutMinutes: {
+          type: "number",
+          default: 1440,
+          description: "Minutes to wait before timing out"
+        }
+      },
+      required: ["prompt"]
+    }
+  };
+}
+```
+
+#### 2.4.3 Memory Management Tools
+
+```typescript
+interface MemoryManagementTools {
+  save_memory: {
+    name: "save_memory",
+    description: "Save data for later retrieval across runs",
+    schema: {
+      type: "object",
+      properties: {
+        key: { type: "string", description: "Unique identifier for the data" },
+        value: { type: "object", description: "Data to save (any JSON value)" },
+        expiresAt: { type: "string", format: "date-time", description: "Optional expiration time" }
+      },
+      required: ["key", "value"]
+    }
+  };
+  
+  load_memory: {
+    name: "load_memory", 
+    description: "Retrieve previously saved data",
+    schema: {
+      type: "object",
+      properties: {
+        key: { type: "string", description: "Identifier of data to retrieve" }
+      },
+      required: ["key"]
+    }
+  };
+}
+```
+
 ## 3. Use Cases & Application Scenarios
 
 ### 3.1 Enterprise Customer Support Automation
 
 **Scenario:** A large e-commerce company wants to automate customer support inquiries while maintaining human oversight for complex issues.
 
-**Implementation:**
+**Git Repository Structure:**
+```
+main-agents/
+├── support/tier1-agent/prompt.md
+├── support/billing-specialist/prompt.md
+└── support/escalation-manager/prompt.md
+```
 
-```graphql
-mutation CreateSupportAgent {
-  createAgent(input: {
-    name: "Tier1CustomerSupport"
-    description: "Handles common customer inquiries about orders, returns, and account issues"
-    version: "2.1.0"
-    directoryId: "customer-service-dir"
-    tagIds: ["customer-support", "tier-1", "e-commerce"]
-    promptTemplateId: "customer-support-template"
-    providerNames: ["gpt-4-turbo"]
-    mcpServerIds: ["order-management-mcp", "customer-db-mcp", "refund-processor-mcp"]
-    allowedAgentIds: ["Tier2CustomerSupport", "EscalationManager"]
-    isExposedViaA2A: true
-    a2aExposureConfig: {
-      securitySchemes: {
-        "apiKey": {
-          "type": "apiKey",
-          "in": "header",
-          "name": "X-API-Key"
-        }
-      }
-      allowedOrigins: ["https://support.company.com"]
-      rateLimit: {
-        requestsPerMinute: 100
-        requestsPerHour: 2000
-        requestsPerDay: 10000
-      }
+**Agent Definition (support/tier1-agent/prompt.md):**
+```markdown
+---
+name: "Tier1CustomerSupport"
+description: "Handles common customer inquiries about orders, returns, and account issues"
+version: "2.1.0"
+tags: ["customer-support", "tier-1", "e-commerce"]
+model: "gpt-4-turbo"
+providers: ["openai_gpt4"]
+mcpServers: ["order-management", "customer-db", "refund-processor"]
+allowedAgents: ["support/billing-specialist", "support/escalation-manager"]
+examples:
+  - "Customer wants to check order status"
+  - "Process return for damaged product"
+  - "Help with billing inquiry"
+---
+
+You are a Tier 1 Customer Support Agent for an e-commerce platform. Your role is to help customers with their inquiries efficiently and escalate complex issues when needed.
+
+## Available Tools
+You have access to these tools:
+- **order_lookup**: Search for customer orders by ID or customer info
+- **customer_profile**: Get customer account details and history
+- **refund_processor**: Process standard refunds within policy
+
+## Available Agents
+You can delegate to these specialists:
+- **support/billing-specialist**: For complex billing issues, payment problems, or policy exceptions
+- **support/escalation-manager**: For VIP customers or sensitive complaints
+
+## Agent Calling Examples
+To delegate a billing issue:
+```json
+{
+  "tool_calls": [{
+    "id": "call_billing",
+    "type": "function",
+    "function": {
+      "name": "call_agent",
+      "arguments": "{\"agent_name\": \"support/billing-specialist\", \"input\": \"Customer wants refund for 95-day-old order but is VIP with $50K annual spend\"}"
     }
+  }]
+}
+```
+
+## Completion Requirement
+You MUST complete your work by calling:
+```json
+{
+  "tool_calls": [{
+    "id": "complete",
+    "type": "function", 
+    "function": {
+      "name": "complete_agent_execution",
+      "arguments": "{\"result\": \"Your summary of actions taken\", \"status\": \"SUCCESS\", \"confidence\": 0.9}"
+    }
+  }]
+}
+```
+
+Your task: {{prompt}}
+```
+
+**Execution Flow:**
+```
+Customer: "I want to cancel order #ORDER-789 and get a refund"
+
+1. Tier1Agent calls order_lookup tool:
+   → Gets order details: $299, placed 95 days ago
+
+2. Tier1Agent calls customer_profile tool:  
+   → Customer is VIP with $50K annual spend
+
+3. Tier1Agent recognizes policy exception needed, calls agent:
+   {
+     "name": "call_agent",
+     "arguments": {
+       "agent_name": "support/billing-specialist",
+       "input": "VIP customer John Smith wants refund for order #ORDER-789. Order is 95 days old (exceeds 90-day policy) but customer has $50K annual spend. Please evaluate exception."
+     }
+   }
+
+4. BillingSpecialist analyzes case, requests approval:
+   {
+     "name": "request_user_input", 
+     "arguments": {
+       "prompt": "Customer exceeds refund policy but is VIP. Approve exception?",
+       "inputType": "choice",
+       "choices": ["Approve full refund", "Offer store credit", "Deny exception"]
+     }
+   }
+
+5. Human responds: "Approve full refund"
+
+6. BillingSpecialist processes refund and completes:
+   {
+     "name": "complete_agent_execution",
+     "arguments": {
+       "result": "Full refund of $299.99 approved and processed. Refund ID: REF-456789",
+       "status": "SUCCESS", 
+       "confidence": 1.0
+     }
+   }
+
+7. Tier1Agent receives completion, sends final response:
+   {
+     "name": "complete_agent_execution",
+     "arguments": {
+       "result": "Order #ORDER-789 has been cancelled and full refund of $299.99 processed. You'll see the refund in 3-5 business days. Refund tracking: REF-456789",
+       "status": "SUCCESS",
+       "confidence": 0.95
+     }
+   }
+```
+
+### 3.2 Software Development Workflow with External Integration
+
+**Scenario:** A development team wants to automate code review processes using internal agents plus external specialized services.
+
+**Repository Structure:**
+```
+dev-agents/
+├── code/pr-reviewer/prompt.md
+├── code/test-runner/prompt.md
+└── deploy/staging-manager/prompt.md
+```
+
+**External Agent Registration:**
+```graphql
+mutation RegisterExternalSecurityAgent {
+  createMcpServer(input: {
+    name: "ExternalSecurityAuditor"
+    description: "External security analysis service"
+    type: A2A
+    endpoint: "https://security-ai.partner.com/a2a/v1"
+    apiKey: "encrypted-partner-key"
   }) {
     id
-    name
-  }
-}
-
-mutation HandleCustomerInquiry {
-  runAgents(inputs: [{
-    agentName: "Tier1CustomerSupport"
-    input: "Customer #12345 is asking about the status of order #ORDER-789 and wants to know if they can cancel it"
-    contextScope: FULL
-  }]) {
-    id
-    status
-  }
-}
-```
-
-**Workflow Flow:**
-
-1. Customer inquiry triggers the Tier1 agent
-2. Agent uses order-management-mcp to check order status
-3. Agent uses customer-db-mcp to verify customer identity
-4. If order can be cancelled, uses refund-processor-mcp
-5. If issue is complex, calls Tier2CustomerSupport agent (waits for explicit completion)
-6. Tier2 agent may request user input for approval, then completes execution
-7. Tier1 receives completion result and calls `complete_agent_execution`
-8. All interactions are logged and available for analytics
-
-### 3.2 Software Development Workflow Automation
-
-**Scenario:** A development team wants to automate code review, testing, and deployment processes using AI agents that can interact with their existing tools.
-
-**Implementation:**
-
-```graphql
-mutation CreateDevAgents {
-  createAgent(
-    input: {
-      name: "CodeReviewer"
-      description: "Reviews pull requests for code quality, security issues, and best practices"
-      version: "1.5.0"
-      directoryId: "dev-tools-dir"
-      tagIds: ["development", "code-review", "security"]
-      promptTemplateId: "code-review-template"
-      mcpServerIds: ["github-mcp", "sonarqube-mcp", "security-scanner-mcp"]
-      allowedAgentIds: ["TestRunner", "DeploymentManager"]
-    }
-  ) {
-    id
-  }
-}
-
-mutation ReviewPullRequest {
-  runAgents(
-    inputs: [
-      {
-        agentName: "CodeReviewer"
-        input: "Review pull request #456 in repository 'payment-service'. Check for security vulnerabilities and performance issues."
-        contextScope: FULL
-      }
-    ]
-  ) {
-    id
-  }
-}
-```
-
-**Agent Chain:**
-
-1. **CodeReviewer** analyzes the PR using GitHub MCP and security scanners
-2. If code passes review, calls **TestRunner** agent and waits for completion
-3. **TestRunner** uses CI/CD MCP tools to execute test suites, calls `complete_agent_execution`
-4. **CodeReviewer** receives test results, calls **DeploymentManager** for staging deployment
-5. **DeploymentManager** completes deployment, signals completion
-6. **CodeReviewer** calls `complete_agent_execution` with final review status
-
-### 3.3 Financial Research & Analysis Platform
-
-**Scenario:** An investment firm wants to automate financial research by having AI agents analyze market data, company filings, and news to generate investment recommendations.
-
-**Implementation:**
-
-```graphql
-mutation CreateFinancialAgents {
-  createAgent(
-    input: {
-      name: "MarketDataAnalyst"
-      description: "Analyzes real-time market data and identifies trends"
-      directoryId: "finance-research-dir"
-      tagIds: ["finance", "market-analysis", "real-time"]
-      mcpServerIds: [
-        "bloomberg-api-mcp"
-        "yahoo-finance-mcp"
-        "sec-filings-mcp"
-      ]
-      allowedAgentIds: ["RiskAssessment", "PortfolioOptimizer"]
-    }
-  ) {
-    id
-  }
-
-  createAgent(
-    input: {
-      name: "RiskAssessment"
-      description: "Evaluates investment risks and market volatility"
-      directoryId: "finance-research-dir"
-      tagIds: ["finance", "risk-analysis", "compliance"]
-      mcpServerIds: [
-        "risk-models-mcp"
-        "regulation-db-mcp"
-        "credit-rating-mcp"
-      ]
-      allowedAgentIds: ["ComplianceChecker", "ReportGenerator"]
-    }
-  ) {
-    id
-  }
-}
-
-mutation AnalyzeStock {
-  runAgents(
-    inputs: [
-      {
-        agentName: "MarketDataAnalyst"
-        input: "Perform comprehensive analysis of AAPL stock for potential investment. Include technical analysis, fundamental analysis, and risk assessment."
-        memoryIdsToLoad: ["market-conditions-2024", "tech-sector-outlook"]
-      }
-    ]
-  ) {
-    id
-  }
-}
-```
-
-**Multi-Agent Workflow:**
-
-1. **MarketDataAnalyst** gathers current market data and technical indicators
-2. Calls **RiskAssessment** to evaluate volatility and sector risks, waits for completion
-3. **RiskAssessment** calls **ComplianceChecker** to ensure regulatory compliance
-4. **ComplianceChecker** signals completion with compliance status
-5. **RiskAssessment** calls `complete_agent_execution` with risk analysis
-6. **MarketDataAnalyst** calls **ReportGenerator** for formatted output
-7. **ReportGenerator** completes with investment recommendation
-8. **MarketDataAnalyst** calls `complete_agent_execution` with final analysis
-
-### 3.4 Healthcare Patient Care Coordination
-
-**Scenario:** A healthcare system wants to coordinate patient care across multiple departments while maintaining HIPAA compliance and proper medical oversight.
-
-**Implementation:**
-
-```graphql
-mutation CreateHealthcareAgents {
-  createAgent(input: {
-    name: "PatientIntakeCoordinator"
-    description: "Manages patient intake, schedules appointments, and coordinates care"
-    directoryId: "healthcare-dir"
-    tagIds: ["healthcare", "patient-care", "scheduling", "hipaa-compliant"]
-    promptTemplateId: "healthcare-intake-template"
-    mcpServerIds: ["ehr-system-mcp", "scheduling-mcp", "insurance-verification-mcp"]
-    allowedAgentIds: ["SpecialistReferral", "TestOrderingAgent", "DischargeCoordinator"]
-    isExposedViaA2A: true
-    a2aExposureConfig: {
-      securitySchemes: {
-        "oauth2": {
-          "type": "oauth2",
-          "flows": {
-            "clientCredentials": {
-              "tokenUrl": "https://auth.hospital.com/oauth/token",
-              "scopes": {
-                "patient:read": "Read patient information",
-                "scheduling:write": "Schedule appointments"
-              }
-            }
-          }
-        }
-      }
-      allowedOrigins: ["https://portal.hospital.com", "https://mobile.hospital.com"]
-    }
-  }) {
-    id
-  }
-}
-
-mutation AdmitPatient {
-  runAgents(inputs: [{
-    agentName: "PatientIntakeCoordinator"
-    input: "Process admission for John Smith, DOB: 1985-03-15, presenting with chest pain. Verify insurance, schedule EKG, and coordinate with cardiology if needed."
-    contextScope: SPECIFIC
-  }]) {
-    id
-  }
-}
-```
-
-**Care Coordination Flow:**
-
-1. **PatientIntakeCoordinator** verifies insurance and creates patient record
-2. Based on symptoms, calls **TestOrderingAgent** to order appropriate tests
-3. **TestOrderingAgent** may request user approval for expensive tests, then completes
-4. **SpecialistReferral** agent determines if specialist consultation needed, signals completion
-5. If discharge needed, calls **DischargeCoordinator** which manages discharge planning
-6. **DischargeCoordinator** completes with discharge instructions
-7. **PatientIntakeCoordinator** calls `complete_agent_execution` with care plan
-
-### 3.5 Supply Chain Optimization
-
-**Scenario:** A manufacturing company wants to optimize their global supply chain by having AI agents monitor suppliers, predict demand, and automate procurement decisions.
-
-**Implementation:**
-
-```graphql
-mutation CreateSupplyChainAgents {
-  createAgent(
-    input: {
-      name: "DemandForecaster"
-      description: "Predicts product demand using historical data and market trends"
-      directoryId: "supply-chain-dir"
-      tagIds: ["supply-chain", "forecasting", "analytics"]
-      mcpServerIds: ["sales-data-mcp", "market-trends-mcp", "weather-api-mcp"]
-      allowedAgentIds: ["InventoryOptimizer", "SupplierEvaluator"]
-    }
-  ) {
-    id
-  }
-
-  createAgent(
-    input: {
-      name: "SupplierEvaluator"
-      description: "Monitors supplier performance and identifies risks"
-      directoryId: "supply-chain-dir"
-      tagIds: ["supply-chain", "supplier-management", "risk-assessment"]
-      mcpServerIds: ["supplier-api-mcp", "logistics-mcp", "quality-metrics-mcp"]
-      allowedAgentIds: ["ProcurementAgent", "RiskMitigator"]
-    }
-  ) {
-    id
-  }
-}
-
-mutation OptimizeSupplyChain {
-  runAgents(
-    inputs: [
-      {
-        agentName: "DemandForecaster"
-        input: "Generate 4-week demand forecast for all product lines considering seasonal trends and current market conditions"
-        memoryIdsToLoad: ["q4-trends", "supplier-performance-data"]
-      }
-    ]
-  ) {
-    id
-  }
-}
-```
-
-**Optimization Workflow:**
-
-1. **DemandForecaster** analyzes sales patterns and external factors
-2. Calls **InventoryOptimizer** with forecast data, waits for completion
-3. **InventoryOptimizer** calculates optimal stock levels, signals completion
-4. **DemandForecaster** calls **SupplierEvaluator** to assess current supplier capabilities
-5. **SupplierEvaluator** calls **ProcurementAgent** to generate purchase orders
-6. **ProcurementAgent** completes with procurement recommendations
-7. **SupplierEvaluator** calls **RiskMitigator** for contingency planning
-8. **RiskMitigator** completes with backup supplier plans
-9. **SupplierEvaluator** calls `complete_agent_execution` with supplier assessment
-10. **DemandForecaster** calls `complete_agent_execution` with optimization plan
-
-### 3.6 Content Creation & Publishing Pipeline
-
-**Scenario:** A digital marketing agency wants to automate content creation, from research and writing to SEO optimization and social media distribution.
-
-**Implementation:**
-
-```graphql
-mutation CreateContentAgents {
-  createAgent(
-    input: {
-      name: "ContentResearcher"
-      description: "Researches topics, keywords, and competitor content"
-      directoryId: "content-marketing-dir"
-      tagIds: ["content-creation", "research", "seo"]
-      mcpServerIds: [
-        "google-trends-mcp"
-        "competitor-analysis-mcp"
-        "keyword-research-mcp"
-      ]
-      allowedAgentIds: ["ContentWriter", "SEOOptimizer"]
-    }
-  ) {
-    id
-  }
-
-  createAgent(
-    input: {
-      name: "SocialMediaManager"
-      description: "Adapts content for different social platforms and schedules posts"
-      directoryId: "content-marketing-dir"
-      tagIds: ["social-media", "content-distribution", "scheduling"]
-      mcpServerIds: ["twitter-api-mcp", "linkedin-api-mcp", "facebook-api-mcp"]
-      allowedAgentIds: ["PerformanceTracker"]
-    }
-  ) {
-    id
-  }
-}
-
-mutation CreateContentCampaign {
-  runAgents(
-    inputs: [
-      {
-        agentName: "ContentResearcher"
-        input: "Research and create a comprehensive blog post about 'AI in Healthcare 2024'. Include SEO keywords, competitor analysis, and create social media variants."
-        contextScope: FULL
-      }
-    ]
-  ) {
-    id
-  }
-}
-```
-
-**Content Pipeline Flow:**
-
-1. **ContentResearcher** gathers data on target keywords and competitor content
-2. Calls **ContentWriter** with research findings, waits for completion
-3. **ContentWriter** creates the main article, calls `complete_agent_execution`
-4. **ContentResearcher** calls **SEOOptimizer** to enhance content for search engines
-5. **SEOOptimizer** completes with optimized content
-6. **ContentResearcher** calls **SocialMediaManager** for platform-specific variants
-7. **SocialMediaManager** calls **PerformanceTracker** for scheduling and monitoring
-8. **PerformanceTracker** completes with performance monitoring setup
-9. **SocialMediaManager** calls `complete_agent_execution` with social media plan
-10. **ContentResearcher** calls `complete_agent_execution` with full content campaign
-
-### 3.7 External Agent Integration with Completion
-
-**Scenario:** A company wants to integrate with third-party AI services while maintaining centralized governance and monitoring.
-
-**Implementation:**
-
-```graphql
-mutation RegisterExternalAgent {
-  createMcpServer(
-    input: {
-      name: "LegalDocumentAnalyzer"
-      description: "External service for legal document analysis and contract review"
-      type: A2A
-      endpoint: "https://legal-ai.lawfirm.com/a2a/v1"
-      apiKey: "legal-service-key-encrypted"
-    }
-  ) {
-    id
-    agentCard
-    tools {
-      name
+    discoveredAgents {
+      name        # "external/security-auditor"
       description
     }
   }
 }
+```
 
-mutation AnalyzeLegalDocument {
-  runAgents(
-    inputs: [
-      {
-        agentName: "ContractReviewCoordinator"
-        input: "Review the attached NDA for compliance issues and recommend changes"
-        contextScope: FULL
+**Agent Definition (code/pr-reviewer/prompt.md):**
+```markdown
+---
+name: "CodeReviewer"
+description: "Reviews pull requests for code quality, security issues, and best practices"
+version: "1.5.0"
+tags: ["development", "code-review", "security"]
+model: "gpt-4-turbo"
+providers: ["openai_gpt4"]
+mcpServers: ["github", "sonarqube"]
+allowedAgents: ["code/test-runner", "deploy/staging-manager", "external/security-auditor"]
+examples:
+  - "Review PR #123 for security vulnerabilities"
+  - "Analyze code quality in payment module"
+---
+
+You are a Senior Code Reviewer responsible for maintaining code quality and security standards.
+
+## Available Tools
+- **github_get_pr**: Get pull request details and diff
+- **sonarqube_scan**: Run code quality analysis
+- **github_add_comment**: Add review comments
+
+## Available Agents
+- **code/test-runner**: Execute comprehensive test suites
+- **deploy/staging-manager**: Handle staging deployments
+- **external/security-auditor**: External security analysis service
+
+## Review Process
+1. Analyze code changes thoroughly
+2. For security-sensitive changes, delegate to external/security-auditor
+3. If code passes review, delegate to code/test-runner
+4. Complete with approval/rejection decision
+
+Your task: {{prompt}}
+```
+
+**Multi-System Execution:**
+```
+Request: "Review pull request #456 in payment-service repository"
+
+1. CodeReviewer calls github_get_pr tool
+   → Retrieves PR diff and details
+
+2. CodeReviewer notices payment processing code, calls external agent:
+   {
+     "name": "call_agent", 
+     "arguments": {
+       "agent_name": "external/security-auditor",
+       "input": "Please audit the payment processing changes in PR #456. Focus on PCI compliance and data handling."
+     }
+   }
+
+3. External security service processes via A2A protocol:
+   POST https://security-ai.partner.com/a2a/v1
+   {
+     "method": "message/send",
+     "params": {
+       "message": {
+         "role": "user",
+         "parts": [{"kind": "text", "text": "Please audit..."}]
+       }
+     }
+   }
+
+4. External service completes and returns A2A task:
+   {
+     "id": "task-external-123",
+     "status": {"state": "completed"},
+     "artifacts": [{
+       "parts": [{"kind": "text", "text": "Security audit passed. No PCI violations found..."}]
+     }]
+   }
+
+5. CodeReviewer receives completion, calls internal test runner:
+   {
+     "name": "call_agent",
+     "arguments": {
+       "agent_name": "code/test-runner", 
+       "input": "Run full test suite for payment-service PR #456"
+     }
+   }
+
+6. TestRunner executes and completes:
+   {
+     "name": "complete_agent_execution",
+     "arguments": {
+       "result": "All 247 tests passed. Coverage: 94.2%",
+       "status": "SUCCESS",
+       "confidence": 1.0
+     }
+   }
+
+7. CodeReviewer calls github_add_comment and completes:
+   {
+     "name": "complete_agent_execution",
+     "arguments": {
+       "result": "PR #456 approved. External security audit passed, all tests passing. Ready for merge.",
+       "status": "SUCCESS",
+       "confidence": 0.95
+     }
+   }
+```
+
+### 3.3 Legal Document Analysis with Federated Expertise
+
+**Scenario:** A company needs comprehensive contract analysis using both internal knowledge and external legal expertise.
+
+**Repository Structure:**
+```
+main-agents/
+├── legal/contract-coordinator/prompt.md
+├── legal/compliance-checker/prompt.md
+└── legal/risk-assessor/prompt.md
+
+partner-agents/ (external A2A registrations)
+└── external/specialized-legal-ai
+```
+
+**Multi-Repository Agent Coordination:**
+```
+Request: "Analyze this NDA for potential risks and compliance issues"
+
+1. legal/contract-coordinator (internal git agent):
+   - Initial document analysis
+   - Calls legal/compliance-checker (same repo)
+   - Calls legal/risk-assessor (same repo)
+
+2. For specialized legal expertise, calls external agent:
+   {
+     "name": "call_agent",
+     "arguments": {
+       "agent_name": "external/specialized-legal-ai",
+       "input": "Provide expert legal analysis of this NDA focusing on IP protection and liability clauses"
+     }
+   }
+
+3. External A2A agent processes request:
+   - Receives A2A message via HTTPS
+   - Performs specialized legal analysis
+   - Returns structured legal opinion
+
+4. Internal coordinator combines all analysis:
+   - Internal compliance check results
+   - Internal risk assessment
+   - External expert legal opinion
+   - Generates comprehensive recommendation
+```
+
+### 3.4 Cross-Organization Agent Federation
+
+**Scenario:** Multiple organizations want to share specialized agents while maintaining security boundaries.
+
+**Organization A (Financial Services):**
+```
+Exposes via A2A:
+- public/risk-calculator
+- public/compliance-validator
+
+Consumes externally:  
+- partner-bank/fraud-detector
+- regtech-vendor/aml-screener
+```
+
+**Organization B (RegTech Vendor):**
+```
+Exposes via A2A:
+- public/aml-screener  
+- public/kyc-validator
+
+Consumes externally:
+- finserv-partner/risk-calculator
+- data-vendor/sanctions-checker
+```
+
+**Configuration Example:**
+```json
+{
+  "agentRepositories": [
+    {
+      "name": "main-agents",
+      "gitUrl": "https://github.com/company/agents.git",
+      "isRoot": true,
+      "branch": "production"
+    }
+  ],
+  
+  "agentExposure": {
+    "allowedPrefixes": ["public/"],
+    "securitySchemes": {
+      "oauth2": {
+        "type": "oauth2",
+        "flows": {
+          "clientCredentials": {
+            "tokenUrl": "https://auth.company.com/oauth/token"
+          }
+        }
       }
-    ]
-  ) {
-    id
+    }
+  },
+  
+  "externalAgents": {
+    "partner-bank": {
+      "endpoint": "https://agents.partner-bank.com/a2a/v1",
+      "authentication": {
+        "type": "oauth2",
+        "clientId": "company-integration",
+        "clientSecret": "env(PARTNER_BANK_SECRET)"
+      }
+    }
   }
 }
 ```
-
-**Federated Agent Flow:**
-
-1. **ContractReviewCoordinator** calls external **LegalDocumentAnalyzer** via A2A
-2. External agent performs analysis, uses its own completion mechanism
-3. A2A adapter translates external completion to Shaman's completion format
-4. **ContractReviewCoordinator** receives structured completion result
-5. **ContractReviewCoordinator** calls `complete_agent_execution` with final decision
-
-**Benefits:**
-
-- **Centralized Governance:** All agent interactions go through Shaman's security and audit system
-- **Cost Tracking:** External agent usage tracked alongside internal agents
-- **Unified Interface:** Developers use same GraphQL API regardless of agent location
-- **Performance Monitoring:** External agent response times and completion patterns monitored
 
 ## 4. Detailed System Architecture
 
@@ -525,8 +657,12 @@ mutation AnalyzeLegalDocument {
           │  │     Engine      │  │   (HTTP Endpoints)     │ │
           │  └─────────────────┘  └─────────────────────────┘ │
           │  ┌─────────────────┐  ┌─────────────────────────┐ │
-          │  │   Real-time     │  │  Workflow Engine        │ │
-          │  │   Streaming     │  │     Adapter             │ │
+          │  │   Real-time     │  │  Git Agent Discovery   │ │
+          │  │   Streaming     │  │      Service            │ │
+          │  └─────────────────┘  └─────────────────────────┘ │
+          │  ┌─────────────────┐  ┌─────────────────────────┐ │
+          │  │ External A2A    │  │  Workflow Engine        │ │
+          │  │    Registry     │  │     Adapter             │ │
           │  └─────────────────┘  └─────────────────────────┘ │
           └─────────────────┬───────────────────────────────────┘
                             │
@@ -544,6 +680,20 @@ mutation AnalyzeLegalDocument {
           │  │ LLM     │ │   MCP    │ │      A2A Client        │ │
           │  │ Calls   │ │  Tools   │ │        Logic           │ │
           │  └─────────┘ └──────────┘ └─────────────────────────┘ │
+          │  ┌─────────────────────────────────────────────────┐ │
+          │  │           Tool Call Router                      │ │
+          │  │  ┌─────────┐ ┌─────────┐ ┌─────────────────────┐ │ │
+          │  │  │   MCP   │ │ System  │ │   Agent Call        │ │ │
+          │  │  │ Handler │ │ Handler │ │     Handler         │ │ │
+          │  │  └─────────┘ └─────────┘ └─────────────────────┘ │ │
+          │  └─────────────────────────────────────────────────┘ │
+          │  ┌─────────────────────────────────────────────────┐ │
+          │  │         Git Agent Resolver                      │ │
+          │  │  ┌─────────┐ ┌─────────┐ ┌─────────────────────┐ │ │
+          │  │  │ Root    │ │ Namespd │ │   External A2A      │ │ │
+          │  │  │ Repos   │ │ Repos   │ │      Registry       │ │ │
+          │  │  └─────────┘ └─────────┘ └─────────────────────┘ │ │
+          │  └─────────────────────────────────────────────────┘ │
           └─────────────────┬───────────────────────────────────┘
                             │
           ┌─────────────────▼───────────────────────────────────┐
@@ -552,6 +702,13 @@ mutation AnalyzeLegalDocument {
           │  │PostgreSQL│ │  Redis   │ │     OpenTelemetry      │ │
           │  │  (Data) │ │(Streams) │ │      (Tracing)         │ │
           │  └─────────┘ └──────────┘ └─────────────────────────┘ │
+          │  ┌─────────────────────────────────────────────────┐ │
+          │  │                Git Storage                      │ │
+          │  │  ┌─────────┐ ┌─────────┐ ┌─────────────────────┐ │ │
+          │  │  │ Cloned  │ │ Cached  │ │   Sync Metadata     │ │ │
+          │  │  │ Repos   │ │ Agents  │ │                     │ │ │
+          │  │  └─────────┘ └─────────┘ └─────────────────────┘ │ │
+          │  └─────────────────────────────────────────────────┘ │
           └─────────────────────────────────────────────────────┘
 ```
 
@@ -563,20 +720,84 @@ The `packages/shaman` Node.js application, serving as the system's nerve center.
 
 - **Technology:** Apollo Server with GraphQL subscriptions over WebSockets
 - **Authentication:** JWT-based with role-based access control (RBAC)
-- **Authorization:** Field-level permissions based on user roles and agent ownership
+- **Authorization:** Field-level permissions based on user roles and git repository access
 - **Rate Limiting:** Per-user and per-endpoint limits to prevent abuse
 - **Validation:** Comprehensive input validation with detailed error messages
 
 #### 4.2.2 A2A Gateway
 
 - **HTTP Server:** Express.js endpoints implementing A2A JSON-RPC methods
-- **Authentication:** Configurable security schemes per exposed agent
-- **Request Translation:** A2A messages → Shaman RunAgentInput
-- **Response Translation:** Shaman StreamChunks → A2A SSE events
-- **AgentCard Generation:** Dynamic generation from Agent definitions
-- **Completion Bridging:** External agent completions mapped to Shaman completion format
+- **Request Routing:** Routes A2A requests to appropriate git-based agents
+- **AgentCard Generation:** Dynamic generation from git agent definitions
+- **Authentication:** Configurable security schemes per exposed agent path
+- **Response Translation:** Git agent completions → A2A task/message format
+- **Streaming Support:** A2A SSE streaming for long-running git agent executions
 
-#### 4.2.3 Real-time Streaming Hub
+#### 4.2.3 Git Agent Discovery Service
+
+```typescript
+interface GitAgentDiscoveryService {
+  syncRepository(repoName: string): Promise<SyncResult>;
+  syncAllRepositories(): Promise<SyncResult[]>;
+  findAgent(agentName: string): Promise<GitAgent | null>;
+  resolveAgentPath(agentName: string): Promise<AgentResolution>;
+  listAgents(filters?: AgentFilters): Promise<GitAgent[]>;
+  getAgentHistory(agentName: string): Promise<GitCommit[]>;
+}
+
+interface AgentResolution {
+  agentName: string;
+  repositoryName: string;
+  filePath: string;
+  isNamespaced: boolean;
+  gitCommit: string;
+}
+
+interface GitAgent {
+  name: string;
+  description: string;
+  version: string;
+  tags: string[];
+  model: string;
+  providers: string[];
+  mcpServers: string[];
+  allowedAgents: string[];
+  
+  // Git metadata
+  repositoryName: string;
+  filePath: string;
+  gitCommit: string;
+  lastModified: Date;
+  
+  // Parsed content
+  promptTemplate: string;
+  frontmatter: AgentFrontmatter;
+}
+```
+
+#### 4.2.4 External A2A Registry
+
+```typescript
+interface ExternalA2ARegistry {
+  registerAgent(config: A2AAgentConfig): Promise<ExternalAgent>;
+  discoverAgents(endpoint: string): Promise<ExternalAgent[]>;
+  getAgentCard(agentName: string): Promise<A2AAgentCard>;
+  healthCheck(agentName: string): Promise<HealthStatus>;
+  listExternalAgents(): Promise<ExternalAgent[]>;
+}
+
+interface ExternalAgent {
+  name: string;
+  description: string;
+  endpoint: string;
+  agentCard: A2AAgentCard;
+  authConfig: A2AAuthConfig;
+  isActive: boolean;
+  lastHealthCheck: Date;
+}
+```
+
+#### 4.2.5 Real-time Streaming Hub
 
 - **WebSocket Management:** Handles GraphQL subscription connections
 - **Redis Pub/Sub:** Subscribes to worker-generated stream events
@@ -584,29 +805,31 @@ The `packages/shaman` Node.js application, serving as the system's nerve center.
 - **Connection Scaling:** Supports horizontal scaling with Redis clustering
 - **Input Request Notifications:** Real-time alerts when agents request user input
 
-#### 4.2.4 Operational Constraints
+#### 4.2.6 Operational Constraints
 
 - **No LLM Calls:** Server never directly calls LLM providers
 - **Stateless Design:** All persistent state in PostgreSQL/Redis
 - **High Availability:** Designed for multi-instance deployment
+- **Git Synchronization:** Periodic syncing of agent repositories
 
 ### 4.3 Workflow Engine (Execution Plane)
 
-Pluggable backend for durable workflow execution with explicit completion support.
+Pluggable backend for durable workflow execution with git versioning and completion support.
 
 #### 4.3.1 Temporal.io Adapter (Production)
 
 - **Workflows:** `executeAgentStep` workflow with child workflow support
-- **Activities:** `callLLM`, `executeTool`, `executeChildAgent`, `saveMemory`, `publishStream`
+- **Activities:** `callLLM`, `executeTool`, `executeChildAgent`, `saveMemory`, `publishStream`, `resolveGitAgent`
+- **Git Version Tracking:** Each execution captures exact git commit for traceability
 - **Completion Handling:** Native support for waiting on explicit completion signals
 - **Durability:** Automatic state persistence and recovery
 - **Scaling:** Horizontal worker scaling with automatic load balancing
-- **Timeouts:** Configurable execution and activity timeouts
 
 #### 4.3.2 BullMQ Adapter (Development)
 
 - **Queue Structure:** Single queue with job prioritization
 - **Jobs:** `executeStep` jobs with retry policies and completion detection
+- **Git Integration:** Jobs include git commit references for agent resolution
 - **Redis Backend:** Requires Redis for job persistence and completion signaling
 - **Simplified Logic:** Easier local development and testing
 
@@ -628,7 +851,7 @@ interface WorkflowEngineAdapter {
 
 interface AgentCompletion {
   result: string;
-  status: "SUCCESS" | "PARTIAL" | "FAILED";
+  status: 'SUCCESS' | 'PARTIAL' | 'FAILED';
   confidence: number;
   requiresFollowup: boolean;
   metadata?: any;
@@ -637,234 +860,1170 @@ interface AgentCompletion {
 
 ### 4.4 Worker Process (Execution Units)
 
-Scalable Node.js processes performing the actual agent execution with completion handling.
+Scalable Node.js processes performing the actual agent execution with git resolution and completion handling.
 
 #### 4.4.1 Core Responsibilities
 
 - **Job Consumption:** Pull and execute jobs from workflow engine
+- **Git Agent Resolution:** Load agent definitions from git repositories at specific commits
 - **LLM Interaction:** Only component making direct LLM API calls
 - **Tool Execution:** Handle MCP and A2A tool calls
 - **Agent Completion:** Process and validate explicit completion tool calls
 - **Child Agent Coordination:** Manage agent-to-agent calls with completion waiting
+- **External A2A Communication:** Handle calls to external A2A agents
 - **Stream Publishing:** Push real-time events to Redis
-- **State Updates:** Update Step status and metrics in database
 
-#### 4.4.2 LLM Integration
+#### 4.4.2 Git Agent Resolution
+
+```typescript
+interface GitAgentResolver {
+  resolveAgent(agentName: string, requestTime?: Date): Promise<ResolvedAgent>;
+  loadAgentDefinition(repo: string, path: string, commit: string): Promise<AgentDefinition>;
+  parseAgentFrontmatter(markdown: string): Promise<AgentFrontmatter>;
+  validateAgentDefinition(definition: AgentDefinition): ValidationResult;
+}
+
+class GitAgentResolverImpl implements GitAgentResolver {
+  async resolveAgent(agentName: string): Promise<ResolvedAgent> {
+    // 1. Check root repositories first (unnamespaced)
+    for (const rootRepo of this.rootRepositories) {
+      const agent = await this.findAgentInRepo(rootRepo, agentName);
+      if (agent) {
+        return {
+          agent: agent,
+          source: 'git',
+          repository: rootRepo.name,
+          commit: rootRepo.currentCommit,
+          isNamespaced: false
+        };
+      }
+    }
+    
+    // 2. Check namespaced repositories
+    if (agentName.includes('/')) {
+      const [namespace, ...pathParts] = agentName.split('/');
+      const agentPath = pathParts.join('/');
+      
+      const namespacedRepo = this.namedRepositories.get(namespace);
+      if (namespacedRepo) {
+        const agent = await this.findAgentInRepo(namespacedRepo, agentPath);
+        if (agent) {
+          return {
+            agent: agent,
+            source: 'git',
+            repository: namespacedRepo.name,
+            commit: namespacedRepo.currentCommit,
+            isNamespaced: true
+          };
+        }
+      }
+    }
+    
+    // 3. Check external A2A agents
+    const externalAgent = await this.externalA2ARegistry.findAgent(agentName);
+    if (externalAgent) {
+      return {
+        agent: externalAgent,
+        source: 'a2a',
+        endpoint: externalAgent.endpoint,
+        isNamespaced: false
+      };
+    }
+    
+    throw new Error(`Agent ${agentName} not found in any repository or external registry`);
+  }
+  
+  async loadAgentDefinition(repo: string, path: string, commit: string): Promise<AgentDefinition> {
+    // Load specific version of agent from git
+    const markdown = await this.gitService.getFile(repo, path, commit);
+    const parsed = await this.parseAgentFrontmatter(markdown);
+    
+    return {
+      frontmatter: parsed.frontmatter,
+      promptTemplate: parsed.content,
+      gitMetadata: {
+        repository: repo,
+        filePath: path,
+        commit: commit,
+        lastModified: await this.gitService.getFileLastModified(repo, path, commit)
+      }
+    };
+  }
+}
+```
+
+#### 4.4.3 LLM Integration
 
 - **Vercel AI SDK:** Primary interface for all LLM interactions
 - **Provider Abstraction:** Support for OpenAI, Anthropic, Groq, Ollama
 - **Streaming Support:** Real-time token streaming with chunk aggregation
 - **Error Handling:** Comprehensive retry policies and error categorization
-- **Completion Tool Injection:** Automatically provides completion tool to all agents
+- **Tool Injection:** Automatically provides system tools to all agents
+- **Prompt Template Resolution:** Injects available tools and agents into templates
 
-#### 4.4.3 A2A Client Implementation
-
-- **Discovery:** Fetch and cache external agent AgentCards
-- **Authentication:** Support for various A2A security schemes
-- **Request Translation:** Shaman tool calls → A2A JSON-RPC requests
-- **Stream Handling:** A2A SSE events → Shaman StreamChunks
-- **Completion Translation:** External agent completions → Shaman completion format
-- **Error Recovery:** Retry failed external agent calls
-
-#### 4.4.4 Standard Tool Implementation
-
-All agents have access to these standard tools:
+#### 4.4.4 A2A Client Implementation
 
 ```typescript
-interface StandardTools {
-  complete_agent_execution: (completion: AgentCompletion) => void;
-  request_user_input: (request: InputRequest) => string;
-  save_memory: (key: string, value: any, expires?: Date) => void;
-  load_memory: (key: string) => any;
-  call_agent: (name: string, input: string) => AgentCompletion;
+interface A2AClientHandler {
+  callExternalAgent(agentName: string, input: string, context: ExecutionContext): Promise<AgentCompletion>;
+  discoverExternalAgent(endpoint: string): Promise<A2AAgentCard>;
+  translateToA2AMessage(input: string, context: ExecutionContext): A2AMessage;
+  translateFromA2ATask(task: A2ATask): AgentCompletion;
+}
+
+class A2AClientHandlerImpl implements A2AClientHandler {
+  async callExternalAgent(agentName: string, input: string, context: ExecutionContext): Promise<AgentCompletion> {
+    const externalAgent = await this.externalA2ARegistry.findAgent(agentName);
+    if (!externalAgent) {
+      throw new Error(`External agent ${agentName} not registered`);
+    }
+    
+    // 1. Prepare A2A message
+    const a2aMessage: A2AMessage = {
+      role: 'user',
+      parts: [{ kind: 'text', text: input }],
+      messageId: generateId(),
+      taskId: context.currentStep.runId,
+      contextId: context.currentStep.runId
+    };
+    
+    // 2. Send A2A request
+    const response = await this.sendA2ARequest(externalAgent, {
+      jsonrpc: '2.0',
+      id: generateId(),
+      method: 'message/send',
+      params: {
+        message: a2aMessage,
+        configuration: {
+          acceptedOutputModes: ['text/plain', 'application/json'],
+          blocking: true
+        }
+      }
+    });
+    
+    // 3. Handle response
+    if (response.result.kind === 'task') {
+      return await this.waitForA2ATaskCompletion(externalAgent, response.result);
+    } else if (response.result.kind === 'message') {
+      return this.translateMessageToCompletion(response.result);
+    }
+    
+    throw new Error('Invalid A2A response format');
+  }
+  
+  private async waitForA2ATaskCompletion(agent: ExternalAgent, task: A2ATask): Promise<AgentCompletion> {
+    // Poll or stream the external task until completion
+    let currentTask = task;
+    
+    while (!this.isTerminalState(currentTask.status.state)) {
+      await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1 second
+      
+      const response = await this.sendA2ARequest(agent, {
+        jsonrpc: '2.0',
+        id: generateId(),
+        method: 'tasks/get',
+        params: { id: currentTask.id }
+      });
+      
+      currentTask = response.result;
+    }
+    
+    return this.translateTaskToCompletion(currentTask);
+  }
+  
+  private translateTaskToCompletion(task: A2ATask): AgentCompletion {
+    const isSuccess = task.status.state === 'completed';
+    const result = task.artifacts?.length > 0 
+      ? this.extractTextFromArtifacts(task.artifacts)
+      : task.status.message?.parts?.map(p => p.kind === 'text' ? p.text : '').join('') || 'No result';
+    
+    return {
+      result: result,
+      status: isSuccess ? 'SUCCESS' : 'FAILED',
+      confidence: isSuccess ? 0.9 : 0.0,
+      requiresFollowup: task.status.state === 'input-required' || task.status.state === 'auth-required',
+      metadata: {
+        externalTaskId: task.id,
+        finalState: task.status.state,
+        artifacts: task.artifacts?.length || 0
+      }
+    };
+  }
 }
 ```
 
-## 5. Agent Registration & Discovery System
+#### 4.4.5 Tool Call Router
 
-### 5.1 External Agent Registration
+```typescript
+interface ToolCallRouter {
+  routeToolCall(toolCall: ToolCall, context: ExecutionContext): Promise<ToolResult>;
+}
 
-#### 5.1.1 Manual Registration
-
-```graphql
-mutation RegisterExternalAgent {
-  createMcpServer(
-    input: {
-      name: "Customer Support Assistant"
-      description: "Specialized agent for handling customer inquiries"
-      type: A2A
-      endpoint: "https://support-agent.example.com/a2a/v1"
-      apiKey: "sha256:encrypted-api-key"
-    }
-  ) {
-    id
-    isActive
-    agentCard
-    tools {
-      name
-      description
-      schema
+class ToolCallRouterImpl implements ToolCallRouter {
+  async routeToolCall(toolCall: ToolCall, context: ExecutionContext): Promise<ToolResult> {
+    const { name, arguments: args } = toolCall.function;
+    
+    switch (name) {
+      case 'call_agent':
+        return await this.agentCallHandler.handleAgentCall(args, context);
+        
+      case 'complete_agent_execution':
+        return await this.systemHandler.handleCompletion(args, context);
+        
+      case 'request_user_input':
+        return await this.systemHandler.handleInputRequest(args, context);
+        
+      case 'save_memory':
+      case 'load_memory':
+        return await this.systemHandler.handleMemory(name, args, context);
+        
+      default:
+        // Handle MCP tool
+        return await this.mcpHandler.callMcpTool(name, args, context);
     }
   }
 }
 ```
 
-#### 5.1.2 Automatic Discovery Process
+#### 4.4.6 Agent Call Handler Implementation
 
-1. **AgentCard Fetching:** GET `{endpoint}/../.well-known/agent.json`
-2. **Validation:** Verify AgentCard schema compliance
-3. **Skill Parsing:** Extract skills as discoverable tools
-4. **Capability Analysis:** Assess supported input/output modes and completion patterns
-5. **Authentication Testing:** Verify provided credentials work
-6. **Tool Registration:** Create Tool records for each skill
-7. **Completion Mapping:** Verify external agent completion compatibility
-8. **Status Monitoring:** Periodic health checks and capability refresh
+```typescript
+interface AgentCallHandler {
+  handleAgentCall(args: AgentCallArgs, context: ExecutionContext): Promise<ToolResult>;
+}
 
-#### 5.1.3 Discovery Error Handling
-
-- **Network Failures:** Exponential backoff with circuit breaker
-- **Invalid AgentCard:** Detailed validation error reporting
-- **Authentication Failures:** Secure credential verification
-- **Capability Mismatches:** Version compatibility checking
-- **Completion Protocol Errors:** Validation of completion mechanism support
-
-### 5.2 Agent Discovery & Search System
-
-#### 5.2.1 Multi-Dimensional Search
-
-```graphql
-query DiscoverAgents {
-  searchAgents(
-    query: "customer support billing"
-    filters: {
-      tags: ["customer-service", "billing"]
-      directory: "/enterprise/support"
-      capabilities: ["text", "structured-data"]
-      version: ">=1.0.0"
-      isActive: true
-      hasA2AExposure: true
-      supportsExplicitCompletion: true
+class AgentCallHandlerImpl implements AgentCallHandler {
+  async handleAgentCall(args: AgentCallArgs, context: ExecutionContext): Promise<ToolResult> {
+    const { agent_name, input, context_scope = 'FULL' } = args;
+    
+    // 1. Resolve agent (git or external A2A)
+    const resolvedAgent = await this.gitAgentResolver.resolveAgent(agent_name);
+    
+    // 2. Validate permissions
+    await this.validateAgentCallPermissions(context.currentAgent, agent_name);
+    
+    // 3. Prevent circular calls
+    this.validateNoCircularCalls(context.callStack, agent_name);
+    
+    // 4. Execute based on agent source
+    let completion: AgentCompletion;
+    
+    if (resolvedAgent.source === 'git') {
+      completion = await this.executeGitAgent(resolvedAgent, input, context);
+    } else if (resolvedAgent.source === 'a2a') {
+      completion = await this.a2aClientHandler.callExternalAgent(agent_name, input, context);
+    } else {
+      throw new Error(`Unknown agent source: ${resolvedAgent.source}`);
     }
-    sort: RELEVANCE
-    limit: 20
-  ) {
-    agents {
-      id
-      name
-      description
-      relevanceScore
-      matchedTags
-    }
-    suggestedTags
-    totalCount
+    
+    // 5. Return completion as tool result
+    return {
+      success: completion.status !== 'FAILED',
+      result: completion.result,
+      metadata: {
+        status: completion.status,
+        confidence: completion.confidence,
+        requiresFollowup: completion.requiresFollowup,
+        agentSource: resolvedAgent.source,
+        gitCommit: resolvedAgent.commit,
+        executionTime: completion.metadata?.executionTime,
+        cost: completion.metadata?.cost
+      }
+    };
+  }
+  
+  private async executeGitAgent(
+    resolvedAgent: ResolvedAgent, 
+    input: string, 
+    context: ExecutionContext
+  ): Promise<AgentCompletion> {
+    // Start child agent execution with git version tracking
+    const childRun = await this.startChildAgentRun({
+      agentName: resolvedAgent.agent.name,
+      agentSource: 'git',
+      gitRepository: resolvedAgent.repository,
+      gitCommit: resolvedAgent.commit,
+      input: input,
+      contextScope: context_scope,
+      parentStepId: context.currentStep.id,
+      parentRunId: context.currentStep.runId,
+      callStack: [...context.callStack, context.currentAgent.name]
+    });
+    
+    // Wait for explicit completion
+    return await this.waitForAgentCompletion(childRun.id);
   }
 }
 ```
 
-#### 5.2.2 Search Algorithm Components
-
-- **Text Search:** Full-text indexing of name, description, examples
-- **Tag Matching:** Hierarchical tag relationships and synonyms
-- **Capability Filtering:** Input/output mode compatibility
-- **Usage Analytics:** Popular agents and success rates
-- **Semantic Similarity:** Vector embeddings for related agent discovery
-- **Completion Pattern Matching:** Filter by completion mechanism support
-
-#### 5.2.3 Recommendation Engine
-
-- **Usage Patterns:** Recommend based on historical run data
-- **Agent Compatibility:** Suggest complementary agent pairings based on completion patterns
-- **Skill Gaps:** Identify missing capabilities in user workflows
-- **Performance Metrics:** Promote high-performing agents with reliable completion
-
-#### 5.2.4 Agent Performance Analytics
-
-```graphql
-type AgentAnalytics {
-  totalRuns: Int!
-  successRate: Float!
-  averageExecutionTime: Float!
-  averageCost: Float!
-  userRating: Float
-  usageGrowth: Float!
-  peakUsageHours: [Int!]!
-  commonFailureReasons: [String!]!
-  completionReliability: Float!
-  averageChildAgents: Float!
-  inputRequestFrequency: Float!
-}
-```
-
-## 6. Comprehensive Security Model
-
-### 6.1 Authentication Architecture
-
-#### 6.1.1 GraphQL API Authentication
-
-- **JWT Tokens:** RS256-signed with configurable expiration
-- **Identity Providers:** Integration with OAuth 2.0, OIDC, SAML
-- **Multi-Factor Authentication:** TOTP and WebAuthn support
-- **API Keys:** Service account authentication for automated systems
-- **Session Management:** Secure token refresh and revocation
-
-#### 6.1.2 A2A Gateway Authentication
-
-- **Per-Agent Security:** Each exposed agent defines its auth requirements
-- **Security Schemes:** Support for Bearer, API Key, mTLS, OAuth 2.0
-- **Dynamic Credentials:** Runtime credential injection and rotation
-- **Request Validation:** Signature verification and timestamp checking
-
-#### 6.1.3 Internal Service Authentication
-
-- **Worker-to-Database:** Certificate-based PostgreSQL authentication
-- **Redis Authentication:** AUTH with rotating passwords
-- **Workflow Engine:** Mutual TLS for Temporal communication
-
-### 6.2 Authorization Framework
-
-#### 6.2.1 Role-Based Access Control (RBAC)
+#### 4.4.7 Prompt Template Resolution
 
 ```typescript
-enum Permission {
-  AGENT_READ = "agent:read",
-  AGENT_CREATE = "agent:create",
-  AGENT_UPDATE = "agent:update",
-  AGENT_DELETE = "agent:delete",
-  AGENT_EXECUTE = "agent:execute",
-  AGENT_EXPOSE_A2A = "agent:expose_a2a",
-  RUN_READ = "run:read",
-  RUN_TERMINATE = "run:terminate",
-  RUN_PAUSE = "run:pause",
-  RUN_RESUME = "run:resume",
-  INPUT_RESPOND = "input:respond",
-  SYSTEM_ADMIN = "system:admin",
+interface PromptTemplateResolver {
+  resolvePromptTemplate(agent: GitAgent, userInput: string): Promise<string>;
 }
 
-interface Role {
-  name: string;
-  permissions: Permission[];
-  agentFilters?: {
-    directoryPaths?: string[];
-    tags?: string[];
-    owners?: string[];
-  };
+class PromptTemplateResolverImpl implements PromptTemplateResolver {
+  async resolvePromptTemplate(agent: GitAgent, userInput: string): Promise<string> {
+    const availableTools = await this.getMcpServerTools(agent.mcpServers);
+    const allowedAgents = await this.resolveAllowedAgents(agent.allowedAgents);
+    
+    // Add system tools
+    const allTools = [
+      ...availableTools,
+      ...this.getSystemTools()
+    ];
+    
+    // Resolve template variables
+    return agent.promptTemplate
+      .replace('{{agent_name}}', agent.name)
+      .replace('{{agent_description}}', agent.description)
+      .replace('{{prompt}}', userInput)
+      .replace('{{available_tools}}', this.formatToolsForPrompt(allTools))
+      .replace('{{allowed_agents}}', this.formatAgentsForPrompt(allowedAgents));
+  }
+  
+  private async resolveAllowedAgents(allowedAgentNames: string[]): Promise<AgentSummary[]> {
+    const agents: AgentSummary[] = [];
+    
+    for (const agentName of allowedAgentNames) {
+      try {
+        const resolved = await this.gitAgentResolver.resolveAgent(agentName);
+        agents.push({
+          name: agentName,
+          description: resolved.agent.description,
+          examples: resolved.agent.examples || [],
+          source: resolved.source
+        });
+      } catch (error) {
+        console.warn(`Could not resolve allowed agent: ${agentName}`, error);
+      }
+    }
+    
+    return agents;
+  }
+  
+  private formatAgentsForPrompt(agents: AgentSummary[]): string {
+    return agents.map(agent => {
+      const sourceIndicator = agent.source === 'a2a' ? ' (external)' : '';
+      return `- **${agent.name}${sourceIndicator}**: ${agent.description}\n  Examples: ${agent.examples.join(', ') || 'General tasks'}`;
+    }).join('\n');
+  }
 }
 ```
 
-#### 6.2.2 Resource-Level Permissions
+## 5. Agent Repository Management
 
-- **Agent Ownership:** Creators have full control over their agents
-- **Directory Permissions:** Hierarchical access control
-- **Tag-Based Access:** Permission by agent categorization
-- **Run Visibility:** Users see only their runs or authorized runs
-- **Input Response Authorization:** Control who can respond to agent input requests
+### 5.1 Git Repository Structure
 
-#### 6.2.3 External Agent Security
+#### 5.1.1 Agent Definition Format
 
-- **Credential Isolation:** External agent keys encrypted at rest
-- **Permission Scoping:** Limit external agent access to specific skills
-- **Audit Logging:** Complete trail of external agent interactions and completions
-- **Rate Limiting:** Per-agent and per-user external call limits
+```markdown
+---
+name: "SalesAssistant"
+description: "Helps with sales inquiries and lead qualification"
+version: "1.3.0"
+tags: ["sales", "lead-qualification", "customer-engagement"]
+model: "gpt-4-turbo"
+providers: ["openai_gpt4", "anthropic_claude"]
+mcpServers: ["crm-tools", "email-templates", "calendar-integration"] 
+allowedAgents: ["sales/proposal-generator", "external/legal-reviewer"]
+examples:
+  - "Qualify this lead for our enterprise product"
+  - "Generate a follow-up email for this prospect"
+  - "Schedule a demo call with the customer"
+contextScope: "FULL"
+maxExecutionMinutes: 15
+---
+
+You are a Sales Assistant AI specialized in lead qualification and customer engagement.
+
+## Your Role
+- Qualify leads based on company criteria
+- Generate personalized communications
+- Schedule appropriate follow-up actions
+- Escalate complex deals to human sales reps
+
+## Available Tools
+Your tools will be automatically injected based on your configured MCP servers:
+- CRM operations (create/update leads, accounts)
+- Email template generation and sending
+- Calendar management and scheduling
+
+## Available Agents
+You can delegate specialized tasks to: {{allowed_agents}}
+
+## Process Guidelines
+1. Always gather basic qualification information first
+2. Use sales/proposal-generator for complex RFPs
+3. Use external/legal-reviewer for contract-related questions
+4. Complete with next steps and confidence assessment
+
+Your task: {{prompt}}
+```
+
+#### 5.1.2 Repository Structure Examples
+
+**Root Repository (unnamespaced):**
+```
+main-agents/
+├── sales/
+│   ├── assistant/prompt.md              → "sales/assistant"
+│   ├── proposal-generator/prompt.md     → "sales/proposal-generator" 
+│   └── deal-analyzer/prompt.md          → "sales/deal-analyzer"
+├── support/
+│   ├── tier1/prompt.md                  → "support/tier1"
+│   ├── billing/prompt.md                → "support/billing"
+│   └── technical/prompt.md              → "support/technical"
+├── legal/
+│   ├── contract-review/prompt.md        → "legal/contract-review"
+│   └── compliance/prompt.md             → "legal/compliance"
+└── public/
+    ├── demo-agent/prompt.md             → "public/demo-agent"
+    └── api-helper/prompt.md             → "public/api-helper"
+```
+
+**Namespaced Repository:**
+```
+experimental-agents/
+├── nlp/
+│   ├── sentiment-analysis/prompt.md     → "experimental/nlp/sentiment-analysis"
+│   └── text-classification/prompt.md   → "experimental/nlp/text-classification"
+├── vision/
+│   ├── object-detection/prompt.md       → "experimental/vision/object-detection"
+│   └── image-analysis/prompt.md         → "experimental/vision/image-analysis"
+└── research/
+    ├── paper-analysis/prompt.md         → "experimental/research/paper-analysis"
+    └── trend-detection/prompt.md        → "experimental/research/trend-detection"
+```
+
+### 5.2 Git Repository Configuration
+
+```json
+{
+  "agentRepositories": [
+    {
+      "name": "main-agents",
+      "gitUrl": "https://github.com/company/main-agents.git",
+      "branch": "production",
+      "isRoot": true,
+      "syncInterval": "5m",
+      "authType": "ssh-key",
+      "sshKeyPath": "/secrets/git-deploy-key",
+      "webhookSecret": "env(GIT_WEBHOOK_SECRET)",
+      "isActive": true
+    },
+    {
+      "name": "experimental",
+      "gitUrl": "https://github.com/company/experimental-agents.git", 
+      "branch": "main",
+      "isRoot": false,
+      "syncInterval": "15m",
+      "authType": "token",
+      "authToken": "env(GITHUB_TOKEN)",
+      "isActive": true
+    },
+    {
+      "name": "partner-shared", 
+      "gitUrl": "https://github.com/partner/shared-agents.git",
+      "branch": "stable",
+      "isRoot": false,
+      "syncInterval": "1h",
+      "authType": "ssh-key",
+      "sshKeyPath": "/secrets/partner-git-key",
+      "isActive": true,
+      "readOnly": true
+    }
+  ]
+}
+```
+
+### 5.3 Git Synchronization API
+
+```graphql
+type AgentRepository {
+  id: ID!
+  name: String!
+  gitUrl: String!
+  branch: String!
+  isRoot: Boolean!
+  isActive: Boolean!
+  readOnly: Boolean!
+  lastSyncCommit: String
+  lastSyncAt: DateTime
+  lastSyncStatus: SyncStatus!
+  agentCount: Int!
+  discoveredAgents: [GitAgent!]!
+  syncErrors: [SyncError!]!
+}
+
+type GitAgent {
+  name: String!
+  description: String!
+  version: String!
+  tags: [String!]!
+  
+  # Git metadata
+  repository: AgentRepository!
+  filePath: String!
+  gitCommit: String!
+  lastModified: DateTime!
+  
+  # Configuration
+  model: String
+  providers: [String!]!
+  mcpServers: [String!]!
+  allowedAgents: [String!]!
+  examples: [String!]!
+  
+  # Analytics
+  usageCount: Int!
+  lastUsed: DateTime
+  averageExecutionTime: Float
+}
+
+enum SyncStatus {
+  SUCCESS
+  IN_PROGRESS
+  FAILED
+  NEVER_SYNCED
+}
+
+type SyncError {
+  message: String!
+  filePath: String
+  timestamp: DateTime!
+  errorType: String!
+}
+
+type Mutation {
+  # Repository management
+  addAgentRepository(input: AddAgentRepositoryInput!): AgentRepository!
+  updateAgentRepository(id: ID!, input: UpdateAgentRepositoryInput!): AgentRepository!
+  removeAgentRepository(id: ID!): Boolean!
+  
+  # Git synchronization
+  syncAgentRepository(name: String!): AgentRepository!
+  syncAllAgentRepositories: [AgentRepository!]!
+  
+  # Branch management
+  switchRepositoryBranch(name: String!, branch: String!): AgentRepository!
+}
+
+type Query {
+  # Repository queries
+  agentRepository(name: String!): AgentRepository
+  agentRepositories: [AgentRepository!]!
+  
+  # Agent discovery
+  gitAgent(name: String!): GitAgent
+  gitAgents(repositoryName: String, filters: GitAgentFilters): [GitAgent!]!
+  
+  # Git operations
+  agentGitHistory(agentName: String!, limit: Int = 10): [GitCommit!]!
+  gitBranches(repositoryName: String!): [String!]!
+  gitTags(repositoryName: String!): [String!]!
+}
+
+type GitCommit {
+  hash: String!
+  message: String!
+  author: String!
+  timestamp: DateTime!
+  changedFiles: [String!]!
+}
+```
+
+### 5.4 Agent Resolution Priority
+
+```typescript
+class AgentResolver {
+  async resolveAgent(requestedName: string): Promise<ResolvedAgent> {
+    // 1. Check root repositories first (unnamespaced access)
+    for (const rootRepo of this.rootRepositories) {
+      const agent = await this.findAgentInRepository(rootRepo, requestedName);
+      if (agent) {
+        return {
+          agent: agent,
+          source: 'git',
+          repository: rootRepo.name,
+          isNamespaced: false,
+          priority: 'root'
+        };
+      }
+    }
+    
+    // 2. Check namespaced repositories
+    if (requestedName.includes('/')) {
+      const parts = requestedName.split('/');
+      
+      // Try namespace/path pattern (e.g., "experimental/nlp/sentiment")
+      for (let i = 1; i < parts.length; i++) {
+        const namespace = parts.slice(0, i).join('/');
+        const agentPath = parts.slice(i).join('/');
+        
+        const namespacedRepo = this.namedRepositories.get(namespace);
+        if (namespacedRepo) {
+          const agent = await this.findAgentInRepository(namespacedRepo, agentPath);
+          if (agent) {
+            return {
+              agent: agent,
+              source: 'git',
+              repository: namespacedRepo.name,
+              isNamespaced: true,
+              priority: 'namespaced'
+            };
+          }
+        }
+      }
+    }
+    
+    // 3. Check external A2A agents
+    const externalAgent = await this.externalA2ARegistry.findAgent(requestedName);
+    if (externalAgent) {
+      return {
+        agent: externalAgent,
+        source: 'a2a',
+        isNamespaced: false,
+        priority: 'external'
+      };
+    }
+    
+    throw new AgentNotFoundError(
+      `Agent "${requestedName}" not found in any git repository or external registry`
+    );
+  }
+  
+  async findAgentInRepository(repo: AgentRepository, agentPath: string): Promise<GitAgent | null> {
+    const expectedFiles = [
+      `${agentPath}/prompt.md`,
+      `${agentPath}/agent.md`,
+      `${agentPath}.md`
+    ];
+    
+    for (const filePath of expectedFiles) {
+      try {
+        const content = await this.gitService.getFile(repo.name, filePath, repo.currentCommit);
+        if (content) {
+          return await this.parseAgentDefinition(repo, filePath, content);
+        }
+      } catch (error) {
+        // File doesn't exist, try next
+        continue;
+      }
+    }
+    
+    return null;
+  }
+}
+```
+
+## 6. A2A Integration & Federation
+
+### 6.1 Exposing Git-Based Agents via A2A
+
+#### 6.1.1 A2A Gateway Configuration
+
+```json
+{
+  "agentExposure": {
+    "enabled": true,
+    "basePath": "/a2a/v1",
+    "allowedAgents": ["support/tier1", "support/billing", "public/demo-agent"],
+    "allowedPrefixes": ["public/", "api/"],
+    "blockedAgents": ["internal/experimental", "admin/system-tools"],
+    "requiresAuthentication": true,
+    "defaultSecuritySchemes": {
+      "apiKey": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "X-API-Key"
+      },
+      "oauth2": {
+        "type": "oauth2", 
+        "flows": {
+          "clientCredentials": {
+            "tokenUrl": "https://auth.company.com/oauth/token",
+            "scopes": {
+              "agent:execute": "Execute agents",
+              "agent:stream": "Stream agent responses"
+            }
+          }
+        }
+      }
+    },
+    "rateLimiting": {
+      "requestsPerMinute": 60,
+      "requestsPerHour": 1000,
+      "requestsPerDay": 10000
+    }
+  }
+}
+```
+
+#### 6.1.2 Dynamic AgentCard Generation
+
+```typescript
+interface A2AAgentCardGenerator {
+  generateAgentCard(): Promise<A2AAgentCard>;
+  generateSkillsFromGitAgents(allowedAgents: string[]): Promise<A2ASkill[]>;
+}
+
+class A2AAgentCardGeneratorImpl implements A2AAgentCardGenerator {
+  async generateAgentCard(): Promise<A2AAgentCard> {
+    const allowedAgents = await this.getExposableAgents();
+    const skills = await this.generateSkillsFromGitAgents(allowedAgents);
+    
+    return {
+      name: "Company AI Agent Platform",
+      description: "Enterprise AI agents for customer support, sales, and operations",
+      url: `${this.config.baseUrl}/a2a/v1`,
+      version: "1.0.0",
+      provider: {
+        organization: this.config.organization,
+        url: this.config.organizationUrl
+      },
+      capabilities: {
+        streaming: true,
+        pushNotifications: false,
+        stateTransitionHistory: true
+      },
+      securitySchemes: this.config.agentExposure.defaultSecuritySchemes,
+      security: [
+        { "apiKey": [] },
+        { "oauth2": ["agent:execute"] }
+      ],
+      defaultInputModes: ["text/plain", "application/json"],
+      defaultOutputModes: ["text/plain", "application/json"],
+      skills: skills,
+      supportsAuthenticatedExtendedCard: true
+    };
+  }
+  
+  async generateSkillsFromGitAgents(agentNames: string[]): Promise<A2ASkill[]> {
+    const skills: A2ASkill[] = [];
+    
+    for (const agentName of agentNames) {
+      try {
+        const resolved = await this.gitAgentResolver.resolveAgent(agentName);
+        
+        skills.push({
+          id: agentName,
+          name: resolved.agent.name,
+          description: resolved.agent.description,
+          tags: resolved.agent.tags,
+          examples: resolved.agent.examples,
+          inputModes: ["text/plain", "application/json"],
+          outputModes: ["text/plain", "application/json"]
+        });
+      } catch (error) {
+        console.warn(`Could not resolve agent for A2A exposure: ${agentName}`, error);
+      }
+    }
+    
+    return skills;
+  }
+}
+```
+
+#### 6.1.3 A2A Request Handling
+
+```typescript
+interface A2ARequestHandler {
+  handleMessageSend(params: A2AMessageSendParams): Promise<A2AResponse>;
+  handleMessageStream(params: A2AMessageSendParams): AsyncIterableIterator<A2AStreamEvent>;
+  handleTasksGet(params: A2ATaskQueryParams): Promise<A2ATask>;
+  handleTasksCancel(params: A2ATaskIdParams): Promise<A2ATask>;
+}
+
+class A2ARequestHandlerImpl implements A2ARequestHandler {
+  async handleMessageSend(params: A2AMessageSendParams): Promise<A2AResponse> {
+    // 1. Validate request and extract agent skill
+    const skillId = this.extractSkillFromMessage(params.message);
+    const agentName = skillId; // Skills map directly to agent names
+    
+    // 2. Validate agent is exposed
+    await this.validateAgentExposure(agentName);
+    
+    // 3. Convert A2A message to Shaman execution
+    const runInput: RunAgentInput = {
+      agentName: agentName,
+      input: this.extractTextFromA2AParts(params.message.parts),
+      contextScope: 'FULL'
+    };
+    
+    // 4. Execute agent via workflow engine
+    const run = await this.workflowEngine.startRun(runInput);
+    
+    // 5. Handle based on configuration
+    if (params.configuration?.blocking) {
+      // Wait for completion and return result
+      const completion = await this.waitForRunCompletion(run.id);
+      return this.convertRunToA2ATask(completion);
+    } else {
+      // Return task for polling
+      return this.convertRunToA2ATask(run);
+    }
+  }
+  
+  async *handleMessageStream(params: A2AMessageSendParams): AsyncIterableIterator<A2AStreamEvent> {
+    const agentName = this.extractSkillFromMessage(params.message);
+    await this.validateAgentExposure(agentName);
+    
+    const runInput: RunAgentInput = {
+      agentName: agentName,
+      input: this.extractTextFromA2AParts(params.message.parts),
+      contextScope: 'FULL'
+    };
+    
+    const run = await this.workflowEngine.startRun(runInput);
+    
+    // Stream real-time events
+    const subscription = this.subscribeToRunEvents(run.id);
+    
+    try {
+      for await (const event of subscription) {
+        const a2aEvent = this.convertShamanEventToA2A(event, run.id);
+        if (a2aEvent) {
+          yield a2aEvent;
+        }
+        
+        // End stream on terminal state
+        if (this.isTerminalState(event.type)) {
+          break;
+        }
+      }
+    } finally {
+      subscription.unsubscribe();
+    }
+  }
+}
+```
+
+### 6.2 Consuming External A2A Agents
+
+#### 6.2.1 External Agent Registration
+
+```graphql
+type ExternalA2AAgent {
+  id: ID!
+  name: String!
+  description: String!
+  endpoint: String!
+  agentCard: JSON!
+  authConfig: JSON!
+  isActive: Boolean!
+  lastHealthCheck: DateTime
+  healthStatus: String!
+  skills: [ExternalA2ASkill!]!
+  usageCount: Int!
+  averageResponseTime: Float
+  errorRate: Float
+}
+
+type ExternalA2ASkill {
+  id: String!
+  name: String!
+  description: String!
+  tags: [String!]!
+  examples: [String!]!
+  inputModes: [String!]!
+  outputModes: [String!]!
+}
+
+type Mutation {
+  registerExternalA2AAgent(input: RegisterExternalA2AAgentInput!): ExternalA2AAgent!
+  updateExternalA2AAgent(id: ID!, input: UpdateExternalA2AAgentInput!): ExternalA2AAgent!
+  removeExternalA2AAgent(id: ID!): Boolean!
+  refreshExternalA2AAgent(id: ID!): ExternalA2AAgent!
+  testExternalA2AConnection(id: ID!): Boolean!
+}
+
+input RegisterExternalA2AAgentInput {
+  name: String!
+  description: String
+  endpoint: String!
+  authConfig: ExternalA2AAuthInput!
+  autoDiscover: Boolean = true
+  healthCheckInterval: String = "5m"
+}
+
+input ExternalA2AAuthInput {
+  type: String! # "apiKey", "oauth2", "basic", "none"
+  apiKey: String
+  oauthClientId: String  
+  oauthClientSecret: String
+  oauthTokenUrl: String
+  basicUsername: String
+  basicPassword: String
+}
+```
+
+#### 6.2.2 External Agent Discovery and Health Monitoring
+
+```typescript
+interface ExternalA2ADiscoveryService {
+  discoverAgent(endpoint: string, authConfig: A2AAuthConfig): Promise<ExternalA2AAgent>;
+  refreshAgentCard(agentId: string): Promise<A2AAgentCard>;
+  healthCheck(agentId: string): Promise<HealthStatus>;
+  scheduleHealthChecks(): void;
+}
+
+class ExternalA2ADiscoveryServiceImpl implements ExternalA2ADiscoveryService {
+  async discoverAgent(endpoint: string, authConfig: A2AAuthConfig): Promise<ExternalA2AAgent> {
+    // 1. Fetch public agent card
+    const publicCardUrl = `${endpoint}/../.well-known/agent.json`;
+    const publicCard = await this.fetchAgentCard(publicCardUrl);
+    
+    // 2. Test authentication
+    await this.validateAuthentication(endpoint, authConfig, publicCard.security);
+    
+    // 3. Fetch authenticated extended card if available
+    let finalCard = publicCard;
+    if (publicCard.supportsAuthenticatedExtendedCard) {
+      try {
+        const authCardUrl = `${endpoint}/../agent/authenticatedExtendedCard`;
+        finalCard = await this.fetchAgentCard(authCardUrl, authConfig);
+      } catch (error) {
+        console.warn('Could not fetch authenticated extended card:', error);
+      }
+    }
+    
+    // 4. Generate agent name mapping
+    const agentName = this.generateAgentName(endpoint, finalCard);
+    
+    // 5. Create external agent record
+    return {
+      name: agentName,
+      description: finalCard.description,
+      endpoint: endpoint,
+      agentCard: finalCard,
+      authConfig: authConfig,
+      skills: finalCard.skills,
+      isActive: true,
+      lastHealthCheck: new Date(),
+      healthStatus: 'healthy'
+    };
+  }
+  
+  private generateAgentName(endpoint: string, card: A2AAgentCard): string {
+    // Generate namespace from domain
+    const url = new URL(endpoint);
+    const domain = url.hostname.replace(/\./g, '-');
+    
+    // Use first skill ID or domain
+    const skillId = card.skills[0]?.id;
+    if (skillId) {
+      return `external/${domain}/${skillId}`;
+    } else {
+      return `external/${domain}/agent`;
+    }
+  }
+  
+  async healthCheck(agentId: string): Promise<HealthStatus> {
+    const agent = await this.getExternalAgent(agentId);
+    
+    try {
+      // Test basic connectivity
+      const testMessage = {
+        role: 'user' as const,
+        parts: [{ kind: 'text' as const, text: 'Health check ping' }],
+        messageId: generateId()
+      };
+      
+      const response = await this.sendA2ARequest(agent, {
+        jsonrpc: '2.0',
+        id: 'health-check',
+        method: 'message/send',
+        params: {
+          message: testMessage,
+          configuration: {
+            acceptedOutputModes: ['text/plain'],
+            blocking: true
+          }
+        }
+      });
+      
+      return {
+        status: 'healthy',
+        responseTime: response.responseTime,
+        lastCheck: new Date()
+      };
+    } catch (error) {
+      return {
+        status: 'unhealthy',
+        error: error.message,
+        lastCheck: new Date()
+      };
+    }
+  }
+}
+```
+
+#### 6.2.3 External A2A Call Integration in Git Agents
+
+Git-based agents can call external A2A agents seamlessly:
+
+```markdown
+---
+name: "ComprehensiveAnalyzer"
+description: "Performs analysis using both internal and external specialized agents"
+allowedAgents: ["internal/data-processor", "external/legal-expert", "external/financial-analyst"]
+---
+
+You can delegate tasks to both internal and external agents:
+
+## Internal Agents
+- **internal/data-processor**: For data cleaning and analysis
+
+## External Agents  
+- **external/legal-expert**: External legal analysis service
+- **external/financial-analyst**: Partner financial modeling service
+
+When calling external agents, they may take longer to respond and have different capabilities.
+
+Your task: {{prompt}}
+```
+
+**Execution Flow:**
+```
+ComprehensiveAnalyzer receives: "Analyze this M&A deal for legal and financial risks"
+
+1. Calls internal/data-processor:
+   → Processes deal documents and extracts key data
+
+2. Calls external/legal-expert via A2A:
+   → POST https://legal-ai.partner.com/a2a/v1
+   → Receives detailed legal risk assessment
+
+3. Calls external/financial-analyst via A2A:
+   → POST https://finance-ai.vendor.com/a2a/v1  
+   → Receives financial model and projections
+
+4. Synthesizes all results and completes:
+   → Combined analysis with internal processing + external expertise
+```
+
+### 6.3 Security and Governance
+
+#### 6.3.1 Exposure Security Controls
+
+```typescript
+interface AgentExposureValidator {
+  validateAgentExposure(agentName: string, clientAuth: AuthContext): Promise<ExposureValidation>;
+  validateRateLimit(clientId: string, agentName: string): Promise<RateLimitStatus>;
+  auditA2ARequest(request: A2ARequest, clientAuth: AuthContext): Promise<void>;
+}
+
+class AgentExposureValidatorImpl implements AgentExposureValidator {
+  async validateAgentExposure(agentName: string, clientAuth: AuthContext): Promise<ExposureValidation> {
+    const config = this.config.agentExposure;
+    
+    // 1. Check if exposure is enabled
+    if (!config.enabled) {
+      return { allowed: false, reason: 'Agent exposure is disabled' };
+    }
+    
+    // 2. Check blocked agents
+    if (config.blockedAgents.includes(agentName)) {
+      return { allowed: false, reason: `Agent ${agentName} is explicitly blocked` };
+    }
+    
+    // 3. Check allowed agents list
+    if (config.allowedAgents.length > 0 && !config.allowedAgents.includes(agentName)) {
+      return { allowed: false, reason: `Agent ${agentName} is not in allowed list` };
+    }
+    
+    // 4. Check allowed prefixes  
+    if (config.allowedPrefixes.length > 0) {
+      const hasAllowedPrefix = config.allowedPrefixes.some(prefix => 
+        agentName.startsWith(prefix)
+      );
+      
+      if (!hasAllowedPrefix) {
+        return { allowed: false, reason: `Agent ${agentName} does not match any allowed prefix` };
+      }
+    }
+    
+    // 5. Validate authentication if required
+    if (config.requiresAuthentication && !clientAuth.isAuthenticated) {
+      return { allowed: false, reason: 'Authentication required for agent access' };
+    }
+    
+    // 6. Check client-specific permissions
+    if (clientAuth.isAuthenticated) {
+      const hasPermission = await this.checkClientAgentPermissions(
+        clientAuth.clientId, 
+        agentName
+      );
+      
+      if (!hasPermission) {
+        return { allowed: false, reason: `Client does not have permission to access ${agentName}` };
+      }
+    }
+    
+    return { allowed: true };
+  }
+}
+```
+
+#### 6.3.2 External Agent Security
+
+```typescript
+interface ExternalAgentSecurityManager {
+  validateExternalCall(agentName: string, callerContext: AgentContext): Promise<SecurityValidation>;
+  rotateExternalCredentials(agentId: string): Promise<void>;
+  auditExternalCall(call: ExternalAgentCall): Promise<void>;
+}
+
+class ExternalAgentSecurityManagerImpl implements ExternalAgentSecurityManager {
+  async validateExternalCall(agentName: string, callerContext: AgentContext): Promise<SecurityValidation> {
+    const externalAgent = await this.externalA2ARegistry.findAgent(agentName);
+    if (!externalAgent) {
+      return { allowed: false, reason: 'External agent not registered' };
+    }
+    
+    // 1. Check if external calls are enabled
+    if (!this.config.externalCalls.enabled) {
+      return { allowed: false, reason: 'External agent calls are disabled' };
+    }
+    
+    // 2. Validate domain whitelist
+    const agentDomain = new URL(externalAgent.endpoint).hostname;
+    if (!this.config.externalCalls.allowedDomains.includes(agentDomain)) {
+      return { allowed: false, reason: `Domain ${agentDomain} is not in allowed list` };
+    }
+    
+    // 3. Check rate limits
+    const rateLimitStatus = await this.checkExternalCallRateLimit(
+      callerContext.agentName, 
+      agentName
+    );
+    
+    if (!rateLimitStatus.allowed) {
+      return { 
+        allowed: false, 
+        reason: `Rate limit exceeded: ${rateLimitStatus.limitType}` 
+      };
+    }
+    
+    // 4. Validate agent-specific permissions
+    const hasPermission = await this.checkAgentExternalPermissions(
+      callerContext.agentName,
+      agentName
+    );
+    
+    if (!hasPermission) {
+      return { 
+        allowed: false, 
+        reason: `Agent ${callerContext.agentName} does not have permission to call ${agentName}` 
+      };
+    }
+    
+    return { allowed: true };
+  }
+}
+```
 
 ## 7. Complete GraphQL API Specification
 
@@ -884,12 +2043,17 @@ enum ExecutionState {
   SUBMITTED
   WORKING
   INPUT_REQUIRED
-  BLOCKED_ON_INPUT # Waiting for downstream input
-  BLOCKED_ON_DEPENDENCY # Waiting for dependency to complete
+  BLOCKED_ON_INPUT        # Waiting for downstream input
+  BLOCKED_ON_DEPENDENCY   # Waiting for dependency to complete
   COMPLETED
   CANCELED
   FAILED
   REJECTED
+}
+
+enum AgentSource {
+  GIT
+  A2A_EXTERNAL
 }
 
 enum ContextScope {
@@ -897,26 +2061,31 @@ enum ContextScope {
   NONE
   SPECIFIC
 }
+
 enum McpServerType {
   HTTP
   STDIO
   A2A
 }
+
 enum McpServerSource {
   CONFIG
   API
 }
+
 enum MessageRole {
   SYSTEM
   USER
   ASSISTANT
   TOOL
 }
+
 enum UserRole {
   USER
   ADMIN
   SUPER_ADMIN
 }
+
 enum SortDirection {
   ASC
   DESC
@@ -929,6 +2098,7 @@ enum AgentSortField {
   USAGE_COUNT
   SUCCESS_RATE
   RELEVANCE
+  LAST_MODIFIED
 }
 
 enum CompletionStatus {
@@ -943,6 +2113,13 @@ enum InputType {
   FILE
   APPROVAL
   STRUCTURED_DATA
+}
+
+enum SyncStatus {
+  SUCCESS
+  IN_PROGRESS
+  FAILED
+  NEVER_SYNCED
 }
 
 interface Timestamped {
@@ -968,45 +2145,101 @@ type User {
   lastLoginAt: DateTime
 }
 
-type Directory implements Timestamped & Owned {
+type AgentRepository implements Timestamped & Owned {
   id: ID!
   name: String!
-  description: String
-  fullPath: String!
-  parentDirectory: Directory
-  childDirectories: [Directory!]!
-  agents: [Agent!]!
+  gitUrl: String!
+  branch: String!
+  isRoot: Boolean!
+  isActive: Boolean!
+  readOnly: Boolean!
+  syncInterval: String!
+  lastSyncCommit: String
+  lastSyncAt: DateTime
+  lastSyncStatus: SyncStatus!
   agentCount: Int!
+  discoveredAgents: [GitAgent!]!
+  syncErrors: [SyncError!]!
+  authType: String!
   createdAt: DateTime!
   updatedAt: DateTime!
   createdBy: User!
 }
 
-type Tag {
-  id: ID!
-  name: String!
-  description: String
-  parentTag: Tag
-  childTags: [Tag!]!
-  usageCount: Int!
-  agents: [Agent!]!
-  createdAt: DateTime!
+type SyncError {
+  message: String!
+  filePath: String
+  timestamp: DateTime!
+  errorType: String!
 }
 
-type PromptTemplate implements Timestamped & Owned {
-  id: ID!
+type GitCommit {
+  hash: String!
+  message: String!
+  author: String!
+  timestamp: DateTime!
+  changedFiles: [String!]!
+}
+
+type GitAgent {
   name: String!
-  description: String
-  template: String!
+  description: String!
   version: String!
-  agents: [Agent!]!
+  tags: [String!]!
+  model: String
+  providers: [String!]!
+  mcpServers: [String!]!
+  allowedAgents: [String!]!
+  examples: [String!]!
+  contextScope: ContextScope!
+  
+  # Git metadata
+  repository: AgentRepository!
+  filePath: String!
+  gitCommit: String!
+  lastModified: DateTime!
+  
+  # Computed properties
+  isNamespaced: Boolean!
+  fullPath: String!
+  
+  # Analytics
   usageCount: Int!
+  lastUsed: DateTime
+  averageExecutionTime: Float
+  successRate: Float
+}
+
+type ExternalA2AAgent implements Timestamped & Owned {
+  id: ID!
+  name: String!
+  description: String!
+  endpoint: String!
+  agentCard: JSON!
+  authConfig: JSON!
+  isActive: Boolean!
+  lastHealthCheck: DateTime
+  healthStatus: String!
+  skills: [ExternalA2ASkill!]!
+  usageCount: Int!
+  averageResponseTime: Float
+  errorRate: Float
   createdAt: DateTime!
   updatedAt: DateTime!
   createdBy: User!
 }
 
-type McpServer implements Timestamped & Owned {
+type ExternalA2ASkill {
+  id: String!
+  name: String!
+  description: String!
+  tags: [String!]!
+  examples: [String!]!
+  inputModes: [String!]!
+  outputModes: [String!]!
+}
+
+type MCP Server {
   id: ID!
   name: String!
   description: String
@@ -1035,51 +2268,30 @@ type Tool {
   lastUsedAt: DateTime
   averageExecutionTime: Float
   successRate: Float
+  isSystemTool: Boolean!
   createdAt: DateTime!
   updatedAt: DateTime!
 }
 
-type A2AExposureConfig {
-  securitySchemes: JSON!
-  allowedOrigins: [String!]
-  rateLimit: RateLimit
-}
-
-type RateLimit {
-  requestsPerMinute: Int!
-  requestsPerHour: Int!
-  requestsPerDay: Int!
-}
-
-type Agent implements Timestamped & Owned {
-  id: ID!
+type Agent {
   name: String!
   description: String!
   version: String!
-  model: String
-  defaultContextScope: ContextScope!
-  providerNames: [String!]!
-  iconUrl: String
-  documentationUrl: String
-  examples: [String!]
-  isExposedViaA2A: Boolean!
-  isActive: Boolean!
-
-  # Relationships
-  directory: Directory
-  tags: [Tag!]!
-  promptTemplate: PromptTemplate!
-  mcpServers: [McpServer!]!
-  allowedAgents: [Agent!]!
-  a2aExposureConfig: A2AExposureConfig
-
-  # Analytics
+  source: AgentSource!
+  
+  # Git agent fields
+  gitAgent: GitAgent
+  
+  # External A2A agent fields
+  externalA2AAgent: ExternalA2AAgent
+  
+  # Common computed fields
+  tags: [String!]!
+  usageCount: Int!
+  lastUsed: DateTime
+  averageExecutionTime: Float
+  successRate: Float
   analytics: AgentAnalytics!
-
-  # Audit trail
-  createdAt: DateTime!
-  updatedAt: DateTime!
-  createdBy: User!
 }
 
 type AgentAnalytics {
@@ -1096,6 +2308,8 @@ type AgentAnalytics {
   completionReliability: Float!
   averageChildAgents: Float!
   inputRequestFrequency: Float!
+  agentCallFrequency: Float!
+  circularCallAttempts: Int!
 }
 
 type CostDataPoint {
@@ -1198,6 +2412,24 @@ type AgentCompletion {
   metadata: JSON
 }
 
+type AgentCallInfo {
+  callerAgentName: String!
+  targetAgentName: String!
+  targetAgentSource: AgentSource!
+  input: String!
+  contextScope: ContextScope!
+  callDepth: Int!
+  callStack: [String!]!
+  
+  # Git-specific info
+  gitRepository: String
+  gitCommit: String
+  
+  # A2A-specific info  
+  a2aEndpoint: String
+  a2aTaskId: String
+}
+
 type Step {
   id: ID!
   status: ExecutionState!
@@ -1214,7 +2446,8 @@ type Step {
 
   # Relationships
   run: Run!
-  agent: Agent!
+  agentName: String!
+  agentSource: AgentSource!
   parentSteps: [Step!]!
   childSteps: [Step!]!
 
@@ -1225,25 +2458,31 @@ type Step {
   # Completion
   completion: AgentCompletion
 
+  # Agent calling information
+  agentCallInfo: AgentCallInfo
+
   # Blocking relationships
   blockingDependencies: [Step!]!
+
+  # Tool usage
+  toolCalls: [ToolCall!]!
+  agentCalls: [Step!]!
+
+  # Git versioning (for git-based agents)
+  gitRepository: String
+  gitCommit: String
+  gitFilePath: String
 
   # Tracing
   spanId: String
 }
 
 type DAGStatus {
-  # Steps that can receive user input right now
   interactableSteps: [Step!]!
-
-  # Steps blocked waiting for input from dependencies
   blockedSteps: [Step!]!
-
-  # Steps currently executing
   activeSteps: [Step!]!
-
-  # Subgraph groups that can be cancelled as units
   cancellableSubgraphs: [[Step!]!]!
+  agentCallGraph: [[Step!]!]!
 }
 
 type Run {
@@ -1262,6 +2501,13 @@ type Run {
 
   # Current pending input request across the run
   pendingInputRequest: InputRequest
+
+  # Agent call statistics
+  totalAgentCalls: Int!
+  maxCallDepth: Int!
+  uniqueAgentsInvolved: Int!
+  gitAgentsUsed: [String!]!
+  externalAgentsUsed: [String!]!
 
   # Tracing
   traceId: String
@@ -1289,12 +2535,16 @@ type ToolCall {
   id: ToolCallID!
   toolName: String!
   input: JSON!
+  isSystemTool: Boolean!
+  isAgentCall: Boolean!
 }
 
 type ToolCallStartChunk {
   toolCallId: ToolCallID!
   toolName: String!
   input: JSON!
+  isSystemTool: Boolean!
+  isAgentCall: Boolean!
   timestamp: DateTime!
 }
 
@@ -1322,6 +2572,25 @@ type InputRequestChunk {
   timestamp: DateTime!
 }
 
+type AgentCallStartChunk {
+  parentStepId: ID!
+  childStepId: ID!
+  agentName: String!
+  agentSource: AgentSource!
+  input: String!
+  callDepth: Int!
+  timestamp: DateTime!
+}
+
+type AgentCallCompleteChunk {
+  parentStepId: ID!
+  childStepId: ID!
+  agentName: String!
+  agentSource: AgentSource!
+  completion: AgentCompletion!
+  timestamp: DateTime!
+}
+
 union StreamChunk =
     TokenChunk
   | LogChunk
@@ -1330,6 +2599,8 @@ union StreamChunk =
   | ToolResultChunk
   | CompletionChunk
   | InputRequestChunk
+  | AgentCallStartChunk
+  | AgentCallCompleteChunk
 
 # =============================================================================
 #  SEARCH & DISCOVERY TYPES
@@ -1338,7 +2609,7 @@ union StreamChunk =
 type AgentSearchResult {
   agents: [AgentSearchMatch!]!
   totalCount: Int!
-  suggestedTags: [Tag!]!
+  suggestedTags: [String!]!
   facets: SearchFacets!
 }
 
@@ -1346,24 +2617,30 @@ type AgentSearchMatch {
   agent: Agent!
   relevanceScore: Float!
   matchedFields: [String!]!
-  matchedTags: [Tag!]!
+  matchedTags: [String!]!
   snippet: String
 }
 
 type SearchFacets {
-  directories: [DirectoryFacet!]!
+  sources: [SourceFacet!]!
+  repositories: [RepositoryFacet!]!
   tags: [TagFacet!]!
   providers: [ProviderFacet!]!
   versions: [VersionFacet!]!
 }
 
-type DirectoryFacet {
-  directory: Directory!
+type SourceFacet {
+  source: AgentSource!
+  count: Int!
+}
+
+type RepositoryFacet {
+  repository: AgentRepository!
   count: Int!
 }
 
 type TagFacet {
-  tag: Tag!
+  tag: String!
   count: Int!
 }
 
@@ -1393,44 +2670,30 @@ input UpdateUserInput {
   isActive: Boolean
 }
 
-input CreateDirectoryInput {
+input AddAgentRepositoryInput {
   name: String!
-  description: String
-  parentDirectoryId: ID
+  gitUrl: String!
+  branch: String = "main"
+  isRoot: Boolean = false
+  syncInterval: String = "5m"
+  authType: String!
+  sshKeyPath: String
+  authToken: String
+  webhookSecret: String
+  readOnly: Boolean = false
 }
 
-input UpdateDirectoryInput {
-  name: String
-  description: String
-}
-
-input MoveAgentOrDirectoryInput {
-  targetDirectoryId: ID!
-}
-
-input CreateTagInput {
-  name: String!
-  description: String
-  parentTagId: ID
-}
-
-input UpdateTagInput {
-  name: String
-  description: String
-}
-
-input CreatePromptTemplateInput {
-  name: String!
-  description: String
-  template: String!
-  version: String = "1.0.0"
-}
-
-input UpdatePromptTemplateInput {
-  name: String
-  description: String
-  template: String
-  version: String
+input UpdateAgentRepositoryInput {
+  gitUrl: String
+  branch: String
+  isRoot: Boolean
+  syncInterval: String
+  authType: String
+  sshKeyPath: String
+  authToken: String
+  webhookSecret: String
+  readOnly: Boolean
+  isActive: Boolean
 }
 
 input CreateMcpServerInput {
@@ -1448,66 +2711,50 @@ input UpdateMcpServerInput {
   apiKey: String
 }
 
-input RateLimitInput {
-  requestsPerMinute: Int!
-  requestsPerHour: Int!
-  requestsPerDay: Int!
-}
-
-input A2AExposureConfigInput {
-  securitySchemes: JSON!
-  allowedOrigins: [String!]
-  rateLimit: RateLimitInput
-}
-
-input CreateAgentInput {
+input RegisterExternalA2AAgentInput {
   name: String!
-  description: String!
-  version: String!
-  directoryId: ID
-  tagIds: [ID!]
-  model: String
-  defaultContextScope: ContextScope = FULL
-  promptTemplateId: ID!
-  providerNames: [String!]!
-  mcpServerIds: [ID!]!
-  allowedAgentIds: [ID!]
-  iconUrl: String
-  documentationUrl: String
-  examples: [String!]
-  isExposedViaA2A: Boolean = false
-  a2aExposureConfig: A2AExposureConfigInput
+  description: String
+  endpoint: String!
+  authConfig: ExternalA2AAuthInput!
+  autoDiscover: Boolean = true
+  healthCheckInterval: String = "5m"
 }
 
-input UpdateAgentInput {
-  name: String
+input UpdateExternalA2AAgentInput {
   description: String
-  version: String
-  tagIds: [ID!]
-  model: String
-  defaultContextScope: ContextScope
-  promptTemplateId: ID
-  providerNames: [String!]
-  mcpServerIds: [ID!]
-  allowedAgentIds: [ID!]
-  iconUrl: String
-  documentationUrl: String
-  examples: [String!]
-  isExposedViaA2A: Boolean
-  a2aExposureConfig: A2AExposureConfigInput
+  authConfig: ExternalA2AAuthInput
+  healthCheckInterval: String
+  isActive: Boolean
+}
+
+input ExternalA2AAuthInput {
+  type: String!
+  apiKey: String
+  oauthClientId: String  
+  oauthClientSecret: String
+  oauthTokenUrl: String
+  basicUsername: String
+  basicPassword: String
 }
 
 input AgentSearchInput {
   query: String
-  directoryId: ID
-  tagIds: [ID!]
-  providerNames: [String!]
-  capabilities: [String!]
+  source: AgentSource
+  repositoryName: String
+  tags: [String!]
+  providers: [String!]
   minVersion: String
   isActive: Boolean
-  hasA2AExposure: Boolean
-  supportsExplicitCompletion: Boolean
+  hasExternalAccess: Boolean
   createdBy: ID
+}
+
+input GitAgentFilters {
+  repositoryName: String
+  tags: [String!]
+  hasAllowedAgents: Boolean
+  lastModifiedAfter: DateTime
+  lastModifiedBefore: DateTime
 }
 
 input AgentSortInput {
@@ -1520,6 +2767,8 @@ input RunAgentInput {
   input: String!
   memoryIdsToLoad: [ID!]
   contextScope: ContextScope
+  maxCallDepth: Int
+  gitCommit: String  # Optional: run specific git version
 }
 
 input FilterMemoriesInput {
@@ -1532,11 +2781,18 @@ input FilterMemoriesInput {
 
 input FilterRunsInput {
   status: ExecutionState
-  agentId: ID
+  agentName: String
+  agentSource: AgentSource
   createdBy: ID
   createdAfter: DateTime
   createdBefore: DateTime
   hasInputRequests: Boolean
+  hasAgentCalls: Boolean
+  hasExternalCalls: Boolean
+  minCallDepth: Int
+  maxCallDepth: Int
+  gitRepository: String
+  gitCommit: String
 }
 
 # =============================================================================
@@ -1549,37 +2805,23 @@ type Query {
   user(id: ID!): User
   users(limit: Int = 20, offset: Int = 0): [User!]!
 
-  # --- Organizational Structure ---
-  directory(id: ID!): Directory
-  directories(parentDirectoryId: ID): [Directory!]!
-  rootDirectories: [Directory!]!
+  # --- Git Repository Management ---
+  agentRepository(name: String!): AgentRepository
+  agentRepositories: [AgentRepository!]!
+  gitBranches(repositoryName: String!): [String!]!
+  gitTags(repositoryName: String!): [String!]!
 
-  tag(id: ID!): Tag
-  tags(parentTagId: ID): [Tag!]!
-  popularTags(limit: Int = 10): [Tag!]!
+  # --- Agent Discovery ---
+  agent(name: String!): Agent
+  gitAgent(name: String!): GitAgent
+  gitAgents(filters: GitAgentFilters, limit: Int = 50, offset: Int = 0): [GitAgent!]!
+  agentGitHistory(agentName: String!, limit: Int = 10): [GitCommit!]!
 
-  # --- Agent Management ---
-  promptTemplate(id: ID!): PromptTemplate
-  promptTemplates(limit: Int = 50, offset: Int = 0): [PromptTemplate!]!
+  # --- External A2A Management ---
+  externalA2AAgent(id: ID): ExternalA2AAgent
+  externalA2AAgents(limit: Int = 50, offset: Int = 0): [ExternalA2AAgent!]!
 
-  mcpServer(id: ID!): McpServer
-  mcpServers(source: McpServerSource, type: McpServerType): [McpServer!]!
-
-  tool(id: ID!): Tool
-  tools(mcpServerId: ID, limit: Int = 100, offset: Int = 0): [Tool!]!
-  popularTools(limit: Int = 10): [Tool!]!
-
-  agent(id: ID, name: String): Agent
-  agents(
-    directoryId: ID
-    tagId: ID
-    filters: AgentSearchInput
-    sort: AgentSortInput
-    limit: Int = 20
-    offset: Int = 0
-  ): [Agent!]!
-
-  # --- Advanced Search & Discovery ---
+  # --- Agent Search & Discovery ---
   searchAgents(
     filters: AgentSearchInput!
     sort: AgentSortInput
@@ -1587,9 +2829,15 @@ type Query {
     offset: Int = 0
   ): AgentSearchResult!
 
-  recommendAgents(basedOnAgent: ID, forUser: ID, limit: Int = 10): [Agent!]!
+  recommendAgents(basedOnAgent: String, forUser: ID, limit: Int = 10): [Agent!]!
 
-  getAgentCard(agentId: ID!): JSON!
+  # --- MCP Servers ---
+  mcpServer(id: ID!): McpServer
+  mcpServers(source: McpServerSource, type: McpServerType): [McpServer!]!
+
+  tool(id: ID!): Tool
+  tools(mcpServerId: ID, limit: Int = 100, offset: Int = 0): [Tool!]!
+  systemTools: [Tool!]!
 
   # --- Execution & Monitoring ---
   run(id: ID!): Run
@@ -1598,6 +2846,10 @@ type Query {
   # Find all runs needing input across the system
   runsNeedingInput(limit: Int = 50): [Run!]!
 
+  # Agent call analysis
+  agentCallGraph(runId: ID!): JSON!
+  circularCallAttempts(agentName: String, timeRange: String = "24h"): [JSON!]!
+
   memories(
     filter: FilterMemoriesInput!
     limit: Int = 50
@@ -1605,9 +2857,13 @@ type Query {
   ): [Memory!]!
 
   # --- Analytics & Reporting ---
-  agentAnalytics(agentId: ID!, timeRange: String = "30d"): AgentAnalytics!
+  agentAnalytics(agentName: String!, timeRange: String = "30d"): AgentAnalytics!
   systemUsageStats(timeRange: String = "30d"): SystemUsageStats!
   costAnalytics(timeRange: String = "30d"): CostAnalytics!
+  
+  # --- A2A Integration ---
+  a2aAgentCard: JSON!
+  a2aExposedAgents: [String!]!
 }
 
 type Mutation {
@@ -1616,35 +2872,27 @@ type Mutation {
   updateUser(id: ID!, input: UpdateUserInput!): User!
   deactivateUser(id: ID!): Boolean!
 
-  # --- Organizational Structure ---
-  createDirectory(input: CreateDirectoryInput!): Directory!
-  updateDirectory(id: ID!, input: UpdateDirectoryInput!): Directory!
-  moveDirectory(id: ID!, input: MoveAgentOrDirectoryInput!): Directory!
-  removeDirectory(id: ID!): Boolean!
+  # --- Git Repository Management ---
+  addAgentRepository(input: AddAgentRepositoryInput!): AgentRepository!
+  updateAgentRepository(name: String!, input: UpdateAgentRepositoryInput!): AgentRepository!
+  removeAgentRepository(name: String!): Boolean!
+  syncAgentRepository(name: String!): AgentRepository!
+  syncAllAgentRepositories: [AgentRepository!]!
+  switchRepositoryBranch(name: String!, branch: String!): AgentRepository!
 
-  createTag(input: CreateTagInput!): Tag!
-  updateTag(id: ID!, input: UpdateTagInput!): Tag!
-  removeTag(id: ID!): Boolean!
+  # --- External A2A Management ---
+  registerExternalA2AAgent(input: RegisterExternalA2AAgentInput!): ExternalA2AAgent!
+  updateExternalA2AAgent(id: ID!, input: UpdateExternalA2AAgentInput!): ExternalA2AAgent!
+  removeExternalA2AAgent(id: ID!): Boolean!
+  refreshExternalA2AAgent(id: ID!): ExternalA2AAgent!
+  testExternalA2AConnection(id: ID!): Boolean!
 
-  # --- Agent Management ---
-  createPromptTemplate(input: CreatePromptTemplateInput!): PromptTemplate!
-  updatePromptTemplate(
-    id: ID!
-    input: UpdatePromptTemplateInput!
-  ): PromptTemplate!
-  removePromptTemplate(id: ID!): Boolean!
-
+  # --- MCP Server Management ---
   createMcpServer(input: CreateMcpServerInput!): McpServer!
   updateMcpServer(id: ID!, input: UpdateMcpServerInput!): McpServer!
   removeMcpServer(id: ID!): Boolean!
   refreshMcpServer(id: ID!): McpServer!
   testMcpServerConnection(id: ID!): Boolean!
-
-  createAgent(input: CreateAgentInput!): Agent!
-  updateAgent(id: ID!, input: UpdateAgentInput!): Agent!
-  removeAgent(id: ID!): Boolean!
-  moveAgent(id: ID!, input: MoveAgentOrDirectoryInput!): Agent!
-  cloneAgent(id: ID!, newName: String!): Agent!
 
   # --- Execution Control ---
   runAgents(inputs: [RunAgentInput!]!): [Run!]!
@@ -1663,8 +2911,12 @@ type Mutation {
     response: String!
     attachments: [FileUpload!]
   ): Run!
-
-  skipInput(runId: ID!, inputRequestId: ID!, useDefault: String): Run!
+  
+  skipInput(
+    runId: ID!
+    inputRequestId: ID!
+    useDefault: String
+  ): Run!
 
   # --- Memory Management ---
   createMemory(key: String!, value: JSON!, agentName: String!): Memory!
@@ -1682,13 +2934,20 @@ type Subscription {
   inputRequested: InputRequest!
   inputRequestResolved(runId: ID!): CompletedInputRequest!
 
-  # --- System Events ---
-  agentCreated: Agent!
-  agentUpdated(agentId: ID): Agent!
-  mcpServerStatusChanged: McpServer!
-  systemAlert: SystemAlert!
+  # --- Agent Calls ---
+  agentCallStarted(runId: ID): AgentCallStartChunk!
+  agentCallCompleted(runId: ID): AgentCallCompleteChunk!
 
-  # --- Completion Events ---
+  # --- Git Repository Events ---
+  repositorySynced: AgentRepository!
+  agentDiscovered: GitAgent!
+  agentUpdated: GitAgent!
+
+  # --- External A2A Events ---
+  externalAgentHealthChanged: ExternalA2AAgent!
+
+  # --- System Events ---
+  systemAlert: SystemAlert!
   agentCompleted(runId: ID): Step!
 }
 
@@ -1699,6 +2958,8 @@ type Subscription {
 type SystemUsageStats {
   totalRuns: Int!
   totalAgents: Int!
+  totalGitAgents: Int!
+  totalExternalAgents: Int!
   totalUsers: Int!
   totalCost: Float!
   averageRunDuration: Float!
@@ -1706,12 +2967,18 @@ type SystemUsageStats {
   topUsers: [User!]!
   pendingInputRequests: Int!
   averageCompletionTime: Float!
+  totalAgentCalls: Int!
+  averageCallDepth: Float!
+  circularCallAttempts: Int!
+  gitRepositoriesActive: Int!
+  externalAgentsHealthy: Int!
 }
 
 type CostAnalytics {
   totalCost: Float!
   costByModel: [ModelCostBreakdown!]!
   costByAgent: [AgentCostBreakdown!]!
+  costBySource: [SourceCostBreakdown!]!
   costTrend: [CostDataPoint!]!
   projectedMonthlyCost: Float!
 }
@@ -1724,7 +2991,14 @@ type ModelCostBreakdown {
 }
 
 type AgentCostBreakdown {
-  agent: Agent!
+  agentName: String!
+  totalCost: Float!
+  percentage: Float!
+  runCount: Int!
+}
+
+type SourceCostBreakdown {
+  source: AgentSource!
   totalCost: Float!
   percentage: Float!
   runCount: Int!
@@ -1748,7 +3022,7 @@ type SystemAlert {
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "type": "object",
-  "required": ["port", "database", "redis"],
+  "required": ["port", "database", "redis", "agentRepositories"],
   "properties": {
     "port": {
       "type": "integer",
@@ -1802,6 +3076,62 @@ type SystemAlert {
         }
       }
     },
+    "agentRepositories": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["name", "gitUrl", "authType"],
+        "properties": {
+          "name": {
+            "type": "string",
+            "pattern": "^[a-zA-Z][a-zA-Z0-9_-]*$",
+            "description": "Unique repository name"
+          },
+          "gitUrl": {
+            "type": "string",
+            "format": "uri",
+            "description": "Git repository URL"
+          },
+          "branch": {
+            "type": "string",
+            "default": "main",
+            "description": "Git branch to track"
+          },
+          "isRoot": {
+            "type": "boolean",
+            "default": false,
+            "description": "Whether agents in this repo are unnamespaced"
+          },
+          "syncInterval": {
+            "type": "string",
+            "default": "5m",
+            "description": "How often to sync repository"
+          },
+          "authType": {
+            "enum": ["ssh-key", "token", "none"]
+          },
+          "sshKeyPath": {
+            "type": "string",
+            "description": "Path to SSH private key file"
+          },
+          "authToken": {
+            "type": "string",
+            "pattern": "^env\\([A-Z_]+\\)$",
+            "description": "GitHub/GitLab access token"
+          },
+          "webhookSecret": {
+            "type": "string",
+            "pattern": "^env\\([A-Z_]+\\)$",
+            "description": "Webhook secret for push notifications"
+          },
+          "readOnly": {
+            "type": "boolean",
+            "default": false,
+            "description": "Whether repository is read-only"
+          }
+        }
+      }
+    },
     "agentExecution": {
       "type": "object",
       "properties": {
@@ -1816,14 +3146,98 @@ type SystemAlert {
           "description": "Maximum execution time before timeout"
         },
         "inputRequestTimeout": {
-          "type": "string",
+          "type": "string", 
           "default": "24h",
           "description": "How long to wait for user input before timeout"
         },
-        "allowPartialCompletion": {
+        "maxCallDepth": {
+          "type": "integer",
+          "default": 10,
+          "description": "Maximum depth for agent-to-agent calls"
+        },
+        "agentCallTimeout": {
+          "type": "string",
+          "default": "10m",
+          "description": "Timeout for individual agent calls"
+        },
+        "circularCallPrevention": {
           "type": "boolean",
           "default": true,
-          "description": "Whether agents can signal partial completion"
+          "description": "Prevent agents from calling themselves or creating cycles"
+        }
+      }
+    },
+    "agentExposure": {
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "default": false,
+          "description": "Whether to expose agents via A2A protocol"
+        },
+        "basePath": {
+          "type": "string",
+          "default": "/a2a/v1",
+          "description": "Base path for A2A endpoints"
+        },
+        "allowedAgents": {
+          "type": "array",
+          "items": {"type": "string"},
+          "description": "Specific agents that can be exposed"
+        },
+        "allowedPrefixes": {
+          "type": "array", 
+          "items": {"type": "string"},
+          "description": "Agent path prefixes that can be exposed"
+        },
+        "blockedAgents": {
+          "type": "array",
+          "items": {"type": "string"},
+          "description": "Agents that are explicitly blocked from exposure"
+        },
+        "requiresAuthentication": {
+          "type": "boolean",
+          "default": true,
+          "description": "Whether A2A access requires authentication"
+        },
+        "defaultSecuritySchemes": {
+          "type": "object",
+          "description": "Default security schemes for A2A access"
+        },
+        "rateLimiting": {
+          "type": "object",
+          "properties": {
+            "requestsPerMinute": {"type": "integer", "default": 60},
+            "requestsPerHour": {"type": "integer", "default": 1000},
+            "requestsPerDay": {"type": "integer", "default": 10000}
+          }
+        }
+      }
+    },
+    "externalAgents": {
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Whether to allow calls to external A2A agents"
+        },
+        "allowedDomains": {
+          "type": "array",
+          "items": {"type": "string"},
+          "description": "Domains allowed for external agent calls"
+        },
+        "defaultTimeout": {
+          "type": "string",
+          "default": "30s",
+          "description": "Default timeout for external agent calls"
+        },
+        "rateLimiting": {
+          "type": "object",
+          "properties": {
+            "callsPerMinute": {"type": "integer", "default": 30},
+            "callsPerHour": {"type": "integer", "default": 500}
+          }
         }
       }
     },
@@ -1903,18 +3317,10 @@ type SystemAlert {
             "type": "string"
           }
         },
-        "a2aRateLimit": {
-          "type": "object",
-          "properties": {
-            "requestsPerMinute": {
-              "type": "integer",
-              "default": 60
-            },
-            "requestsPerHour": {
-              "type": "integer",
-              "default": 1000
-            }
-          }
+        "gitWebhookSecret": {
+          "type": "string",
+          "pattern": "^env\\([A-Z_]+\\)$",
+          "description": "Secret for validating git webhook signatures"
         }
       }
     }
@@ -1947,11 +3353,83 @@ type SystemAlert {
       }
     }
   },
+  "agentRepositories": [
+    {
+      "name": "main-agents",
+      "gitUrl": "git@github.com:company/main-agents.git",
+      "branch": "production", 
+      "isRoot": true,
+      "syncInterval": "5m",
+      "authType": "ssh-key",
+      "sshKeyPath": "/secrets/main-agents-deploy-key",
+      "webhookSecret": "env(MAIN_AGENTS_WEBHOOK_SECRET)"
+    },
+    {
+      "name": "experimental",
+      "gitUrl": "https://github.com/company/experimental-agents.git",
+      "branch": "main",
+      "isRoot": false,
+      "syncInterval": "15m", 
+      "authType": "token",
+      "authToken": "env(GITHUB_EXPERIMENTAL_TOKEN)"
+    },
+    {
+      "name": "partner-legal",
+      "gitUrl": "git@github.com:legal-partner/shared-agents.git",
+      "branch": "stable",
+      "isRoot": false,
+      "syncInterval": "1h",
+      "authType": "ssh-key",
+      "sshKeyPath": "/secrets/partner-legal-key",
+      "readOnly": true
+    }
+  ],
   "agentExecution": {
     "completionRequired": true,
     "maxExecutionTime": "30m",
     "inputRequestTimeout": "24h",
-    "allowPartialCompletion": true
+    "maxCallDepth": 10,
+    "agentCallTimeout": "10m",
+    "circularCallPrevention": true
+  },
+  "agentExposure": {
+    "enabled": true,
+    "basePath": "/a2a/v1",
+    "allowedPrefixes": ["support/", "public/", "api/"],
+    "blockedAgents": ["internal/admin-tools", "experimental/unstable"],
+    "requiresAuthentication": true,
+    "defaultSecuritySchemes": {
+      "oauth2": {
+        "type": "oauth2",
+        "flows": {
+          "clientCredentials": {
+            "tokenUrl": "https://auth.company.com/oauth/token",
+            "scopes": {
+              "agent:execute": "Execute agents",
+              "agent:stream": "Stream responses"
+            }
+          }
+        }
+      }
+    },
+    "rateLimiting": {
+      "requestsPerMinute": 120,
+      "requestsPerHour": 5000,
+      "requestsPerDay": 50000
+    }
+  },
+  "externalAgents": {
+    "enabled": true,
+    "allowedDomains": [
+      "legal-ai.partner.com",
+      "finance-ai.vendor.com",
+      "research-ai.university.edu"
+    ],
+    "defaultTimeout": "30s",
+    "rateLimiting": {
+      "callsPerMinute": 60,
+      "callsPerHour": 1000
+    }
   },
   "opentelemetry": {
     "serviceName": "shaman-server",
@@ -1964,7 +3442,7 @@ type SystemAlert {
       "apiKey": "env(OPENAI_API_KEY)"
     },
     "anthropic_claude": {
-      "type": "ANTHROPIC",
+      "type": "ANTHROPIC", 
       "apiKey": "env(ANTHROPIC_API_KEY)"
     },
     "groq_llama": {
@@ -1973,14 +3451,19 @@ type SystemAlert {
     }
   },
   "mcpServers": {
+    "github": {
+      "type": "HTTP",
+      "endpoint": "https://mcp-github.internal:3000",
+      "apiKey": "env(MCP_GITHUB_API_KEY)"
+    },
+    "crm-tools": {
+      "type": "HTTP",
+      "endpoint": "https://mcp-crm.internal:3000", 
+      "apiKey": "env(MCP_CRM_API_KEY)"
+    },
     "filesystem": {
       "type": "STDIO",
       "endpoint": "npx @modelcontextprotocol/server-filesystem /var/shaman/workspace"
-    },
-    "postgres_tools": {
-      "type": "HTTP",
-      "endpoint": "http://mcp-postgres.internal:3000",
-      "apiKey": "env(MCP_POSTGRES_API_KEY)"
     }
   },
   "security": {
@@ -1989,10 +3472,7 @@ type SystemAlert {
       "https://shaman-ui.example.com",
       "https://dashboard.example.com"
     ],
-    "a2aRateLimit": {
-      "requestsPerMinute": 120,
-      "requestsPerHour": 5000
-    }
+    "gitWebhookSecret": "env(GIT_WEBHOOK_SECRET)"
   }
 }
 ```
@@ -2003,48 +3483,51 @@ type SystemAlert {
 
 - **Engine:** BullMQ with single Redis instance
 - **Database:** Local PostgreSQL with Docker
-- **Scaling:** Single server and worker process
+- **Git Repositories:** Local file system or development branches
+- **External Agents:** Disabled or test endpoints
+- **A2A Exposure:** Disabled
 - **Observability:** Local Jaeger for tracing
-- **Agent Completion:** Development mode with relaxed timeouts
 
 #### 8.3.2 Enterprise Production
 
 - **Engine:** Temporal.io cluster with high availability
-- **Database:** PostgreSQL with read replicas
-- **Scaling:** Multiple server instances behind load balancer
-- **Workers:** Auto-scaling worker pools
-- **Observability:** Distributed tracing with DataDog/New Relic
-- **Agent Completion:** Production mode with strict completion requirements
+- **Database:** PostgreSQL with read replicas and automated backups
+- **Git Repositories:** Production branches with webhook integration
+- **External Agents:** Curated partner integrations with SLAs
+- **A2A Exposure:** Enabled with OAuth 2.0 authentication
+- **Scaling:** Multiple server instances with auto-scaling workers
+- **Observability:** Full distributed tracing and monitoring
 
-#### 8.3.3 Cloud-Native Deployment
+#### 8.3.3 Multi-Tenant SaaS
 
-- **Orchestration:** Kubernetes with Helm charts
-- **Storage:** Cloud-managed PostgreSQL and Redis
-- **Networking:** Ingress controllers with TLS termination
-- **Monitoring:** Prometheus/Grafana stack with completion metrics
-- **Security:** Pod security policies and network policies
+- **Repository Isolation:** Per-tenant git repositories or branches
+- **Agent Namespacing:** Tenant prefixes in agent names
+- **Security:** Tenant-specific authentication and authorization
+- **Resource Limits:** Per-tenant rate limiting and cost controls
+- **A2A Federation:** Secure tenant-to-tenant agent sharing
 
 ### 8.4 Scaling Strategies
 
-#### 8.4.1 Horizontal Scaling
+#### 8.4.1 Git Repository Scaling
 
-- **Stateless Servers:** Multiple Shaman server instances
-- **Worker Scaling:** Dynamic worker pool based on queue depth and completion patterns
-- **Database Connections:** Connection pooling with PgBouncer
-- **Redis Clustering:** Redis Cluster for stream distribution and input request handling
+- **Repository Sharding:** Distribute agents across multiple repositories
+- **Caching Strategy:** Redis caching of parsed agent definitions
+- **Lazy Loading:** Load agent definitions on-demand rather than at startup
+- **Webhook Optimization:** Intelligent sync based on changed files only
 
-#### 8.4.2 Performance Optimization
+#### 8.4.2 External A2A Scaling
 
-- **Caching:** Redis caching for agent definitions and completion templates
-- **Database Optimization:** Materialized views for analytics and DAG status computation
-- **Connection Management:** HTTP/2 for A2A communications
-- **Resource Limits:** Memory and CPU limits on workers with completion timeout handling
+- **Connection Pooling:** Reuse HTTP connections to external agents
+- **Circuit Breakers:** Protect against external agent failures
+- **Retry Strategies:** Intelligent backoff for temporary failures
+- **Load Balancing:** Distribute calls across multiple external endpoints
 
 #### 8.4.3 High Availability
 
-- **Database:** Primary-replica setup with automatic failover
-- **Redis:** Redis Sentinel for high availability
-- **Load Balancing:** Health checks and graceful failover
-- **Monitoring:** Comprehensive health check endpoints including completion system status
+- **Database:** Primary-replica with automatic failover
+- **Redis:** Sentinel or Cluster mode for high availability
+- **Git Repositories:** Mirror repositories for redundancy
+- **External Agents:** Fallback agents for critical services
+- **Monitoring:** Health checks for all system components
 
-This specification now fully incorporates the explicit completion model, DAG execution semantics, input request handling, and enhanced cancellation patterns we discussed. The system provides reliable agent coordination through explicit completion signals while supporting complex multi-agent workflows with user interaction capabilities.
+This comprehensive specification now incorporates the git-based agent management, A2A federation capabilities, repository namespacing, external agent integration, and all the detailed architectural decisions we discussed. The system provides a complete solution for managing AI agents as code while enabling seamless integration with external AI services through standard protocols.
