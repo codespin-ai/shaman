@@ -1,71 +1,431 @@
-# Shaman AI Agent Coordination Framework - Complete & Definitive Specification
+# Shaman AI Agent Coordination Framework
 
 ## 1. Overview & Philosophy
 
 Shaman is a comprehensive, enterprise-grade backend framework designed to be the central orchestration hub in a federated agent ecosystem. It serves simultaneously as:
 
-*   **Internal Agent Orchestrator:** A robust platform for defining, versioning, and executing complex workflows with native agents.
-*   **A2A Gateway:** A fully compliant Agent2Agent (A2A) protocol implementation that can both consume external agents and expose internal agents.
-*   **Enterprise Control Plane:** A manageable, observable, and scalable system with directories, tags, permissions, and comprehensive audit trails.
+- **Internal Agent Orchestrator:** A robust platform for defining, versioning, and executing complex workflows with native agents.
+- **A2A Gateway:** A fully compliant Agent2Agent (A2A) protocol implementation that can both consume external agents and expose internal agents.
+- **Enterprise Control Plane:** A manageable, observable, and scalable system with directories, tags, permissions, and comprehensive audit trails.
 
 ### Core Principles:
 
-*   **API-First Architecture:** Every operation is accessible via a comprehensive GraphQL API, ensuring language-agnostic integration.
-*   **Protocol Interoperability:** Native support for MCP (Model Context Protocol) and A2A (Agent2Agent) standards.
-*   **Dynamic Execution:** Workflows unfold dynamically based on agent decisions, forming complex DAGs at runtime.
-*   **Pluggable Infrastructure:** All critical components (workflow engines, providers, storage) are swappable via adapter patterns.
-*   **Observable by Design:** OpenTelemetry-first architecture with structured logging and comprehensive metrics.
-*   **Enterprise-Ready:** Built-in support for directories, tagging, versioning, authentication, authorization, and audit trails.
+- **API-First Architecture:** Every operation is accessible via a comprehensive GraphQL API, ensuring language-agnostic integration.
+- **Protocol Interoperability:** Native support for MCP (Model Context Protocol) and A2A (Agent2Agent) standards.
+- **Dynamic Execution:** Workflows unfold dynamically based on agent decisions, forming complex DAGs at runtime.
+- **Pluggable Infrastructure:** All critical components (workflow engines, providers, storage) are swappable via adapter patterns.
+- **Observable by Design:** OpenTelemetry-first architecture with structured logging and comprehensive metrics.
+- **Enterprise-Ready:** Built-in support for directories, tagging, versioning, authentication, authorization, and audit trails.
 
 ## 2. Comprehensive Concepts & Terminology
 
 ### 2.1 Core Entities
 
-*   **Provider:** A configured LLM service endpoint (OpenAI, Anthropic, Groq, local Ollama). Defined statically in configuration with connection details and authentication credentials.
+- **Provider:** A configured LLM service endpoint (OpenAI, Anthropic, Groq, local Ollama). Defined statically in configuration with connection details and authentication credentials.
 
-*   **Prompt Template:** A versioned, reusable template for system prompts. Contains instructions with `{{prompt}}` placeholder for dynamic user input injection.
+- **Prompt Template:** A versioned, reusable template for system prompts. Contains instructions with `{{prompt}}` placeholder for dynamic user input injection.
 
-*   **Directory:** A hierarchical organizational structure for agents, supporting nested folders with full path-based navigation (e.g., `/enterprise/customer-service/billing`).
+- **Directory:** A hierarchical organizational structure for agents, supporting nested folders with full path-based navigation (e.g., `/enterprise/customer-service/billing`).
 
-*   **Tag:** A keyword-based classification system with optional hierarchy, descriptions, and usage analytics. Supports semantic relationships and discovery algorithms.
+- **Tag:** A keyword-based classification system with optional hierarchy, descriptions, and usage analytics. Supports semantic relationships and discovery algorithms.
 
-*   **MCP Server:** A service exposing tools via the Model Context Protocol. Can be:
-    *   `STDIO`: Local processes (defined in config)
-    *   `HTTP`: Remote HTTP endpoints (API-managed)
-    *   `A2A`: External A2A-compliant agents (API-managed)
+- **MCP Server:** A service exposing tools via the Model Context Protocol. Can be:
 
-*   **Tool:** A function exposed by an MCP Server, with JSON Schema definition, usage statistics, and permission controls.
+  - `STDIO`: Local processes (defined in config)
+  - `HTTP`: Remote HTTP endpoints (API-managed)
+  - `A2A`: External A2A-compliant agents (API-managed)
 
-*   **Agent:** A comprehensive blueprint for an AI worker, including:
-    *   Core configuration (prompt template, model, providers)
-    *   Permissions (accessible tools, callable agents)
-    *   Metadata (version, description, examples, documentation)
-    *   Organization (directory, tags)
-    *   A2A exposure settings
+- **Tool:** A function exposed by an MCP Server, with JSON Schema definition, usage statistics, and permission controls.
+
+- **Agent:** A comprehensive blueprint for an AI worker, including:
+  - Core configuration (prompt template, model, providers)
+  - Permissions (accessible tools, callable agents)
+  - Metadata (version, description, examples, documentation)
+  - Organization (directory, tags)
+  - A2A exposure settings
 
 ### 2.2 Execution Entities
 
-*   **Run:** Top-level execution instance with unique ID, representing a complete user request fulfillment.
+- **Run:** Top-level execution instance with unique ID, representing a complete user request fulfillment.
 
-*   **Step:** Single agent execution within a Run, containing:
-    *   Complete conversation history
-    *   Token usage and cost tracking
-    *   Execution timeline
-    *   Parent-child relationships (forms the DAG)
+- **Step:** Single agent execution within a Run, containing:
 
-*   **Memory:** Persistent data saved by agents, with:
-    *   Structured key-value storage
-    *   Cross-run accessibility
-    *   Namespace isolation by agent
-    *   Expiration policies
+  - Complete conversation history
+  - Token usage and cost tracking
+  - Execution timeline
+  - Parent-child relationships (forms the DAG)
 
-*   **Message:** Individual conversation turn with role-based typing and extensible part system.
+- **Memory:** Persistent data saved by agents, with:
 
-*   **Stream Chunk:** Real-time execution events pushed via WebSocket subscriptions.
+  - Structured key-value storage
+  - Cross-run accessibility
+  - Namespace isolation by agent
+  - Expiration policies
 
-## 3. Detailed System Architecture
+- **Message:** Individual conversation turn with role-based typing and extensible part system.
 
-### 3.1 Component Overview
+- **Stream Chunk:** Real-time execution events pushed via WebSocket subscriptions.
+
+## 3. Use Cases & Application Scenarios
+
+### 3.1 Enterprise Customer Support Automation
+
+**Scenario:** A large e-commerce company wants to automate customer support inquiries while maintaining human oversight for complex issues.
+
+**Implementation:**
+```graphql
+# Create a specialized customer support agent
+mutation CreateSupportAgent {
+  createAgent(input: {
+    name: "Tier1CustomerSupport"
+    description: "Handles common customer inquiries about orders, returns, and account issues"
+    version: "2.1.0"
+    directoryId: "customer-service-dir"
+    tagIds: ["customer-support", "tier-1", "e-commerce"]
+    promptTemplateId: "customer-support-template"
+    providerNames: ["gpt-4-turbo"]
+    mcpServerIds: ["order-management-mcp", "customer-db-mcp", "refund-processor-mcp"]
+    allowedAgentIds: ["Tier2CustomerSupport", "EscalationManager"]
+    isExposedViaA2A: true
+    a2aExposureConfig: {
+      securitySchemes: {
+        "apiKey": {
+          "type": "apiKey",
+          "in": "header",
+          "name": "X-API-Key"
+        }
+      }
+      allowedOrigins: ["https://support.company.com"]
+      rateLimit: {
+        requestsPerMinute: 100
+        requestsPerHour: 2000
+        requestsPerDay: 10000
+      }
+    }
+  }) {
+    id
+    name
+  }
+}
+
+# Execute customer support workflow
+mutation HandleCustomerInquiry {
+  runAgents(inputs: [{
+    agentName: "Tier1CustomerSupport"
+    input: "Customer #12345 is asking about the status of order #ORDER-789 and wants to know if they can cancel it"
+    contextScope: FULL
+  }]) {
+    id
+    status
+  }
+}
+```
+
+**Workflow Flow:**
+1. Customer inquiry triggers the Tier1 agent
+2. Agent uses order-management-mcp to check order status
+3. Agent uses customer-db-mcp to verify customer identity  
+4. If order can be cancelled, uses refund-processor-mcp
+5. If issue is complex, escalates to Tier2CustomerSupport agent
+6. All interactions are logged and available for analytics
+
+### 3.2 Software Development Workflow Automation
+
+**Scenario:** A development team wants to automate code review, testing, and deployment processes using AI agents that can interact with their existing tools.
+
+**Implementation:**
+```graphql
+# Create development workflow agents
+mutation CreateDevAgents {
+  createAgent(input: {
+    name: "CodeReviewer"
+    description: "Reviews pull requests for code quality, security issues, and best practices"
+    version: "1.5.0"
+    directoryId: "dev-tools-dir"
+    tagIds: ["development", "code-review", "security"]
+    promptTemplateId: "code-review-template"
+    mcpServerIds: ["github-mcp", "sonarqube-mcp", "security-scanner-mcp"]
+    allowedAgentIds: ["TestRunner", "DeploymentManager"]
+  }) {
+    id
+  }
+}
+
+# GitHub webhook triggers code review
+mutation ReviewPullRequest {
+  runAgents(inputs: [{
+    agentName: "CodeReviewer"
+    input: "Review pull request #456 in repository 'payment-service'. Check for security vulnerabilities and performance issues."
+    contextScope: FULL
+  }]) {
+    id
+  }
+}
+```
+
+**Agent Chain:**
+1. **CodeReviewer** analyzes the PR using GitHub MCP and security scanners
+2. If code passes review, calls **TestRunner** agent to run automated tests
+3. **TestRunner** uses CI/CD MCP tools to execute test suites
+4. If tests pass, calls **DeploymentManager** for staging deployment
+5. Each agent saves findings to memory for future reference
+
+### 3.3 Financial Research & Analysis Platform
+
+**Scenario:** An investment firm wants to automate financial research by having AI agents analyze market data, company filings, and news to generate investment recommendations.
+
+**Implementation:**
+```graphql
+# Create financial analysis pipeline
+mutation CreateFinancialAgents {
+  # Market data analyst
+  createAgent(input: {
+    name: "MarketDataAnalyst"
+    description: "Analyzes real-time market data and identifies trends"
+    directoryId: "finance-research-dir"
+    tagIds: ["finance", "market-analysis", "real-time"]
+    mcpServerIds: ["bloomberg-api-mcp", "yahoo-finance-mcp", "sec-filings-mcp"]
+    allowedAgentIds: ["RiskAssessment", "PortfolioOptimizer"]
+  }) {
+    id
+  }
+  
+  # Risk assessment specialist
+  createAgent(input: {
+    name: "RiskAssessment"
+    description: "Evaluates investment risks and market volatility"
+    directoryId: "finance-research-dir"
+    tagIds: ["finance", "risk-analysis", "compliance"]
+    mcpServerIds: ["risk-models-mcp", "regulation-db-mcp", "credit-rating-mcp"]
+    allowedAgentIds: ["ComplianceChecker", "ReportGenerator"]
+  }) {
+    id
+  }
+}
+
+# Trigger comprehensive analysis
+mutation AnalyzeStock {
+  runAgents(inputs: [{
+    agentName: "MarketDataAnalyst"
+    input: "Perform comprehensive analysis of AAPL stock for potential investment. Include technical analysis, fundamental analysis, and risk assessment."
+    memoryIdsToLoad: ["market-conditions-2024", "tech-sector-outlook"]
+  }]) {
+    id
+  }
+}
+```
+
+**Multi-Agent Workflow:**
+1. **MarketDataAnalyst** gathers current market data and technical indicators
+2. Calls **RiskAssessment** to evaluate volatility and sector risks
+3. **RiskAssessment** calls **ComplianceChecker** to ensure regulatory compliance
+4. **ReportGenerator** compiles findings into formatted investment recommendation
+5. All agents save insights to shared memory for cross-analysis correlation
+
+### 3.4 Healthcare Patient Care Coordination
+
+**Scenario:** A healthcare system wants to coordinate patient care across multiple departments while maintaining HIPAA compliance and ensuring proper medical oversight.
+
+**Implementation:**
+```graphql
+# Create healthcare coordination agents
+mutation CreateHealthcareAgents {
+  createAgent(input: {
+    name: "PatientIntakeCoordinator"
+    description: "Manages patient intake, schedules appointments, and coordinates care"
+    directoryId: "healthcare-dir"
+    tagIds: ["healthcare", "patient-care", "scheduling", "hipaa-compliant"]
+    promptTemplateId: "healthcare-intake-template"
+    mcpServerIds: ["ehr-system-mcp", "scheduling-mcp", "insurance-verification-mcp"]
+    allowedAgentIds: ["SpecialistReferral", "TestOrderingAgent", "DischargeCoordinator"]
+    isExposedViaA2A: true
+    a2aExposureConfig: {
+      securitySchemes: {
+        "oauth2": {
+          "type": "oauth2",
+          "flows": {
+            "clientCredentials": {
+              "tokenUrl": "https://auth.hospital.com/oauth/token",
+              "scopes": {
+                "patient:read": "Read patient information",
+                "scheduling:write": "Schedule appointments"
+              }
+            }
+          }
+        }
+      }
+      allowedOrigins: ["https://portal.hospital.com", "https://mobile.hospital.com"]
+    }
+  }) {
+    id
+  }
+}
+
+# Patient admission workflow
+mutation AdmitPatient {
+  runAgents(inputs: [{
+    agentName: "PatientIntakeCoordinator"
+    input: "Process admission for John Smith, DOB: 1985-03-15, presenting with chest pain. Verify insurance, schedule EKG, and coordinate with cardiology if needed."
+    contextScope: SPECIFIC
+  }]) {
+    id
+  }
+}
+```
+
+**Care Coordination Flow:**
+1. **PatientIntakeCoordinator** verifies insurance and creates patient record
+2. Based on symptoms, calls **TestOrderingAgent** to order appropriate tests
+3. **SpecialistReferral** agent determines if specialist consultation needed
+4. **DischargeCoordinator** manages discharge planning and follow-up scheduling
+5. All agents maintain HIPAA compliance and audit trails
+
+### 3.5 Supply Chain Optimization
+
+**Scenario:** A manufacturing company wants to optimize their global supply chain by having AI agents monitor suppliers, predict demand, and automate procurement decisions.
+
+**Implementation:**
+```graphql
+# Create supply chain agents
+mutation CreateSupplyChainAgents {
+  createAgent(input: {
+    name: "DemandForecaster"
+    description: "Predicts product demand using historical data and market trends"
+    directoryId: "supply-chain-dir"
+    tagIds: ["supply-chain", "forecasting", "analytics"]
+    mcpServerIds: ["sales-data-mcp", "market-trends-mcp", "weather-api-mcp"]
+    allowedAgentIds: ["InventoryOptimizer", "SupplierEvaluator"]
+  }) {
+    id
+  }
+  
+  createAgent(input: {
+    name: "SupplierEvaluator"
+    description: "Monitors supplier performance and identifies risks"  
+    directoryId: "supply-chain-dir"
+    tagIds: ["supply-chain", "supplier-management", "risk-assessment"]
+    mcpServerIds: ["supplier-api-mcp", "logistics-mcp", "quality-metrics-mcp"]
+    allowedAgentIds: ["ProcurementAgent", "RiskMitigator"]
+  }) {
+    id
+  }
+}
+
+# Weekly supply chain optimization
+mutation OptimizeSupplyChain {
+  runAgents(inputs: [{
+    agentName: "DemandForecaster"
+    input: "Generate 4-week demand forecast for all product lines considering seasonal trends and current market conditions"
+    memoryIdsToLoad: ["q4-trends", "supplier-performance-data"]
+  }]) {
+    id
+  }
+}
+```
+
+**Optimization Workflow:**
+1. **DemandForecaster** analyzes sales patterns and external factors
+2. **InventoryOptimizer** calculates optimal stock levels based on forecasts
+3. **SupplierEvaluator** assesses current supplier capabilities and risks
+4. **ProcurementAgent** automatically generates purchase orders
+5. **RiskMitigator** identifies backup suppliers and contingency plans
+
+### 3.6 Content Creation & Publishing Pipeline
+
+**Scenario:** A digital marketing agency wants to automate content creation, from research and writing to SEO optimization and social media distribution.
+
+**Implementation:**
+```graphql
+# Create content creation pipeline
+mutation CreateContentAgents {
+  createAgent(input: {
+    name: "ContentResearcher"
+    description: "Researches topics, keywords, and competitor content"
+    directoryId: "content-marketing-dir"
+    tagIds: ["content-creation", "research", "seo"]
+    mcpServerIds: ["google-trends-mcp", "competitor-analysis-mcp", "keyword-research-mcp"]
+    allowedAgentIds: ["ContentWriter", "SEOOptimizer"]
+  }) {
+    id
+  }
+  
+  createAgent(input: {
+    name: "SocialMediaManager"
+    description: "Adapts content for different social platforms and schedules posts"
+    directoryId: "content-marketing-dir"  
+    tagIds: ["social-media", "content-distribution", "scheduling"]
+    mcpServerIds: ["twitter-api-mcp", "linkedin-api-mcp", "facebook-api-mcp"]
+    allowedAgentIds: ["PerformanceTracker"]
+  }) {
+    id
+  }
+}
+
+# Create content campaign
+mutation CreateContentCampaign {
+  runAgents(inputs: [{
+    agentName: "ContentResearcher"
+    input: "Research and create a comprehensive blog post about 'AI in Healthcare 2024'. Include SEO keywords, competitor analysis, and create social media variants."
+    contextScope: FULL
+  }]) {
+    id
+  }
+}
+```
+
+**Content Pipeline Flow:**
+1. **ContentResearcher** gathers data on target keywords and competitor content
+2. **ContentWriter** creates the main article based on research findings
+3. **SEOOptimizer** enhances content for search engine visibility
+4. **SocialMediaManager** creates platform-specific variants and schedules posts
+5. **PerformanceTracker** monitors engagement and suggests improvements
+
+### 3.7 External Agent Integration Scenarios
+
+**Scenario:** A company wants to integrate with third-party AI services while maintaining centralized governance and monitoring.
+
+**Implementation:**
+```graphql
+# Register external A2A agent
+mutation RegisterExternalAgent {
+  createMcpServer(input: {
+    name: "LegalDocumentAnalyzer"
+    description: "External service for legal document analysis and contract review"
+    type: A2A
+    endpoint: "https://legal-ai.lawfirm.com/a2a/v1"
+    apiKey: "legal-service-key-encrypted"
+  }) {
+    id
+    agentCard
+    tools {
+      name
+      description
+    }
+  }
+}
+
+# Use external agent in workflow  
+mutation AnalyzeLegalDocument {
+  runAgents(inputs: [{
+    agentName: "ContractReviewCoordinator"
+    input: "Review the attached NDA for compliance issues and recommend changes"
+    contextScope: FULL
+  }]) {
+    id
+  }
+}
+```
+
+**Federated Agent Benefits:**
+- **Centralized Governance:** All agent interactions go through Shaman's security and audit system
+- **Cost Tracking:** External agent usage tracked alongside internal agents
+- **Unified Interface:** Developers use same GraphQL API regardless of agent location
+- **Performance Monitoring:** External agent response times and error rates monitored
+- **Fallback Strategies:** Alternative agents can be configured if external services fail
+
+## 4. Detailed System Architecture
+
+### 4.1 Component Overview
 
 ```
 ┌─────────────────────┐    ┌─────────────────────┐    ┌─────────────────────┐
@@ -112,53 +472,60 @@ Shaman is a comprehensive, enterprise-grade backend framework designed to be the
           └─────────────────────────────────────────────────────┘
 ```
 
-### 3.2 Shaman Server (Control Plane & Gateway)
+### 4.2 Shaman Server (Control Plane & Gateway)
 
 The `packages/shaman` Node.js application, serving as the system's nerve center.
 
-#### 3.2.1 GraphQL API Engine
-*   **Technology:** Apollo Server with GraphQL subscriptions over WebSockets
-*   **Authentication:** JWT-based with role-based access control (RBAC)
-*   **Authorization:** Field-level permissions based on user roles and agent ownership
-*   **Rate Limiting:** Per-user and per-endpoint limits to prevent abuse
-*   **Validation:** Comprehensive input validation with detailed error messages
+#### 4.2.1 GraphQL API Engine
 
-#### 3.2.2 A2A Gateway
-*   **HTTP Server:** Express.js endpoints implementing A2A JSON-RPC methods
-*   **Authentication:** Configurable security schemes per exposed agent
-*   **Request Translation:** A2A messages → Shaman RunAgentInput
-*   **Response Translation:** Shaman StreamChunks → A2A SSE events
-*   **AgentCard Generation:** Dynamic generation from Agent definitions
+- **Technology:** Apollo Server with GraphQL subscriptions over WebSockets
+- **Authentication:** JWT-based with role-based access control (RBAC)
+- **Authorization:** Field-level permissions based on user roles and agent ownership
+- **Rate Limiting:** Per-user and per-endpoint limits to prevent abuse
+- **Validation:** Comprehensive input validation with detailed error messages
 
-#### 3.2.3 Real-time Streaming Hub
-*   **WebSocket Management:** Handles GraphQL subscription connections
-*   **Redis Pub/Sub:** Subscribes to worker-generated stream events
-*   **Event Filtering:** Ensures clients only receive authorized events
-*   **Connection Scaling:** Supports horizontal scaling with Redis clustering
+#### 4.2.2 A2A Gateway
 
-#### 3.2.4 Operational Constraints
-*   **No LLM Calls:** Server never directly calls LLM providers
-*   **Stateless Design:** All persistent state in PostgreSQL/Redis
-*   **High Availability:** Designed for multi-instance deployment
+- **HTTP Server:** Express.js endpoints implementing A2A JSON-RPC methods
+- **Authentication:** Configurable security schemes per exposed agent
+- **Request Translation:** A2A messages → Shaman RunAgentInput
+- **Response Translation:** Shaman StreamChunks → A2A SSE events
+- **AgentCard Generation:** Dynamic generation from Agent definitions
 
-### 3.3 Workflow Engine (Execution Plane)
+#### 4.2.3 Real-time Streaming Hub
+
+- **WebSocket Management:** Handles GraphQL subscription connections
+- **Redis Pub/Sub:** Subscribes to worker-generated stream events
+- **Event Filtering:** Ensures clients only receive authorized events
+- **Connection Scaling:** Supports horizontal scaling with Redis clustering
+
+#### 4.2.4 Operational Constraints
+
+- **No LLM Calls:** Server never directly calls LLM providers
+- **Stateless Design:** All persistent state in PostgreSQL/Redis
+- **High Availability:** Designed for multi-instance deployment
+
+### 4.3 Workflow Engine (Execution Plane)
 
 Pluggable backend for durable workflow execution.
 
-#### 3.3.1 Temporal.io Adapter (Production)
-*   **Workflows:** `executeAgentStep` workflow with child workflow support
-*   **Activities:** `callLLM`, `executeTool`, `saveMemory`, `publishStream`
-*   **Durability:** Automatic state persistence and recovery
-*   **Scaling:** Horizontal worker scaling with automatic load balancing
-*   **Timeouts:** Configurable execution and activity timeouts
+#### 4.3.1 Temporal.io Adapter (Production)
 
-#### 3.3.2 BullMQ Adapter (Development)
-*   **Queue Structure:** Single queue with job prioritization
-*   **Jobs:** `executeStep` jobs with retry policies
-*   **Redis Backend:** Requires Redis for job persistence
-*   **Simplified Logic:** Easier local development and testing
+- **Workflows:** `executeAgentStep` workflow with child workflow support
+- **Activities:** `callLLM`, `executeTool`, `saveMemory`, `publishStream`
+- **Durability:** Automatic state persistence and recovery
+- **Scaling:** Horizontal worker scaling with automatic load balancing
+- **Timeouts:** Configurable execution and activity timeouts
 
-#### 3.3.3 Interface Definition
+#### 4.3.2 BullMQ Adapter (Development)
+
+- **Queue Structure:** Single queue with job prioritization
+- **Jobs:** `executeStep` jobs with retry policies
+- **Redis Backend:** Requires Redis for job persistence
+- **Simplified Logic:** Easier local development and testing
+
+#### 4.3.3 Interface Definition
+
 ```typescript
 interface WorkflowEngineAdapter {
   startRuns(inputs: RunAgentInput[]): Promise<RunIdentifier[]>;
@@ -171,44 +538,50 @@ interface WorkflowEngineAdapter {
 }
 ```
 
-### 3.4 Worker Process (Execution Units)
+### 4.4 Worker Process (Execution Units)
 
 Scalable Node.js processes performing the actual agent execution.
 
-#### 3.4.1 Core Responsibilities
-*   **Job Consumption:** Pull and execute jobs from workflow engine
-*   **LLM Interaction:** Only component making direct LLM API calls
-*   **Tool Execution:** Handle MCP and A2A tool calls
-*   **Stream Publishing:** Push real-time events to Redis
-*   **State Updates:** Update Step status and metrics in database
+#### 4.4.1 Core Responsibilities
 
-#### 3.4.2 LLM Integration
-*   **Vercel AI SDK:** Primary interface for all LLM interactions
-*   **Provider Abstraction:** Support for OpenAI, Anthropic, Groq, Ollama
-*   **Streaming Support:** Real-time token streaming with chunk aggregation
-*   **Error Handling:** Comprehensive retry policies and error categorization
+- **Job Consumption:** Pull and execute jobs from workflow engine
+- **LLM Interaction:** Only component making direct LLM API calls
+- **Tool Execution:** Handle MCP and A2A tool calls
+- **Stream Publishing:** Push real-time events to Redis
+- **State Updates:** Update Step status and metrics in database
 
-#### 3.4.3 A2A Client Implementation
-*   **Discovery:** Fetch and cache external agent AgentCards
-*   **Authentication:** Support for various A2A security schemes
-*   **Request Translation:** Shaman tool calls → A2A JSON-RPC requests
-*   **Stream Handling:** A2A SSE events → Shaman StreamChunks
-*   **Error Recovery:** Retry failed external agent calls
+#### 4.4.2 LLM Integration
 
-## 4. Agent Registration & Discovery System
+- **Vercel AI SDK:** Primary interface for all LLM interactions
+- **Provider Abstraction:** Support for OpenAI, Anthropic, Groq, Ollama
+- **Streaming Support:** Real-time token streaming with chunk aggregation
+- **Error Handling:** Comprehensive retry policies and error categorization
 
-### 4.1 External Agent Registration
+#### 4.4.3 A2A Client Implementation
 
-#### 4.1.1 Manual Registration
+- **Discovery:** Fetch and cache external agent AgentCards
+- **Authentication:** Support for various A2A security schemes
+- **Request Translation:** Shaman tool calls → A2A JSON-RPC requests
+- **Stream Handling:** A2A SSE events → Shaman StreamChunks
+- **Error Recovery:** Retry failed external agent calls
+
+## 5. Agent Registration & Discovery System
+
+### 5.1 External Agent Registration
+
+#### 5.1.1 Manual Registration
+
 ```graphql
 mutation RegisterExternalAgent {
-  createMcpServer(input: {
-    name: "Customer Support Assistant"
-    description: "Specialized agent for handling customer inquiries"
-    type: A2A
-    endpoint: "https://support-agent.example.com/a2a/v1"
-    apiKey: "sha256:encrypted-api-key"
-  }) {
+  createMcpServer(
+    input: {
+      name: "Customer Support Assistant"
+      description: "Specialized agent for handling customer inquiries"
+      type: A2A
+      endpoint: "https://support-agent.example.com/a2a/v1"
+      apiKey: "sha256:encrypted-api-key"
+    }
+  ) {
     id
     isActive
     agentCard
@@ -221,7 +594,8 @@ mutation RegisterExternalAgent {
 }
 ```
 
-#### 4.1.2 Automatic Discovery Process
+#### 5.1.2 Automatic Discovery Process
+
 1. **AgentCard Fetching:** GET `{endpoint}/../.well-known/agent.json`
 2. **Validation:** Verify AgentCard schema compliance
 3. **Skill Parsing:** Extract skills as discoverable tools
@@ -230,15 +604,17 @@ mutation RegisterExternalAgent {
 6. **Tool Registration:** Create Tool records for each skill
 7. **Status Monitoring:** Periodic health checks and capability refresh
 
-#### 4.1.3 Discovery Error Handling
-*   **Network Failures:** Exponential backoff with circuit breaker
-*   **Invalid AgentCard:** Detailed validation error reporting
-*   **Authentication Failures:** Secure credential verification
-*   **Capability Mismatches:** Version compatibility checking
+#### 5.1.3 Discovery Error Handling
 
-### 4.2 Agent Discovery & Search System
+- **Network Failures:** Exponential backoff with circuit breaker
+- **Invalid AgentCard:** Detailed validation error reporting
+- **Authentication Failures:** Secure credential verification
+- **Capability Mismatches:** Version compatibility checking
 
-#### 4.2.1 Multi-Dimensional Search
+### 5.2 Agent Discovery & Search System
+
+#### 5.2.1 Multi-Dimensional Search
+
 ```graphql
 query DiscoverAgents {
   searchAgents(
@@ -267,20 +643,23 @@ query DiscoverAgents {
 }
 ```
 
-#### 4.2.2 Search Algorithm Components
-*   **Text Search:** Full-text indexing of name, description, examples
-*   **Tag Matching:** Hierarchical tag relationships and synonyms
-*   **Capability Filtering:** Input/output mode compatibility
-*   **Usage Analytics:** Popular agents and success rates
-*   **Semantic Similarity:** Vector embeddings for related agent discovery
+#### 5.2.2 Search Algorithm Components
 
-#### 4.2.3 Recommendation Engine
-*   **Usage Patterns:** Recommend based on historical run data
-*   **Agent Compatibility:** Suggest complementary agent pairings
-*   **Skill Gaps:** Identify missing capabilities in user workflows
-*   **Performance Metrics:** Promote high-performing agents
+- **Text Search:** Full-text indexing of name, description, examples
+- **Tag Matching:** Hierarchical tag relationships and synonyms
+- **Capability Filtering:** Input/output mode compatibility
+- **Usage Analytics:** Popular agents and success rates
+- **Semantic Similarity:** Vector embeddings for related agent discovery
 
-#### 4.2.4 Agent Performance Analytics
+#### 5.2.3 Recommendation Engine
+
+- **Usage Patterns:** Recommend based on historical run data
+- **Agent Compatibility:** Suggest complementary agent pairings
+- **Skill Gaps:** Identify missing capabilities in user workflows
+- **Performance Metrics:** Promote high-performing agents
+
+#### 5.2.4 Agent Performance Analytics
+
 ```graphql
 type AgentAnalytics {
   totalRuns: Int!
@@ -294,42 +673,46 @@ type AgentAnalytics {
 }
 ```
 
-## 5. Comprehensive Security Model
+## 6. Comprehensive Security Model
 
-### 5.1 Authentication Architecture
+### 6.1 Authentication Architecture
 
-#### 5.1.1 GraphQL API Authentication
-*   **JWT Tokens:** RS256-signed with configurable expiration
-*   **Identity Providers:** Integration with OAuth 2.0, OIDC, SAML
-*   **Multi-Factor Authentication:** TOTP and WebAuthn support
-*   **API Keys:** Service account authentication for automated systems
-*   **Session Management:** Secure token refresh and revocation
+#### 6.1.1 GraphQL API Authentication
 
-#### 5.1.2 A2A Gateway Authentication
-*   **Per-Agent Security:** Each exposed agent defines its auth requirements
-*   **Security Schemes:** Support for Bearer, API Key, mTLS, OAuth 2.0
-*   **Dynamic Credentials:** Runtime credential injection and rotation
-*   **Request Validation:** Signature verification and timestamp checking
+- **JWT Tokens:** RS256-signed with configurable expiration
+- **Identity Providers:** Integration with OAuth 2.0, OIDC, SAML
+- **Multi-Factor Authentication:** TOTP and WebAuthn support
+- **API Keys:** Service account authentication for automated systems
+- **Session Management:** Secure token refresh and revocation
 
-#### 5.1.3 Internal Service Authentication
-*   **Worker-to-Database:** Certificate-based PostgreSQL authentication
-*   **Redis Authentication:** AUTH with rotating passwords
-*   **Workflow Engine:** Mutual TLS for Temporal communication
+#### 6.1.2 A2A Gateway Authentication
 
-### 5.2 Authorization Framework
+- **Per-Agent Security:** Each exposed agent defines its auth requirements
+- **Security Schemes:** Support for Bearer, API Key, mTLS, OAuth 2.0
+- **Dynamic Credentials:** Runtime credential injection and rotation
+- **Request Validation:** Signature verification and timestamp checking
 
-#### 5.2.1 Role-Based Access Control (RBAC)
+#### 6.1.3 Internal Service Authentication
+
+- **Worker-to-Database:** Certificate-based PostgreSQL authentication
+- **Redis Authentication:** AUTH with rotating passwords
+- **Workflow Engine:** Mutual TLS for Temporal communication
+
+### 6.2 Authorization Framework
+
+#### 6.2.1 Role-Based Access Control (RBAC)
+
 ```typescript
 enum Permission {
   AGENT_READ = "agent:read",
-  AGENT_CREATE = "agent:create", 
+  AGENT_CREATE = "agent:create",
   AGENT_UPDATE = "agent:update",
   AGENT_DELETE = "agent:delete",
   AGENT_EXECUTE = "agent:execute",
   AGENT_EXPOSE_A2A = "agent:expose_a2a",
   RUN_READ = "run:read",
   RUN_TERMINATE = "run:terminate",
-  SYSTEM_ADMIN = "system:admin"
+  SYSTEM_ADMIN = "system:admin",
 }
 
 interface Role {
@@ -343,231 +726,19 @@ interface Role {
 }
 ```
 
-#### 5.2.2 Resource-Level Permissions
-*   **Agent Ownership:** Creators have full control over their agents
-*   **Directory Permissions:** Hierarchical access control
-*   **Tag-Based Access:** Permission by agent categorization
-*   **Run Visibility:** Users see only their runs or authorized runs
+#### 6.2.2 Resource-Level Permissions
 
-#### 5.2.3 External Agent Security
-*   **Credential Isolation:** External agent keys encrypted at rest
-*   **Permission Scoping:** Limit external agent access to specific skills
-*   **Audit Logging:** Complete trail of external agent interactions
-*   **Rate Limiting:** Per-agent and per-user external call limits
+- **Agent Ownership:** Creators have full control over their agents
+- **Directory Permissions:** Hierarchical access control
+- **Tag-Based Access:** Permission by agent categorization
+- **Run Visibility:** Users see only their runs or authorized runs
 
-## 6. Complete Database Schema
+#### 6.2.3 External Agent Security
 
-### 6.1 Primary Tables
-
-```sql
--- User management
-CREATE TABLE user (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    email VARCHAR(255) UNIQUE NOT NULL,
-    name VARCHAR(255) NOT NULL,
-    role VARCHAR(50) NOT NULL DEFAULT 'user',
-    created_at TIMESTAMP DEFAULT NOW(),
-    last_login_at TIMESTAMP,
-    is_active BOOLEAN DEFAULT TRUE
-);
-
--- Organizational structures
-CREATE TABLE directory (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    name VARCHAR(255) NOT NULL,
-    description TEXT,
-    parent_directory_id UUID REFERENCES directory(id),
-    created_at TIMESTAMP DEFAULT NOW(),
-    updated_at TIMESTAMP DEFAULT NOW(),
-    created_by UUID REFERENCES user(id)
-);
-
-CREATE TABLE tag (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    name VARCHAR(100) UNIQUE NOT NULL,
-    description TEXT,
-    parent_tag_id UUID REFERENCES tag(id),
-    created_at TIMESTAMP DEFAULT NOW(),
-    usage_count INTEGER DEFAULT 0
-);
-
--- Agent definitions
-CREATE TABLE prompt_template (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    name VARCHAR(255) NOT NULL,
-    description TEXT,
-    template TEXT NOT NULL,
-    version VARCHAR(50) DEFAULT '1.0.0',
-    created_at TIMESTAMP DEFAULT NOW(),
-    updated_at TIMESTAMP DEFAULT NOW(),
-    created_by UUID REFERENCES user(id)
-);
-
-CREATE TABLE mcp_server (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    name VARCHAR(255) NOT NULL,
-    description TEXT,
-    type VARCHAR(20) NOT NULL, -- 'HTTP', 'STDIO', 'A2A'
-    source VARCHAR(20) NOT NULL, -- 'CONFIG', 'API'
-    endpoint TEXT NOT NULL,
-    api_key_encrypted TEXT,
-    agent_card_json JSONB, -- For A2A servers
-    is_active BOOLEAN DEFAULT TRUE,
-    last_health_check_at TIMESTAMP,
-    health_status VARCHAR(20) DEFAULT 'unknown',
-    created_at TIMESTAMP DEFAULT NOW(),
-    updated_at TIMESTAMP DEFAULT NOW(),
-    created_by UUID REFERENCES user(id)
-);
-
-CREATE TABLE tool (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    name VARCHAR(255) NOT NULL,
-    description TEXT,
-    schema_json JSONB NOT NULL,
-    mcp_server_id UUID REFERENCES mcp_server(id) ON DELETE CASCADE,
-    usage_count INTEGER DEFAULT 0,
-    last_used_at TIMESTAMP,
-    created_at TIMESTAMP DEFAULT NOW(),
-    updated_at TIMESTAMP DEFAULT NOW()
-);
-
-CREATE TABLE agent (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    name VARCHAR(255) NOT NULL,
-    description TEXT NOT NULL,
-    version VARCHAR(50) NOT NULL,
-    model VARCHAR(100),
-    default_context_scope VARCHAR(20) DEFAULT 'FULL',
-    provider_names TEXT[] NOT NULL,
-    icon_url TEXT,
-    documentation_url TEXT,
-    examples TEXT[],
-    is_exposed_via_a2a BOOLEAN DEFAULT FALSE,
-    a2a_security_schemes_json JSONB,
-    directory_id UUID REFERENCES directory(id),
-    prompt_template_id UUID REFERENCES prompt_template(id) NOT NULL,
-    created_at TIMESTAMP DEFAULT NOW(),
-    updated_at TIMESTAMP DEFAULT NOW(),
-    created_by UUID REFERENCES user(id),
-    is_active BOOLEAN DEFAULT TRUE
-);
-
--- Execution tracking
-CREATE TABLE run (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    status VARCHAR(20) NOT NULL DEFAULT 'SUBMITTED',
-    initial_input TEXT NOT NULL,
-    total_cost_micro_usd BIGINT DEFAULT 0,
-    start_time TIMESTAMP DEFAULT NOW(),
-    end_time TIMESTAMP,
-    trace_id VARCHAR(32), -- OpenTelemetry trace ID
-    created_by UUID REFERENCES user(id),
-    workflow_engine_id VARCHAR(255) -- ID in external workflow system
-);
-
-CREATE TABLE step (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    run_id UUID REFERENCES run(id) ON DELETE CASCADE,
-    agent_id UUID REFERENCES agent(id),
-    status VARCHAR(20) NOT NULL DEFAULT 'SUBMITTED', 
-    input_text TEXT,
-    output_text TEXT,
-    error_text TEXT,
-    prompt_tokens INTEGER,
-    completion_tokens INTEGER,
-    cost_micro_usd BIGINT DEFAULT 0,
-    start_time TIMESTAMP,
-    end_time TIMESTAMP,
-    span_id VARCHAR(16) -- OpenTelemetry span ID
-);
-
-CREATE TABLE message (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    step_id UUID REFERENCES step(id) ON DELETE CASCADE,
-    role VARCHAR(20) NOT NULL, -- 'SYSTEM', 'USER', 'ASSISTANT', 'TOOL'
-    content TEXT NOT NULL,
-    tool_calls_json JSONB, -- For ASSISTANT messages
-    tool_call_id VARCHAR(100), -- For TOOL messages
-    sequence_number INTEGER NOT NULL,
-    created_at TIMESTAMP DEFAULT NOW()
-);
-
-CREATE TABLE memory (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    key VARCHAR(255) NOT NULL,
-    value_json JSONB NOT NULL,
-    run_id UUID REFERENCES run(id),
-    producing_step_id UUID REFERENCES step(id),
-    agent_name VARCHAR(255) NOT NULL,
-    expires_at TIMESTAMP,
-    created_at TIMESTAMP DEFAULT NOW()
-);
-```
-
-### 6.2 Junction Tables
-
-```sql
--- Many-to-many relationships
-CREATE TABLE agent_tag_link (
-    agent_id UUID REFERENCES agent(id) ON DELETE CASCADE,
-    tag_id UUID REFERENCES tag(id) ON DELETE CASCADE,
-    PRIMARY KEY (agent_id, tag_id)
-);
-
-CREATE TABLE agent_mcp_server_link (
-    agent_id UUID REFERENCES agent(id) ON DELETE CASCADE,
-    mcp_server_id UUID REFERENCES mcp_server(id) ON DELETE CASCADE,
-    PRIMARY KEY (agent_id, mcp_server_id)
-);
-
-CREATE TABLE agent_allowed_agent_link (
-    agent_id UUID REFERENCES agent(id) ON DELETE CASCADE,
-    allowed_agent_id UUID REFERENCES agent(id) ON DELETE CASCADE,
-    PRIMARY KEY (agent_id, allowed_agent_id)
-);
-
-CREATE TABLE step_parent_link (
-    step_id UUID REFERENCES step(id) ON DELETE CASCADE,
-    parent_step_id UUID REFERENCES step(id) ON DELETE CASCADE,
-    PRIMARY KEY (step_id, parent_step_id)
-);
-
--- Audit trail
-CREATE TABLE audit_log (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    entity_type VARCHAR(50) NOT NULL,
-    entity_id UUID NOT NULL,
-    action VARCHAR(50) NOT NULL, -- 'CREATE', 'UPDATE', 'DELETE', 'EXECUTE'
-    user_id UUID REFERENCES user(id),
-    changes_json JSONB,
-    ip_address INET,
-    user_agent TEXT,
-    created_at TIMESTAMP DEFAULT NOW()
-);
-```
-
-### 6.3 Performance Indexes
-
-```sql
--- Search and filtering indexes
-CREATE INDEX idx_agent_name_trgm ON agent USING gin (name gin_trgm_ops);
-CREATE INDEX idx_agent_description_trgm ON agent USING gin (description gin_trgm_ops);
-CREATE INDEX idx_agent_directory ON agent(directory_id);
-CREATE INDEX idx_agent_active ON agent(is_active) WHERE is_active = TRUE;
-
--- Execution tracking indexes
-CREATE INDEX idx_run_user_time ON run(created_by, start_time DESC);
-CREATE INDEX idx_run_status ON run(status);
-CREATE INDEX idx_step_run_time ON step(run_id, start_time);
-CREATE INDEX idx_memory_agent_key ON memory(agent_name, key);
-CREATE INDEX idx_memory_run ON memory(run_id);
-
--- Performance monitoring indexes
-CREATE INDEX idx_tool_usage ON tool(usage_count DESC);
-CREATE INDEX idx_audit_entity ON audit_log(entity_type, entity_id);
-CREATE INDEX idx_audit_user_time ON audit_log(user_id, created_at DESC);
-```
+- **Credential Isolation:** External agent keys encrypted at rest
+- **Permission Scoping:** Limit external agent access to specific skills
+- **Audit Logging:** Complete trail of external agent interactions
+- **Rate Limiting:** Per-agent and per-user external call limits
 
 ## 7. Complete GraphQL API Specification
 
@@ -593,12 +764,35 @@ enum ExecutionState {
   REJECTED
 }
 
-enum ContextScope { FULL, NONE, SPECIFIC }
-enum McpServerType { HTTP, STDIO, A2A }
-enum McpServerSource { CONFIG, API }
-enum MessageRole { SYSTEM, USER, ASSISTANT, TOOL }
-enum UserRole { USER, ADMIN, SUPER_ADMIN }
-enum SortDirection { ASC, DESC }
+enum ContextScope {
+  FULL
+  NONE
+  SPECIFIC
+}
+enum McpServerType {
+  HTTP
+  STDIO
+  A2A
+}
+enum McpServerSource {
+  CONFIG
+  API
+}
+enum MessageRole {
+  SYSTEM
+  USER
+  ASSISTANT
+  TOOL
+}
+enum UserRole {
+  USER
+  ADMIN
+  SUPER_ADMIN
+}
+enum SortDirection {
+  ASC
+  DESC
+}
 
 enum AgentSortField {
   NAME
@@ -727,7 +921,7 @@ type Agent implements Timestamped & Owned {
   examples: [String!]
   isExposedViaA2A: Boolean!
   isActive: Boolean!
-  
+
   # Relationships
   directory: Directory
   tags: [Tag!]!
@@ -735,10 +929,10 @@ type Agent implements Timestamped & Owned {
   mcpServers: [McpServer!]!
   allowedAgents: [Agent!]!
   a2aExposureConfig: A2AExposureConfig
-  
+
   # Analytics
   analytics: AgentAnalytics!
-  
+
   # Audit trail
   createdAt: DateTime!
   updatedAt: DateTime!
@@ -842,13 +1036,13 @@ type Step {
   promptTokens: Int
   completionTokens: Int
   cost: Float
-  
+
   # Relationships
   run: Run!
   agent: Agent!
   parentSteps: [Step!]!
   childSteps: [Step!]!
-  
+
   # Tracing
   spanId: String
 }
@@ -863,10 +1057,10 @@ type Run {
   duration: Float
   steps: [Step!]!
   stepCount: Int!
-  
+
   # Tracing
   traceId: String
-  
+
   # Ownership
   createdBy: User!
 }
@@ -912,7 +1106,12 @@ type ToolResultChunk {
   timestamp: DateTime!
 }
 
-union StreamChunk = TokenChunk | LogChunk | ToolCallStartChunk | ToolStreamChunk | ToolResultChunk
+union StreamChunk =
+    TokenChunk
+  | LogChunk
+  | ToolCallStartChunk
+  | ToolStreamChunk
+  | ToolResultChunk
 
 # =============================================================================
 #  SEARCH & DISCOVERY TYPES
@@ -1134,7 +1333,7 @@ type Query {
   directory(id: ID!): Directory
   directories(parentDirectoryId: ID): [Directory!]!
   rootDirectories: [Directory!]!
-  
+
   tag(id: ID!): Tag
   tags(parentTagId: ID): [Tag!]!
   popularTags(limit: Int = 10): [Tag!]!
@@ -1142,14 +1341,14 @@ type Query {
   # --- Agent Management ---
   promptTemplate(id: ID!): PromptTemplate
   promptTemplates(limit: Int = 50, offset: Int = 0): [PromptTemplate!]!
-  
+
   mcpServer(id: ID!): McpServer
   mcpServers(source: McpServerSource, type: McpServerType): [McpServer!]!
-  
+
   tool(id: ID!): Tool
   tools(mcpServerId: ID, limit: Int = 100, offset: Int = 0): [Tool!]!
   popularTools(limit: Int = 10): [Tool!]!
-  
+
   agent(id: ID, name: String): Agent
   agents(
     directoryId: ID
@@ -1159,7 +1358,7 @@ type Query {
     limit: Int = 20
     offset: Int = 0
   ): [Agent!]!
-  
+
   # --- Advanced Search & Discovery ---
   searchAgents(
     filters: AgentSearchInput!
@@ -1167,29 +1366,21 @@ type Query {
     limit: Int = 20
     offset: Int = 0
   ): AgentSearchResult!
-  
-  recommendAgents(
-    basedOnAgent: ID
-    forUser: ID
-    limit: Int = 10
-  ): [Agent!]!
-  
+
+  recommendAgents(basedOnAgent: ID, forUser: ID, limit: Int = 10): [Agent!]!
+
   getAgentCard(agentId: ID!): JSON!
-  
+
   # --- Execution & Monitoring ---
   run(id: ID!): Run
-  runs(
-    filters: FilterRunsInput
-    limit: Int = 20
-    offset: Int = 0
-  ): [Run!]!
-  
+  runs(filters: FilterRunsInput, limit: Int = 20, offset: Int = 0): [Run!]!
+
   memories(
     filter: FilterMemoriesInput!
     limit: Int = 50
     offset: Int = 0
   ): [Memory!]!
-  
+
   # --- Analytics & Reporting ---
   agentAnalytics(agentId: ID!, timeRange: String = "30d"): AgentAnalytics!
   systemUsageStats(timeRange: String = "30d"): SystemUsageStats!
@@ -1207,16 +1398,19 @@ type Mutation {
   updateDirectory(id: ID!, input: UpdateDirectoryInput!): Directory!
   moveDirectory(id: ID!, input: MoveAgentOrDirectoryInput!): Directory!
   removeDirectory(id: ID!): Boolean!
-  
+
   createTag(input: CreateTagInput!): Tag!
   updateTag(id: ID!, input: UpdateTagInput!): Tag!
   removeTag(id: ID!): Boolean!
-  
+
   # --- Agent Management ---
   createPromptTemplate(input: CreatePromptTemplateInput!): PromptTemplate!
-  updatePromptTemplate(id: ID!, input: UpdatePromptTemplateInput!): PromptTemplate!
+  updatePromptTemplate(
+    id: ID!
+    input: UpdatePromptTemplateInput!
+  ): PromptTemplate!
   removePromptTemplate(id: ID!): Boolean!
-  
+
   createMcpServer(input: CreateMcpServerInput!): McpServer!
   updateMcpServer(id: ID!, input: UpdateMcpServerInput!): McpServer!
   removeMcpServer(id: ID!): Boolean!
@@ -1246,7 +1440,7 @@ type Subscription {
   # --- Real-time Execution ---
   runUpdated(runId: ID!): Run!
   stepStream(stepId: ID!): StreamChunk!
-  
+
   # --- System Events ---
   agentCreated: Agent!
   agentUpdated(agentId: ID): Agent!
@@ -1446,7 +1640,7 @@ type SystemAlert {
               "default": 60
             },
             "requestsPerHour": {
-              "type": "integer", 
+              "type": "integer",
               "default": 1000
             }
           }
@@ -1493,7 +1687,7 @@ type SystemAlert {
       "apiKey": "env(OPENAI_API_KEY)"
     },
     "anthropic_claude": {
-      "type": "ANTHROPIC", 
+      "type": "ANTHROPIC",
       "apiKey": "env(ANTHROPIC_API_KEY)"
     },
     "groq_llama": {
@@ -1525,3 +1719,53 @@ type SystemAlert {
   }
 }
 ```
+
+### 8.3 Deployment Scenarios
+
+#### 8.3.1 Local Development
+
+- **Engine:** BullMQ with single Redis instance
+- **Database:** Local PostgreSQL with Docker
+- **Scaling:** Single server and worker process
+- **Observability:** Local Jaeger for tracing
+
+#### 8.3.2 Enterprise Production
+
+- **Engine:** Temporal.io cluster with high availability
+- **Database:** PostgreSQL with read replicas
+- **Scaling:** Multiple server instances behind load balancer
+- **Workers:** Auto-scaling worker pools
+- **Observability:** Distributed tracing with DataDog/New Relic
+
+#### 8.3.3 Cloud-Native Deployment
+
+- **Orchestration:** Kubernetes with Helm charts
+- **Storage:** Cloud-managed PostgreSQL and Redis
+- **Networking:** Ingress controllers with TLS termination
+- **Monitoring:** Prometheus/Grafana stack
+- **Security:** Pod security policies and network policies
+
+### 8.4 Scaling Strategies
+
+#### 8.4.1 Horizontal Scaling
+
+- **Stateless Servers:** Multiple Shaman server instances
+- **Worker Scaling:** Dynamic worker pool based on queue depth
+- **Database Connections:** Connection pooling with PgBouncer
+- **Redis Clustering:** Redis Cluster for stream distribution
+
+#### 8.4.2 Performance Optimization
+
+- **Caching:** Redis caching for agent definitions and tool schemas
+- **Database Optimization:** Materialized views for analytics
+- **Connection Management:** HTTP/2 for A2A communications
+- **Resource Limits:** Memory and CPU limits on workers
+
+#### 8.4.3 High Availability
+
+- **Database:** Primary-replica setup with automatic failover
+- **Redis:** Redis Sentinel for high availability
+- **Load Balancing:** Health checks and graceful failover
+- **Monitoring:** Comprehensive health check endpoints
+
+This specification provides a complete foundation for building Shaman as a comprehensive AI agent coordination platform, with detailed use cases demonstrating real-world applications across various industries and scenarios.
