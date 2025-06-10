@@ -1,3 +1,31 @@
 {
-  "name": "@codespin/shaman"
+  "name": "shaman-app",
+  "private": true,
+  "license": "BSD-3-Clause",
+  "devDependencies": {
+    "@graphql-codegen/cli": "^5.0.5",
+    "@graphql-codegen/typescript": "^4.1.6",
+    "@graphql-codegen/typescript-resolvers": "^4.5.0",
+    "concurrently": "^8.2.2",
+    "typescript": "^5.5.4"
+  },
+  "type": "module",
+  "scripts": {
+    "build": "./build.sh",
+    "clean": "./clean.sh",
+    "migrate:latest": "knex migrate:latest --knexfile knexfile.mjs",
+    "migrate:make": "knex migrate:make --knexfile knexfile.mjs",
+    "seed:make": "knex seed:make --knexfile knexfile.mjs",
+    "seed:run": "knex seed:run --knexfile knexfile.mjs",
+    "start": "concurrently --kill-others-on-fail \"npm run start:server\" \"npm run start:ui\"",
+    "start:server": "cd packages/shaman && npm run dev:start",
+    "start:ui": "cd packages/ui && npm run dev"
+  },
+  "dependencies": {
+    "@types/node": "^20.10.6",
+    "@types/pg": "^8.11.6",
+    "knex": "^3.1.0",
+    "pg": "^8.12.0",
+    "pg-promise": "^11.5.4"
+  }
 }
