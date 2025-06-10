@@ -93,9 +93,11 @@ examples:
 You are a Tier 1 Customer Support Agent for an e-commerce platform...
 
 ## Available Tools
+
 Your tools will be automatically injected based on configured MCP servers.
 
 ## Available Agents
+
 You can delegate to: {{allowed_agents}}
 
 Your task: {{prompt}}
@@ -112,14 +114,14 @@ main-agents/
 
 Namespaced Repository:
 experimental-agents/
-├── nlp/sentiment/prompt.md           → "experimental/nlp/sentiment"  
+├── nlp/sentiment/prompt.md           → "experimental/nlp/sentiment"
 └── vision/object-detect/prompt.md    → "experimental/vision/object-detect"
 ```
 
 #### 2.3.3 Agent Resolution Strategy
 
 1. **Root Repository Lookup:** Check unnamespaced agents first
-2. **Namespaced Repository Lookup:** Parse namespace and check specific repository  
+2. **Namespaced Repository Lookup:** Parse namespace and check specific repository
 3. **External A2A Lookup:** Check registered external A2A agents
 4. **Error:** Agent not found
 
@@ -141,54 +143,60 @@ All agents have automatic access to these system tools:
 ```typescript
 interface AgentCoordinationTools {
   call_agent: {
-    name: "call_agent",
-    description: "Delegate a task to another specialized agent (internal or external)",
+    name: "call_agent";
+    description: "Delegate a task to another specialized agent (internal or external)";
     schema: {
-      type: "object",
+      type: "object";
       properties: {
-        agent_name: { type: "string", description: "Name of agent to call (e.g., 'sales/pr-agent', 'external/legal-expert')" },
-        input: { type: "string", description: "Task description for the agent" },
-        context_scope: { 
-          type: "string", 
-          enum: ["FULL", "NONE", "SPECIFIC"],
-          default: "FULL",
-          description: "How much context to share with child agent"
-        }
-      },
-      required: ["agent_name", "input"]
-    }
+        agent_name: {
+          type: "string";
+          description: "Name of agent to call (e.g., 'sales/pr-agent', 'external/legal-expert')";
+        };
+        input: {
+          type: "string";
+          description: "Task description for the agent";
+        };
+        context_scope: {
+          type: "string";
+          enum: ["FULL", "NONE", "SPECIFIC"];
+          default: "FULL";
+          description: "How much context to share with child agent";
+        };
+      };
+      required: ["agent_name", "input"];
+    };
   };
-  
+
   complete_agent_execution: {
-    name: "complete_agent_execution",
-    description: "Signal completion of agent task - REQUIRED to finish execution",
+    name: "complete_agent_execution";
+    description: "Signal completion of agent task - REQUIRED to finish execution";
     schema: {
-      type: "object",
+      type: "object";
       properties: {
-        result: { type: "string", description: "Final result of the task" },
-        status: { 
-          type: "string", 
-          enum: ["SUCCESS", "PARTIAL", "FAILED"],
-          description: "Completion status"
-        },
-        confidence: { 
-          type: "number", 
-          minimum: 0, 
-          maximum: 1,
-          description: "Confidence in the result (0-1)"
-        },
-        requiresFollowup: { 
-          type: "boolean", 
-          default: false,
-          description: "Whether this task needs additional work"
-        },
-        metadata: { 
-          type: "object", 
-          description: "Additional structured data about the completion"
-        }
-      },
-      required: ["result", "status"]
-    }
+        result: { type: "string"; description: "Final result of the task" };
+        status: {
+          type: "string";
+          enum: ["SUCCESS", "PARTIAL", "FAILED"];
+          description: "Completion status";
+        };
+        confidence: {
+          type: "number";
+          minimum: 0;
+          maximum: 1;
+          description: "Confidence in the result (0-1)";
+        };
+        requiresFollowup: {
+          type: "boolean";
+          default: false;
+          description: "Whether this task needs additional work";
+        };
+        metadata: {
+          type: "object";
+          description: "Additional structured data about the completion";
+        };
+      };
+      required: ["result", "status"];
+    };
   };
 }
 ```
@@ -198,36 +206,39 @@ interface AgentCoordinationTools {
 ```typescript
 interface UserInteractionTools {
   request_user_input: {
-    name: "request_user_input",
-    description: "Request input from user - pauses execution until response received",
+    name: "request_user_input";
+    description: "Request input from user - pauses execution until response received";
     schema: {
-      type: "object",
+      type: "object";
       properties: {
-        prompt: { type: "string", description: "Question or prompt to show the user" },
-        inputType: { 
-          type: "string", 
-          enum: ["text", "choice", "file", "approval"],
-          default: "text",
-          description: "Type of input expected"
-        },
-        choices: { 
-          type: "array", 
-          items: { type: "string" },
-          description: "Available choices if inputType is 'choice'"
-        },
-        required: { 
-          type: "boolean", 
-          default: true,
-          description: "Whether input is required to continue"
-        },
+        prompt: {
+          type: "string";
+          description: "Question or prompt to show the user";
+        };
+        inputType: {
+          type: "string";
+          enum: ["text", "choice", "file", "approval"];
+          default: "text";
+          description: "Type of input expected";
+        };
+        choices: {
+          type: "array";
+          items: { type: "string" };
+          description: "Available choices if inputType is 'choice'";
+        };
+        required: {
+          type: "boolean";
+          default: true;
+          description: "Whether input is required to continue";
+        };
         timeoutMinutes: {
-          type: "number",
-          default: 1440,
-          description: "Minutes to wait before timing out"
-        }
-      },
-      required: ["prompt"]
-    }
+          type: "number";
+          default: 1440;
+          description: "Minutes to wait before timing out";
+        };
+      };
+      required: ["prompt"];
+    };
   };
 }
 ```
@@ -237,29 +248,33 @@ interface UserInteractionTools {
 ```typescript
 interface MemoryManagementTools {
   save_memory: {
-    name: "save_memory",
-    description: "Save data for later retrieval across runs",
+    name: "save_memory";
+    description: "Save data for later retrieval across runs";
     schema: {
-      type: "object",
+      type: "object";
       properties: {
-        key: { type: "string", description: "Unique identifier for the data" },
-        value: { type: "object", description: "Data to save (any JSON value)" },
-        expiresAt: { type: "string", format: "date-time", description: "Optional expiration time" }
-      },
-      required: ["key", "value"]
-    }
+        key: { type: "string"; description: "Unique identifier for the data" };
+        value: { type: "object"; description: "Data to save (any JSON value)" };
+        expiresAt: {
+          type: "string";
+          format: "date-time";
+          description: "Optional expiration time";
+        };
+      };
+      required: ["key", "value"];
+    };
   };
-  
+
   load_memory: {
-    name: "load_memory", 
-    description: "Retrieve previously saved data",
+    name: "load_memory";
+    description: "Retrieve previously saved data";
     schema: {
-      type: "object",
+      type: "object";
       properties: {
-        key: { type: "string", description: "Identifier of data to retrieve" }
-      },
-      required: ["key"]
-    }
+        key: { type: "string"; description: "Identifier of data to retrieve" };
+      };
+      required: ["key"];
+    };
   };
 }
 ```
@@ -271,6 +286,7 @@ interface MemoryManagementTools {
 **Scenario:** A large e-commerce company wants to automate customer support inquiries while maintaining human oversight for complex issues.
 
 **Git Repository Structure:**
+
 ```
 main-agents/
 ├── support/tier1-agent/prompt.md
@@ -279,7 +295,8 @@ main-agents/
 ```
 
 **Agent Definition (support/tier1-agent/prompt.md):**
-```markdown
+
+````markdown
 ---
 name: "Tier1CustomerSupport"
 description: "Handles common customer inquiries about orders, returns, and account issues"
@@ -298,51 +315,66 @@ examples:
 You are a Tier 1 Customer Support Agent for an e-commerce platform. Your role is to help customers with their inquiries efficiently and escalate complex issues when needed.
 
 ## Available Tools
+
 You have access to these tools:
+
 - **order_lookup**: Search for customer orders by ID or customer info
 - **customer_profile**: Get customer account details and history
 - **refund_processor**: Process standard refunds within policy
 
 ## Available Agents
+
 You can delegate to these specialists:
+
 - **support/billing-specialist**: For complex billing issues, payment problems, or policy exceptions
 - **support/escalation-manager**: For VIP customers or sensitive complaints
 
 ## Agent Calling Examples
+
 To delegate a billing issue:
+
 ```json
 {
-  "tool_calls": [{
-    "id": "call_billing",
-    "type": "function",
-    "function": {
-      "name": "call_agent",
-      "arguments": "{\"agent_name\": \"support/billing-specialist\", \"input\": \"Customer wants refund for 95-day-old order but is VIP with $50K annual spend\"}"
+  "tool_calls": [
+    {
+      "id": "call_billing",
+      "type": "function",
+      "function": {
+        "name": "call_agent",
+        "arguments": "{\"agent_name\": \"support/billing-specialist\", \"input\": \"Customer wants refund for 95-day-old order but is VIP with $50K annual spend\"}"
+      }
     }
-  }]
+  ]
 }
 ```
+````
 
 ## Completion Requirement
+
 You MUST complete your work by calling:
+
 ```json
 {
-  "tool_calls": [{
-    "id": "complete",
-    "type": "function", 
-    "function": {
-      "name": "complete_agent_execution",
-      "arguments": "{\"result\": \"Your summary of actions taken\", \"status\": \"SUCCESS\", \"confidence\": 0.9}"
+  "tool_calls": [
+    {
+      "id": "complete",
+      "type": "function",
+      "function": {
+        "name": "complete_agent_execution",
+        "arguments": "{\"result\": \"Your summary of actions taken\", \"status\": \"SUCCESS\", \"confidence\": 0.9}"
+      }
     }
-  }]
+  ]
 }
 ```
 
 Your task: {{prompt}}
+
 ```
 
 **Execution Flow:**
 ```
+
 Customer: "I want to cancel order #ORDER-789 and get a refund"
 
 1. Tier1Agent calls order_lookup tool:
@@ -353,44 +385,45 @@ Customer: "I want to cancel order #ORDER-789 and get a refund"
 
 3. Tier1Agent recognizes policy exception needed, calls agent:
    {
-     "name": "call_agent",
-     "arguments": {
-       "agent_name": "support/billing-specialist",
-       "input": "VIP customer John Smith wants refund for order #ORDER-789. Order is 95 days old (exceeds 90-day policy) but customer has $50K annual spend. Please evaluate exception."
-     }
+   "name": "call_agent",
+   "arguments": {
+   "agent_name": "support/billing-specialist",
+   "input": "VIP customer John Smith wants refund for order #ORDER-789. Order is 95 days old (exceeds 90-day policy) but customer has $50K annual spend. Please evaluate exception."
+   }
    }
 
 4. BillingSpecialist analyzes case, requests approval:
    {
-     "name": "request_user_input", 
-     "arguments": {
-       "prompt": "Customer exceeds refund policy but is VIP. Approve exception?",
-       "inputType": "choice",
-       "choices": ["Approve full refund", "Offer store credit", "Deny exception"]
-     }
+   "name": "request_user_input",
+   "arguments": {
+   "prompt": "Customer exceeds refund policy but is VIP. Approve exception?",
+   "inputType": "choice",
+   "choices": ["Approve full refund", "Offer store credit", "Deny exception"]
+   }
    }
 
 5. Human responds: "Approve full refund"
 
 6. BillingSpecialist processes refund and completes:
    {
-     "name": "complete_agent_execution",
-     "arguments": {
-       "result": "Full refund of $299.99 approved and processed. Refund ID: REF-456789",
-       "status": "SUCCESS", 
-       "confidence": 1.0
-     }
+   "name": "complete_agent_execution",
+   "arguments": {
+   "result": "Full refund of $299.99 approved and processed. Refund ID: REF-456789",
+   "status": "SUCCESS",
+   "confidence": 1.0
+   }
    }
 
 7. Tier1Agent receives completion, sends final response:
    {
-     "name": "complete_agent_execution",
-     "arguments": {
-       "result": "Order #ORDER-789 has been cancelled and full refund of $299.99 processed. You'll see the refund in 3-5 business days. Refund tracking: REF-456789",
-       "status": "SUCCESS",
-       "confidence": 0.95
-     }
+   "name": "complete_agent_execution",
+   "arguments": {
+   "result": "Order #ORDER-789 has been cancelled and full refund of $299.99 processed. You'll see the refund in 3-5 business days. Refund tracking: REF-456789",
+   "status": "SUCCESS",
+   "confidence": 0.95
    }
+   }
+
 ```
 
 ### 3.2 Software Development Workflow with External Integration
@@ -399,11 +432,13 @@ Customer: "I want to cancel order #ORDER-789 and get a refund"
 
 **Repository Structure:**
 ```
+
 dev-agents/
 ├── code/pr-reviewer/prompt.md
 ├── code/test-runner/prompt.md
 └── deploy/staging-manager/prompt.md
-```
+
+````
 
 **External Agent Registration:**
 ```graphql
@@ -422,9 +457,10 @@ mutation RegisterExternalSecurityAgent {
     }
   }
 }
-```
+````
 
 **Agent Definition (code/pr-reviewer/prompt.md):**
+
 ```markdown
 ---
 name: "CodeReviewer"
@@ -434,7 +470,8 @@ tags: ["development", "code-review", "security"]
 model: "gpt-4-turbo"
 providers: ["openai_gpt4"]
 mcpServers: ["github", "sonarqube"]
-allowedAgents: ["code/test-runner", "deploy/staging-manager", "external/security-auditor"]
+allowedAgents:
+  ["code/test-runner", "deploy/staging-manager", "external/security-auditor"]
 examples:
   - "Review PR #123 for security vulnerabilities"
   - "Analyze code quality in payment module"
@@ -443,16 +480,19 @@ examples:
 You are a Senior Code Reviewer responsible for maintaining code quality and security standards.
 
 ## Available Tools
+
 - **github_get_pr**: Get pull request details and diff
 - **sonarqube_scan**: Run code quality analysis
 - **github_add_comment**: Add review comments
 
 ## Available Agents
+
 - **code/test-runner**: Execute comprehensive test suites
 - **deploy/staging-manager**: Handle staging deployments
 - **external/security-auditor**: External security analysis service
 
 ## Review Process
+
 1. Analyze code changes thoroughly
 2. For security-sensitive changes, delegate to external/security-auditor
 3. If code passes review, delegate to code/test-runner
@@ -462,6 +502,7 @@ Your task: {{prompt}}
 ```
 
 **Multi-System Execution:**
+
 ```
 Request: "Review pull request #456 in payment-service repository"
 
@@ -470,7 +511,7 @@ Request: "Review pull request #456 in payment-service repository"
 
 2. CodeReviewer notices payment processing code, calls external agent:
    {
-     "name": "call_agent", 
+     "name": "call_agent",
      "arguments": {
        "agent_name": "external/security-auditor",
        "input": "Please audit the payment processing changes in PR #456. Focus on PCI compliance and data handling."
@@ -502,7 +543,7 @@ Request: "Review pull request #456 in payment-service repository"
    {
      "name": "call_agent",
      "arguments": {
-       "agent_name": "code/test-runner", 
+       "agent_name": "code/test-runner",
        "input": "Run full test suite for payment-service PR #456"
      }
    }
@@ -533,6 +574,7 @@ Request: "Review pull request #456 in payment-service repository"
 **Scenario:** A company needs comprehensive contract analysis using both internal knowledge and external legal expertise.
 
 **Repository Structure:**
+
 ```
 main-agents/
 ├── legal/contract-coordinator/prompt.md
@@ -544,6 +586,7 @@ partner-agents/ (external A2A registrations)
 ```
 
 **Multi-Repository Agent Coordination:**
+
 ```
 Request: "Analyze this NDA for potential risks and compliance issues"
 
@@ -578,20 +621,22 @@ Request: "Analyze this NDA for potential risks and compliance issues"
 **Scenario:** Multiple organizations want to share specialized agents while maintaining security boundaries.
 
 **Organization A (Financial Services):**
+
 ```
 Exposes via A2A:
 - public/risk-calculator
 - public/compliance-validator
 
-Consumes externally:  
+Consumes externally:
 - partner-bank/fraud-detector
 - regtech-vendor/aml-screener
 ```
 
 **Organization B (RegTech Vendor):**
+
 ```
 Exposes via A2A:
-- public/aml-screener  
+- public/aml-screener
 - public/kyc-validator
 
 Consumes externally:
@@ -600,6 +645,7 @@ Consumes externally:
 ```
 
 **Configuration Example:**
+
 ```json
 {
   "agentRepositories": [
@@ -610,7 +656,7 @@ Consumes externally:
       "branch": "production"
     }
   ],
-  
+
   "agentExposure": {
     "allowedPrefixes": ["public/"],
     "securitySchemes": {
@@ -624,7 +670,7 @@ Consumes externally:
       }
     }
   },
-  
+
   "externalAgents": {
     "partner-bank": {
       "endpoint": "https://agents.partner-bank.com/a2a/v1",
@@ -643,73 +689,74 @@ Consumes externally:
 ### 4.1 Component Overview
 
 ```
-┌─────────────────────┐    ┌─────────────────────┐    ┌─────────────────────┐
-│   GraphQL Client    │    │   A2A Client        │    │   Shaman UI         │
-│   (External Apps)   │    │   (External Agent)  │    │   (Admin Dashboard) │
-└─────────┬───────────┘    └─────────┬───────────┘    └─────────┬───────────┘
-          │                          │                          │
-          └─────┐           ┌────────┴───────┐         ┌────────┘
-                │           │                │         │
-          ┌─────▼───────────▼────────────────▼─────────▼─────┐
-          │              Shaman Server                      │
-          │  ┌─────────────────┐  ┌─────────────────────────┐ │
-          │  │  GraphQL API    │  │     A2A Gateway        │ │
-          │  │     Engine      │  │   (HTTP Endpoints)     │ │
-          │  └─────────────────┘  └─────────────────────────┘ │
-          │  ┌─────────────────┐  ┌─────────────────────────┐ │
-          │  │   Real-time     │  │  Git Agent Discovery   │ │
-          │  │   Streaming     │  │      Service            │ │
-          │  └─────────────────┘  └─────────────────────────┘ │
-          │  ┌─────────────────┐  ┌─────────────────────────┐ │
-          │  │ External A2A    │  │  Workflow Engine        │ │
-          │  │    Registry     │  │     Adapter             │ │
-          │  └─────────────────┘  └─────────────────────────┘ │
-          └─────────────────┬───────────────────────────────────┘
-                            │
-          ┌─────────────────▼───────────────────────────────────┐
-          │            Workflow Engine                          │
-          │   ┌─────────────────┐    ┌─────────────────────────┐ │
-          │   │   Temporal.io   │    │      BullMQ + Redis    │ │
-          │   │  (Production)   │    │    (Development)       │ │
-          │   └─────────────────┘    └─────────────────────────┘ │
-          └─────────────────┬───────────────────────────────────┘
-                            │
-          ┌─────────────────▼───────────────────────────────────┐
-          │                Worker Pool                          │
-          │  ┌─────────┐ ┌──────────┐ ┌─────────────────────────┐ │
-          │  │ LLM     │ │   MCP    │ │      A2A Client        │ │
-          │  │ Calls   │ │  Tools   │ │        Logic           │ │
-          │  └─────────┘ └──────────┘ └─────────────────────────┘ │
-          │  ┌─────────────────────────────────────────────────┐ │
-          │  │           Tool Call Router                      │ │
-          │  │  ┌─────────┐ ┌─────────┐ ┌─────────────────────┐ │ │
-          │  │  │   MCP   │ │ System  │ │   Agent Call        │ │ │
-          │  │  │ Handler │ │ Handler │ │     Handler         │ │ │
-          │  │  └─────────┘ └─────────┘ └─────────────────────┘ │ │
-          │  └─────────────────────────────────────────────────┘ │
-          │  ┌─────────────────────────────────────────────────┐ │
-          │  │         Git Agent Resolver                      │ │
-          │  │  ┌─────────┐ ┌─────────┐ ┌─────────────────────┐ │ │
-          │  │  │ Root    │ │ Namespd │ │   External A2A      │ │ │
-          │  │  │ Repos   │ │ Repos   │ │      Registry       │ │ │
-          │  │  └─────────┘ └─────────┘ └─────────────────────┘ │ │
-          │  └─────────────────────────────────────────────────┘ │
-          └─────────────────┬───────────────────────────────────┘
-                            │
-          ┌─────────────────▼───────────────────────────────────┐
-          │             Infrastructure                          │
-          │  ┌─────────┐ ┌──────────┐ ┌─────────────────────────┐ │
-          │  │PostgreSQL│ │  Redis   │ │     OpenTelemetry      │ │
-          │  │  (Data) │ │(Streams) │ │      (Tracing)         │ │
-          │  └─────────┘ └──────────┘ └─────────────────────────┘ │
-          │  ┌─────────────────────────────────────────────────┐ │
-          │  │                Git Storage                      │ │
-          │  │  ┌─────────┐ ┌─────────┐ ┌─────────────────────┐ │ │
-          │  │  │ Cloned  │ │ Cached  │ │   Sync Metadata     │ │ │
-          │  │  │ Repos   │ │ Agents  │ │                     │ │ │
-          │  │  └─────────┘ └─────────┘ └─────────────────────┘ │ │
-          │  └─────────────────────────────────────────────────┘ │
-          └─────────────────────────────────────────────────────┘
+┌──────────────────────────┐    ┌───────────────────── ──┐    ┌─────────────────────┐
+│     GraphQL Client       │    │      A2A Client        │    │      Shaman UI      │
+│     (External Apps)      │    │   (External Agent)     │    │ (Admin Dashboard)   │
+└──────────┬───────────────┘    └───────┬────────────────┘    └───┬─────────────────┘
+           │                            │                         │
+           └──────┐                ┌────┘           ┌─────────────┘
+                  │                │                │
+                ┌─▼────────────────▼────────────────▼─────────────────┐
+                │                         Shaman Server               │
+                │ ┌───────────────────┐  ┌──────────────────────────┐ │
+                │ │    GraphQL API    │  │         A2A Gateway      │ │
+                │ │      Engine       │  │      (HTTP Endpoints)    │ │
+                │ └───────────────────┘  └──────────────────────────┘ │
+                │ ┌───────────────────┐  ┌──────────────────────────┐ │
+                │ │    Real-time      │  │    Git Agent Discovery   │ │
+                │ │     Streaming     │  │         Service          │ │
+                │ └───────────────────┘  └──────────────────────────┘ │
+                │ ┌───────────────────┐  ┌───────────────────────── ┐ │
+                │ │   External A2A    │  │      Workflow Engine     │ │
+                │ │     Registry      │  │         Adapter          │ │
+                │ └───────────────────┘  └──────────────────────────┘ │
+                └────────────────────────┬────────────────────────────┘
+                                         │
+                ┌────────────────────────▼────────────────────┐
+                │                   Workflow Engine           │
+                │ ┌────────────────┐    ┌───────────────────┐ │
+                │ │   Temporal.io  │    │   BullMQ + Redis  │ │
+                │ │  (Production)  │    │  (Development)    │ │
+                │ └────────────────┘    └───────────────────┘ │
+                └──────────────────────┬──────────────────────┘
+                                       │
+                ┌──────────────────────▼───────────────────────────────────┐
+                │                      Worker Pool                         │
+                │  ┌───────────────┐  ┌───────────────┐  ┌───────────────┐ │
+                │  │      LLM      │  │      MCP      │  │   A2A Client  │ │
+                │  │     Calls     │  │     Tools     │  │     Logic     │ │
+                │  └───────────────┘  └───────────────┘  └───────────────┘ │
+                │  ┌─────────────────────────────────────────────────────┐ │
+                │  │                   Tool Call Router                  │ │
+                │  │  ┌───────────┐  ┌───────────────┐  ┌──────────────┐ │ │
+                │  │  │    MCP    │  │    System     │  │    Agent     │ │ │
+                │  │  │   Handler │  │    Handler    │  │     Call     │ │ │
+                │  │  └───────────┘  └───────────────┘  └──────────────┘ │ │
+                │  └─────────────────────────────────────────────────────┘ │
+                │  ┌─────────────────────────────────────────────────────┐ │
+                │  │               Git Agent Resolver                    │ │
+                │  │  ┌───────────┐    ┌──────────┐    ┌──────────────┐  │ │
+                │  │  │    Root   │    │ Namespd  │    │   External   │  │ │
+                │  │  │   Repos   │    │  Repos   │    │ A2A Registry │  │ │
+                │  │  └───────────┘    └──────────┘    └──────────────┘  │ │
+                │  └─────────────────────────────────────────────────────┘ │
+                └────────────────────────┬─────────────────────────────────┘
+                                         │
+                ┌────────────────────────▼───────────────────────────────────┐
+                │                     Infrastructure                         │
+                │  ┌───────────────┐  ┌───────────────┐  ┌─────────────────┐ │
+                │  │   PostgreSQL  │  │     Redis     │  │ OpenTelemetry   │ │
+                │  │     (Data)    │  │   (Streams)   │  │   (Tracing)     │ │
+                │  └───────────────┘  └───────────────┘  └─────────────────┘ │
+                │  ┌───────────────────────────────────────────────────────┐ │
+                │  │                    Git Storage                        │ │
+                │  │  ┌──────────┐  ┌───────────┐  ┌─────────────┐         │ │
+                │  │  │  Cloned  │  │  Cached   │  │    Sync     │         │ │
+                │  │  │  Repos   │  │  Agents   │  │  Metadata   │         │ │
+                │  │  └──────────┘  └───────────┘  └─────────────┘         │ │
+                │  └───────────────────────────────────────────────────────┘ │
+                └────────────────────────────────────────────────────────────┘
+
 ```
 
 ### 4.2 Shaman Server (Control Plane & Gateway)
@@ -762,13 +809,13 @@ interface GitAgent {
   providers: string[];
   mcpServers: string[];
   allowedAgents: string[];
-  
+
   // Git metadata
   repositoryName: string;
   filePath: string;
   gitCommit: string;
   lastModified: Date;
-  
+
   // Parsed content
   promptTemplate: string;
   frontmatter: AgentFrontmatter;
@@ -851,7 +898,7 @@ interface WorkflowEngineAdapter {
 
 interface AgentCompletion {
   result: string;
-  status: 'SUCCESS' | 'PARTIAL' | 'FAILED';
+  status: "SUCCESS" | "PARTIAL" | "FAILED";
   confidence: number;
   requiresFollowup: boolean;
   metadata?: any;
@@ -878,7 +925,11 @@ Scalable Node.js processes performing the actual agent execution with git resolu
 ```typescript
 interface GitAgentResolver {
   resolveAgent(agentName: string, requestTime?: Date): Promise<ResolvedAgent>;
-  loadAgentDefinition(repo: string, path: string, commit: string): Promise<AgentDefinition>;
+  loadAgentDefinition(
+    repo: string,
+    path: string,
+    commit: string
+  ): Promise<AgentDefinition>;
   parseAgentFrontmatter(markdown: string): Promise<AgentFrontmatter>;
   validateAgentDefinition(definition: AgentDefinition): ValidationResult;
 }
@@ -891,53 +942,59 @@ class GitAgentResolverImpl implements GitAgentResolver {
       if (agent) {
         return {
           agent: agent,
-          source: 'git',
+          source: "git",
           repository: rootRepo.name,
           commit: rootRepo.currentCommit,
-          isNamespaced: false
+          isNamespaced: false,
         };
       }
     }
-    
+
     // 2. Check namespaced repositories
-    if (agentName.includes('/')) {
-      const [namespace, ...pathParts] = agentName.split('/');
-      const agentPath = pathParts.join('/');
-      
+    if (agentName.includes("/")) {
+      const [namespace, ...pathParts] = agentName.split("/");
+      const agentPath = pathParts.join("/");
+
       const namespacedRepo = this.namedRepositories.get(namespace);
       if (namespacedRepo) {
         const agent = await this.findAgentInRepo(namespacedRepo, agentPath);
         if (agent) {
           return {
             agent: agent,
-            source: 'git',
+            source: "git",
             repository: namespacedRepo.name,
             commit: namespacedRepo.currentCommit,
-            isNamespaced: true
+            isNamespaced: true,
           };
         }
       }
     }
-    
+
     // 3. Check external A2A agents
     const externalAgent = await this.externalA2ARegistry.findAgent(agentName);
     if (externalAgent) {
       return {
         agent: externalAgent,
-        source: 'a2a',
+        source: "a2a",
         endpoint: externalAgent.endpoint,
-        isNamespaced: false
+        isNamespaced: false,
       };
     }
-    
-    throw new Error(`Agent ${agentName} not found in any repository or external registry`);
+
+    throw new Error(
+      `Agent ${agentName} not found in any repository or external registry`
+    );
   }
-  
-  async loadAgentDefinition(repo: string, path: string, commit: string): Promise<AgentDefinition> {
+
+  async loadAgentDefinition(
+    repo: string,
+    path: string,
+    commit: string
+  ): Promise<AgentDefinition> {
     // Load specific version of agent from git
     const markdown = await this.gitService.getFile(repo, path, commit);
     const parsed = await this.parseAgentFrontmatter(markdown);
-    
+
     return {
       frontmatter: parsed.frontmatter,
       promptTemplate: parsed.content,
@@ -945,8 +1002,12 @@ class GitAgentResolverImpl implements GitAgentResolver {
         repository: repo,
         filePath: path,
         commit: commit,
-        lastModified: await this.gitService.getFileLastModified(repo, path, commit)
-      }
+        lastModified: await this.gitService.getFileLastModified(
+          repo,
+          path,
+          commit
+        ),
+      },
     };
   }
 }
@@ -965,88 +1026,107 @@ class GitAgentResolverImpl implements GitAgentResolver {
 
 ```typescript
 interface A2AClientHandler {
-  callExternalAgent(agentName: string, input: string, context: ExecutionContext): Promise<AgentCompletion>;
+  callExternalAgent(
+    agentName: string,
+    input: string,
+    context: ExecutionContext
+  ): Promise<AgentCompletion>;
   discoverExternalAgent(endpoint: string): Promise<A2AAgentCard>;
   translateToA2AMessage(input: string, context: ExecutionContext): A2AMessage;
   translateFromA2ATask(task: A2ATask): AgentCompletion;
 }
 
 class A2AClientHandlerImpl implements A2AClientHandler {
-  async callExternalAgent(agentName: string, input: string, context: ExecutionContext): Promise<AgentCompletion> {
+  async callExternalAgent(
+    agentName: string,
+    input: string,
+    context: ExecutionContext
+  ): Promise<AgentCompletion> {
     const externalAgent = await this.externalA2ARegistry.findAgent(agentName);
     if (!externalAgent) {
       throw new Error(`External agent ${agentName} not registered`);
     }
-    
+
     // 1. Prepare A2A message
     const a2aMessage: A2AMessage = {
-      role: 'user',
-      parts: [{ kind: 'text', text: input }],
+      role: "user",
+      parts: [{ kind: "text", text: input }],
       messageId: generateId(),
       taskId: context.currentStep.runId,
-      contextId: context.currentStep.runId
+      contextId: context.currentStep.runId,
     };
-    
+
     // 2. Send A2A request
     const response = await this.sendA2ARequest(externalAgent, {
-      jsonrpc: '2.0',
+      jsonrpc: "2.0",
       id: generateId(),
-      method: 'message/send',
+      method: "message/send",
       params: {
         message: a2aMessage,
         configuration: {
-          acceptedOutputModes: ['text/plain', 'application/json'],
-          blocking: true
-        }
-      }
+          acceptedOutputModes: ["text/plain", "application/json"],
+          blocking: true,
+        },
+      },
     });
-    
+
     // 3. Handle response
-    if (response.result.kind === 'task') {
-      return await this.waitForA2ATaskCompletion(externalAgent, response.result);
-    } else if (response.result.kind === 'message') {
+    if (response.result.kind === "task") {
+      return await this.waitForA2ATaskCompletion(
+        externalAgent,
+        response.result
+      );
+    } else if (response.result.kind === "message") {
       return this.translateMessageToCompletion(response.result);
     }
-    
-    throw new Error('Invalid A2A response format');
+
+    throw new Error("Invalid A2A response format");
   }
-  
-  private async waitForA2ATaskCompletion(agent: ExternalAgent, task: A2ATask): Promise<AgentCompletion> {
+
+  private async waitForA2ATaskCompletion(
+    agent: ExternalAgent,
+    task: A2ATask
+  ): Promise<AgentCompletion> {
     // Poll or stream the external task until completion
     let currentTask = task;
-    
+
     while (!this.isTerminalState(currentTask.status.state)) {
-      await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1 second
-      
+      await new Promise((resolve) => setTimeout(resolve, 1000)); // Wait 1 second
+
       const response = await this.sendA2ARequest(agent, {
-        jsonrpc: '2.0',
+        jsonrpc: "2.0",
         id: generateId(),
-        method: 'tasks/get',
-        params: { id: currentTask.id }
+        method: "tasks/get",
+        params: { id: currentTask.id },
       });
-      
+
       currentTask = response.result;
     }
-    
+
     return this.translateTaskToCompletion(currentTask);
   }
-  
+
   private translateTaskToCompletion(task: A2ATask): AgentCompletion {
-    const isSuccess = task.status.state === 'completed';
-    const result = task.artifacts?.length > 0 
-      ? this.extractTextFromArtifacts(task.artifacts)
-      : task.status.message?.parts?.map(p => p.kind === 'text' ? p.text : '').join('') || 'No result';
-    
+    const isSuccess = task.status.state === "completed";
+    const result =
+      task.artifacts?.length > 0
+        ? this.extractTextFromArtifacts(task.artifacts)
+        : task.status.message?.parts
+            ?.map((p) => (p.kind === "text" ? p.text : ""))
+            .join("") || "No result";
+
     return {
       result: result,
-      status: isSuccess ? 'SUCCESS' : 'FAILED',
+      status: isSuccess ? "SUCCESS" : "FAILED",
       confidence: isSuccess ? 0.9 : 0.0,
-      requiresFollowup: task.status.state === 'input-required' || task.status.state === 'auth-required',
+      requiresFollowup:
+        task.status.state === "input-required" ||
+        task.status.state === "auth-required",
       metadata: {
         externalTaskId: task.id,
         finalState: task.status.state,
-        artifacts: task.artifacts?.length || 0
-      }
+        artifacts: task.artifacts?.length || 0,
+      },
     };
   }
 }
@@ -1056,27 +1136,33 @@ class A2AClientHandlerImpl implements A2AClientHandler {
 
 ```typescript
 interface ToolCallRouter {
-  routeToolCall(toolCall: ToolCall, context: ExecutionContext): Promise<ToolResult>;
+  routeToolCall(
+    toolCall: ToolCall,
+    context: ExecutionContext
+  ): Promise<ToolResult>;
 }
 
 class ToolCallRouterImpl implements ToolCallRouter {
-  async routeToolCall(toolCall: ToolCall, context: ExecutionContext): Promise<ToolResult> {
+  async routeToolCall(
+    toolCall: ToolCall,
+    context: ExecutionContext
+  ): Promise<ToolResult> {
     const { name, arguments: args } = toolCall.function;
-    
+
     switch (name) {
-      case 'call_agent':
+      case "call_agent":
         return await this.agentCallHandler.handleAgentCall(args, context);
-        
-      case 'complete_agent_execution':
+
+      case "complete_agent_execution":
         return await this.systemHandler.handleCompletion(args, context);
-        
-      case 'request_user_input':
+
+      case "request_user_input":
         return await this.systemHandler.handleInputRequest(args, context);
-        
-      case 'save_memory':
-      case 'load_memory':
+
+      case "save_memory":
+      case "load_memory":
         return await this.systemHandler.handleMemory(name, args, context);
-        
+
       default:
         // Handle MCP tool
         return await this.mcpHandler.callMcpTool(name, args, context);
@@ -1089,36 +1175,46 @@ class ToolCallRouterImpl implements ToolCallRouter {
 
 ```typescript
 interface AgentCallHandler {
-  handleAgentCall(args: AgentCallArgs, context: ExecutionContext): Promise<ToolResult>;
+  handleAgentCall(
+    args: AgentCallArgs,
+    context: ExecutionContext
+  ): Promise<ToolResult>;
 }
 
 class AgentCallHandlerImpl implements AgentCallHandler {
-  async handleAgentCall(args: AgentCallArgs, context: ExecutionContext): Promise<ToolResult> {
-    const { agent_name, input, context_scope = 'FULL' } = args;
-    
+  async handleAgentCall(
+    args: AgentCallArgs,
+    context: ExecutionContext
+  ): Promise<ToolResult> {
+    const { agent_name, input, context_scope = "FULL" } = args;
+
     // 1. Resolve agent (git or external A2A)
     const resolvedAgent = await this.gitAgentResolver.resolveAgent(agent_name);
-    
+
     // 2. Validate permissions
     await this.validateAgentCallPermissions(context.currentAgent, agent_name);
-    
+
     // 3. Prevent circular calls
     this.validateNoCircularCalls(context.callStack, agent_name);
-    
+
     // 4. Execute based on agent source
     let completion: AgentCompletion;
-    
-    if (resolvedAgent.source === 'git') {
+
+    if (resolvedAgent.source === "git") {
       completion = await this.executeGitAgent(resolvedAgent, input, context);
-    } else if (resolvedAgent.source === 'a2a') {
-      completion = await this.a2aClientHandler.callExternalAgent(agent_name, input, context);
+    } else if (resolvedAgent.source === "a2a") {
+      completion = await this.a2aClientHandler.callExternalAgent(
+        agent_name,
+        input,
+        context
+      );
     } else {
       throw new Error(`Unknown agent source: ${resolvedAgent.source}`);
     }
-    
+
     // 5. Return completion as tool result
     return {
-      success: completion.status !== 'FAILED',
+      success: completion.status !== "FAILED",
       result: completion.result,
       metadata: {
         status: completion.status,
@@ -1127,29 +1223,29 @@ class AgentCallHandlerImpl implements AgentCallHandler {
         agentSource: resolvedAgent.source,
         gitCommit: resolvedAgent.commit,
         executionTime: completion.metadata?.executionTime,
-        cost: completion.metadata?.cost
-      }
+        cost: completion.metadata?.cost,
+      },
     };
   }
-  
+
   private async executeGitAgent(
-    resolvedAgent: ResolvedAgent, 
-    input: string, 
+    resolvedAgent: ResolvedAgent,
+    input: string,
     context: ExecutionContext
   ): Promise<AgentCompletion> {
     // Start child agent execution with git version tracking
     const childRun = await this.startChildAgentRun({
       agentName: resolvedAgent.agent.name,
-      agentSource: 'git',
+      agentSource: "git",
       gitRepository: resolvedAgent.repository,
       gitCommit: resolvedAgent.commit,
       input: input,
       contextScope: context_scope,
       parentStepId: context.currentStep.id,
       parentRunId: context.currentStep.runId,
-      callStack: [...context.callStack, context.currentAgent.name]
+      callStack: [...context.callStack, context.currentAgent.name],
     });
-    
+
     // Wait for explicit completion
     return await this.waitForAgentCompletion(childRun.id);
   }
@@ -1164,28 +1260,30 @@ interface PromptTemplateResolver {
 }
 
 class PromptTemplateResolverImpl implements PromptTemplateResolver {
-  async resolvePromptTemplate(agent: GitAgent, userInput: string): Promise<string> {
+  async resolvePromptTemplate(
+    agent: GitAgent,
+    userInput: string
+  ): Promise<string> {
     const availableTools = await this.getMcpServerTools(agent.mcpServers);
     const allowedAgents = await this.resolveAllowedAgents(agent.allowedAgents);
-    
+
     // Add system tools
-    const allTools = [
-      ...availableTools,
-      ...this.getSystemTools()
-    ];
-    
+    const allTools = [...availableTools, ...this.getSystemTools()];
+
     // Resolve template variables
     return agent.promptTemplate
-      .replace('{{agent_name}}', agent.name)
-      .replace('{{agent_description}}', agent.description)
-      .replace('{{prompt}}', userInput)
-      .replace('{{available_tools}}', this.formatToolsForPrompt(allTools))
-      .replace('{{allowed_agents}}', this.formatAgentsForPrompt(allowedAgents));
+      .replace("{{agent_name}}", agent.name)
+      .replace("{{agent_description}}", agent.description)
+      .replace("{{prompt}}", userInput)
+      .replace("{{available_tools}}", this.formatToolsForPrompt(allTools))
+      .replace("{{allowed_agents}}", this.formatAgentsForPrompt(allowedAgents));
   }
-  
-  private async resolveAllowedAgents(allowedAgentNames: string[]): Promise<AgentSummary[]> {
+
+  private async resolveAllowedAgents(
+    allowedAgentNames: string[]
+  ): Promise<AgentSummary[]> {
     const agents: AgentSummary[] = [];
-    
+
     for (const agentName of allowedAgentNames) {
       try {
         const resolved = await this.gitAgentResolver.resolveAgent(agentName);
@@ -1193,21 +1291,25 @@ class PromptTemplateResolverImpl implements PromptTemplateResolver {
           name: agentName,
           description: resolved.agent.description,
           examples: resolved.agent.examples || [],
-          source: resolved.source
+          source: resolved.source,
         });
       } catch (error) {
         console.warn(`Could not resolve allowed agent: ${agentName}`, error);
       }
     }
-    
+
     return agents;
   }
-  
+
   private formatAgentsForPrompt(agents: AgentSummary[]): string {
-    return agents.map(agent => {
-      const sourceIndicator = agent.source === 'a2a' ? ' (external)' : '';
-      return `- **${agent.name}${sourceIndicator}**: ${agent.description}\n  Examples: ${agent.examples.join(', ') || 'General tasks'}`;
-    }).join('\n');
+    return agents
+      .map((agent) => {
+        const sourceIndicator = agent.source === "a2a" ? " (external)" : "";
+        return `- **${agent.name}${sourceIndicator}**: ${
+          agent.description
+        }\n  Examples: ${agent.examples.join(", ") || "General tasks"}`;
+      })
+      .join("\n");
   }
 }
 ```
@@ -1226,7 +1328,7 @@ version: "1.3.0"
 tags: ["sales", "lead-qualification", "customer-engagement"]
 model: "gpt-4-turbo"
 providers: ["openai_gpt4", "anthropic_claude"]
-mcpServers: ["crm-tools", "email-templates", "calendar-integration"] 
+mcpServers: ["crm-tools", "email-templates", "calendar-integration"]
 allowedAgents: ["sales/proposal-generator", "external/legal-reviewer"]
 examples:
   - "Qualify this lead for our enterprise product"
@@ -1239,21 +1341,26 @@ maxExecutionMinutes: 15
 You are a Sales Assistant AI specialized in lead qualification and customer engagement.
 
 ## Your Role
+
 - Qualify leads based on company criteria
 - Generate personalized communications
 - Schedule appropriate follow-up actions
 - Escalate complex deals to human sales reps
 
 ## Available Tools
+
 Your tools will be automatically injected based on your configured MCP servers:
+
 - CRM operations (create/update leads, accounts)
 - Email template generation and sending
 - Calendar management and scheduling
 
 ## Available Agents
+
 You can delegate specialized tasks to: {{allowed_agents}}
 
 ## Process Guidelines
+
 1. Always gather basic qualification information first
 2. Use sales/proposal-generator for complex RFPs
 3. Use external/legal-reviewer for contract-related questions
@@ -1265,11 +1372,12 @@ Your task: {{prompt}}
 #### 5.1.2 Repository Structure Examples
 
 **Root Repository (unnamespaced):**
+
 ```
 main-agents/
 ├── sales/
 │   ├── assistant/prompt.md              → "sales/assistant"
-│   ├── proposal-generator/prompt.md     → "sales/proposal-generator" 
+│   ├── proposal-generator/prompt.md     → "sales/proposal-generator"
 │   └── deal-analyzer/prompt.md          → "sales/deal-analyzer"
 ├── support/
 │   ├── tier1/prompt.md                  → "support/tier1"
@@ -1284,6 +1392,7 @@ main-agents/
 ```
 
 **Namespaced Repository:**
+
 ```
 experimental-agents/
 ├── nlp/
@@ -1315,7 +1424,7 @@ experimental-agents/
     },
     {
       "name": "experimental",
-      "gitUrl": "https://github.com/company/experimental-agents.git", 
+      "gitUrl": "https://github.com/company/experimental-agents.git",
       "branch": "main",
       "isRoot": false,
       "syncInterval": "15m",
@@ -1324,7 +1433,7 @@ experimental-agents/
       "isActive": true
     },
     {
-      "name": "partner-shared", 
+      "name": "partner-shared",
       "gitUrl": "https://github.com/partner/shared-agents.git",
       "branch": "stable",
       "isRoot": false,
@@ -1362,20 +1471,20 @@ type GitAgent {
   description: String!
   version: String!
   tags: [String!]!
-  
+
   # Git metadata
   repository: AgentRepository!
   filePath: String!
   gitCommit: String!
   lastModified: DateTime!
-  
+
   # Configuration
   model: String
   providers: [String!]!
   mcpServers: [String!]!
   allowedAgents: [String!]!
   examples: [String!]!
-  
+
   # Analytics
   usageCount: Int!
   lastUsed: DateTime
@@ -1399,13 +1508,16 @@ type SyncError {
 type Mutation {
   # Repository management
   addAgentRepository(input: AddAgentRepositoryInput!): AgentRepository!
-  updateAgentRepository(id: ID!, input: UpdateAgentRepositoryInput!): AgentRepository!
+  updateAgentRepository(
+    id: ID!
+    input: UpdateAgentRepositoryInput!
+  ): AgentRepository!
   removeAgentRepository(id: ID!): Boolean!
-  
+
   # Git synchronization
   syncAgentRepository(name: String!): AgentRepository!
   syncAllAgentRepositories: [AgentRepository!]!
-  
+
   # Branch management
   switchRepositoryBranch(name: String!, branch: String!): AgentRepository!
 }
@@ -1414,11 +1526,11 @@ type Query {
   # Repository queries
   agentRepository(name: String!): AgentRepository
   agentRepositories: [AgentRepository!]!
-  
+
   # Agent discovery
   gitAgent(name: String!): GitAgent
   gitAgents(repositoryName: String, filters: GitAgentFilters): [GitAgent!]!
-  
+
   # Git operations
   agentGitHistory(agentName: String!, limit: Int = 10): [GitCommit!]!
   gitBranches(repositoryName: String!): [String!]!
@@ -1445,65 +1557,77 @@ class AgentResolver {
       if (agent) {
         return {
           agent: agent,
-          source: 'git',
+          source: "git",
           repository: rootRepo.name,
           isNamespaced: false,
-          priority: 'root'
+          priority: "root",
         };
       }
     }
-    
+
     // 2. Check namespaced repositories
-    if (requestedName.includes('/')) {
-      const parts = requestedName.split('/');
-      
+    if (requestedName.includes("/")) {
+      const parts = requestedName.split("/");
+
       // Try namespace/path pattern (e.g., "experimental/nlp/sentiment")
       for (let i = 1; i < parts.length; i++) {
-        const namespace = parts.slice(0, i).join('/');
-        const agentPath = parts.slice(i).join('/');
-        
+        const namespace = parts.slice(0, i).join("/");
+        const agentPath = parts.slice(i).join("/");
+
         const namespacedRepo = this.namedRepositories.get(namespace);
         if (namespacedRepo) {
-          const agent = await this.findAgentInRepository(namespacedRepo, agentPath);
+          const agent = await this.findAgentInRepository(
+            namespacedRepo,
+            agentPath
+          );
           if (agent) {
             return {
               agent: agent,
-              source: 'git',
+              source: "git",
               repository: namespacedRepo.name,
               isNamespaced: true,
-              priority: 'namespaced'
+              priority: "namespaced",
             };
           }
         }
       }
     }
-    
+
     // 3. Check external A2A agents
-    const externalAgent = await this.externalA2ARegistry.findAgent(requestedName);
+    const externalAgent = await this.externalA2ARegistry.findAgent(
+      requestedName
+    );
     if (externalAgent) {
       return {
         agent: externalAgent,
-        source: 'a2a',
+        source: "a2a",
         isNamespaced: false,
-        priority: 'external'
+        priority: "external",
       };
     }
-    
+
     throw new AgentNotFoundError(
       `Agent "${requestedName}" not found in any git repository or external registry`
     );
   }
-  
-  async findAgentInRepository(repo: AgentRepository, agentPath: string): Promise<GitAgent | null> {
+
+  async findAgentInRepository(
+    repo: AgentRepository,
+    agentPath: string
+  ): Promise<GitAgent | null> {
     const expectedFiles = [
       `${agentPath}/prompt.md`,
       `${agentPath}/agent.md`,
-      `${agentPath}.md`
+      `${agentPath}.md`,
     ];
-    
+
     for (const filePath of expectedFiles) {
       try {
-        const content = await this.gitService.getFile(repo.name, filePath, repo.currentCommit);
+        const content = await this.gitService.getFile(
+          repo.name,
+          filePath,
+          repo.currentCommit
+        );
         if (content) {
           return await this.parseAgentDefinition(repo, filePath, content);
         }
@@ -1512,7 +1636,7 @@ class AgentResolver {
         continue;
       }
     }
-    
+
     return null;
   }
 }
@@ -1540,7 +1664,7 @@ class AgentResolver {
         "name": "X-API-Key"
       },
       "oauth2": {
-        "type": "oauth2", 
+        "type": "oauth2",
         "flows": {
           "clientCredentials": {
             "tokenUrl": "https://auth.company.com/oauth/token",
@@ -1573,40 +1697,38 @@ class A2AAgentCardGeneratorImpl implements A2AAgentCardGenerator {
   async generateAgentCard(): Promise<A2AAgentCard> {
     const allowedAgents = await this.getExposableAgents();
     const skills = await this.generateSkillsFromGitAgents(allowedAgents);
-    
+
     return {
       name: "Company AI Agent Platform",
-      description: "Enterprise AI agents for customer support, sales, and operations",
+      description:
+        "Enterprise AI agents for customer support, sales, and operations",
       url: `${this.config.baseUrl}/a2a/v1`,
       version: "1.0.0",
       provider: {
         organization: this.config.organization,
-        url: this.config.organizationUrl
+        url: this.config.organizationUrl,
       },
       capabilities: {
         streaming: true,
         pushNotifications: false,
-        stateTransitionHistory: true
+        stateTransitionHistory: true,
       },
       securitySchemes: this.config.agentExposure.defaultSecuritySchemes,
-      security: [
-        { "apiKey": [] },
-        { "oauth2": ["agent:execute"] }
-      ],
+      security: [{ apiKey: [] }, { oauth2: ["agent:execute"] }],
       defaultInputModes: ["text/plain", "application/json"],
       defaultOutputModes: ["text/plain", "application/json"],
       skills: skills,
-      supportsAuthenticatedExtendedCard: true
+      supportsAuthenticatedExtendedCard: true,
     };
   }
-  
+
   async generateSkillsFromGitAgents(agentNames: string[]): Promise<A2ASkill[]> {
     const skills: A2ASkill[] = [];
-    
+
     for (const agentName of agentNames) {
       try {
         const resolved = await this.gitAgentResolver.resolveAgent(agentName);
-        
+
         skills.push({
           id: agentName,
           name: resolved.agent.name,
@@ -1614,13 +1736,16 @@ class A2AAgentCardGeneratorImpl implements A2AAgentCardGenerator {
           tags: resolved.agent.tags,
           examples: resolved.agent.examples,
           inputModes: ["text/plain", "application/json"],
-          outputModes: ["text/plain", "application/json"]
+          outputModes: ["text/plain", "application/json"],
         });
       } catch (error) {
-        console.warn(`Could not resolve agent for A2A exposure: ${agentName}`, error);
+        console.warn(
+          `Could not resolve agent for A2A exposure: ${agentName}`,
+          error
+        );
       }
     }
-    
+
     return skills;
   }
 }
@@ -1631,7 +1756,9 @@ class A2AAgentCardGeneratorImpl implements A2AAgentCardGenerator {
 ```typescript
 interface A2ARequestHandler {
   handleMessageSend(params: A2AMessageSendParams): Promise<A2AResponse>;
-  handleMessageStream(params: A2AMessageSendParams): AsyncIterableIterator<A2AStreamEvent>;
+  handleMessageStream(
+    params: A2AMessageSendParams
+  ): AsyncIterableIterator<A2AStreamEvent>;
   handleTasksGet(params: A2ATaskQueryParams): Promise<A2ATask>;
   handleTasksCancel(params: A2ATaskIdParams): Promise<A2ATask>;
 }
@@ -1641,20 +1768,20 @@ class A2ARequestHandlerImpl implements A2ARequestHandler {
     // 1. Validate request and extract agent skill
     const skillId = this.extractSkillFromMessage(params.message);
     const agentName = skillId; // Skills map directly to agent names
-    
+
     // 2. Validate agent is exposed
     await this.validateAgentExposure(agentName);
-    
+
     // 3. Convert A2A message to Shaman execution
     const runInput: RunAgentInput = {
       agentName: agentName,
       input: this.extractTextFromA2AParts(params.message.parts),
-      contextScope: 'FULL'
+      contextScope: "FULL",
     };
-    
+
     // 4. Execute agent via workflow engine
     const run = await this.workflowEngine.startRun(runInput);
-    
+
     // 5. Handle based on configuration
     if (params.configuration?.blocking) {
       // Wait for completion and return result
@@ -1665,29 +1792,31 @@ class A2ARequestHandlerImpl implements A2ARequestHandler {
       return this.convertRunToA2ATask(run);
     }
   }
-  
-  async *handleMessageStream(params: A2AMessageSendParams): AsyncIterableIterator<A2AStreamEvent> {
+
+  async *handleMessageStream(
+    params: A2AMessageSendParams
+  ): AsyncIterableIterator<A2AStreamEvent> {
     const agentName = this.extractSkillFromMessage(params.message);
     await this.validateAgentExposure(agentName);
-    
+
     const runInput: RunAgentInput = {
       agentName: agentName,
       input: this.extractTextFromA2AParts(params.message.parts),
-      contextScope: 'FULL'
+      contextScope: "FULL",
     };
-    
+
     const run = await this.workflowEngine.startRun(runInput);
-    
+
     // Stream real-time events
     const subscription = this.subscribeToRunEvents(run.id);
-    
+
     try {
       for await (const event of subscription) {
         const a2aEvent = this.convertShamanEventToA2A(event, run.id);
         if (a2aEvent) {
           yield a2aEvent;
         }
-        
+
         // End stream on terminal state
         if (this.isTerminalState(event.type)) {
           break;
@@ -1732,8 +1861,13 @@ type ExternalA2ASkill {
 }
 
 type Mutation {
-  registerExternalA2AAgent(input: RegisterExternalA2AAgentInput!): ExternalA2AAgent!
-  updateExternalA2AAgent(id: ID!, input: UpdateExternalA2AAgentInput!): ExternalA2AAgent!
+  registerExternalA2AAgent(
+    input: RegisterExternalA2AAgentInput!
+  ): ExternalA2AAgent!
+  updateExternalA2AAgent(
+    id: ID!
+    input: UpdateExternalA2AAgentInput!
+  ): ExternalA2AAgent!
   removeExternalA2AAgent(id: ID!): Boolean!
   refreshExternalA2AAgent(id: ID!): ExternalA2AAgent!
   testExternalA2AConnection(id: ID!): Boolean!
@@ -1751,7 +1885,7 @@ input RegisterExternalA2AAgentInput {
 input ExternalA2AAuthInput {
   type: String! # "apiKey", "oauth2", "basic", "none"
   apiKey: String
-  oauthClientId: String  
+  oauthClientId: String
   oauthClientSecret: String
   oauthTokenUrl: String
   basicUsername: String
@@ -1763,21 +1897,31 @@ input ExternalA2AAuthInput {
 
 ```typescript
 interface ExternalA2ADiscoveryService {
-  discoverAgent(endpoint: string, authConfig: A2AAuthConfig): Promise<ExternalA2AAgent>;
+  discoverAgent(
+    endpoint: string,
+    authConfig: A2AAuthConfig
+  ): Promise<ExternalA2AAgent>;
   refreshAgentCard(agentId: string): Promise<A2AAgentCard>;
   healthCheck(agentId: string): Promise<HealthStatus>;
   scheduleHealthChecks(): void;
 }
 
 class ExternalA2ADiscoveryServiceImpl implements ExternalA2ADiscoveryService {
-  async discoverAgent(endpoint: string, authConfig: A2AAuthConfig): Promise<ExternalA2AAgent> {
+  async discoverAgent(
+    endpoint: string,
+    authConfig: A2AAuthConfig
+  ): Promise<ExternalA2AAgent> {
     // 1. Fetch public agent card
     const publicCardUrl = `${endpoint}/../.well-known/agent.json`;
     const publicCard = await this.fetchAgentCard(publicCardUrl);
-    
+
     // 2. Test authentication
-    await this.validateAuthentication(endpoint, authConfig, publicCard.security);
-    
+    await this.validateAuthentication(
+      endpoint,
+      authConfig,
+      publicCard.security
+    );
+
     // 3. Fetch authenticated extended card if available
     let finalCard = publicCard;
     if (publicCard.supportsAuthenticatedExtendedCard) {
@@ -1785,13 +1929,13 @@ class ExternalA2ADiscoveryServiceImpl implements ExternalA2ADiscoveryService {
         const authCardUrl = `${endpoint}/../agent/authenticatedExtendedCard`;
         finalCard = await this.fetchAgentCard(authCardUrl, authConfig);
       } catch (error) {
-        console.warn('Could not fetch authenticated extended card:', error);
+        console.warn("Could not fetch authenticated extended card:", error);
       }
     }
-    
+
     // 4. Generate agent name mapping
     const agentName = this.generateAgentName(endpoint, finalCard);
-    
+
     // 5. Create external agent record
     return {
       name: agentName,
@@ -1802,15 +1946,15 @@ class ExternalA2ADiscoveryServiceImpl implements ExternalA2ADiscoveryService {
       skills: finalCard.skills,
       isActive: true,
       lastHealthCheck: new Date(),
-      healthStatus: 'healthy'
+      healthStatus: "healthy",
     };
   }
-  
+
   private generateAgentName(endpoint: string, card: A2AAgentCard): string {
     // Generate namespace from domain
     const url = new URL(endpoint);
-    const domain = url.hostname.replace(/\./g, '-');
-    
+    const domain = url.hostname.replace(/\./g, "-");
+
     // Use first skill ID or domain
     const skillId = card.skills[0]?.id;
     if (skillId) {
@@ -1819,41 +1963,41 @@ class ExternalA2ADiscoveryServiceImpl implements ExternalA2ADiscoveryService {
       return `external/${domain}/agent`;
     }
   }
-  
+
   async healthCheck(agentId: string): Promise<HealthStatus> {
     const agent = await this.getExternalAgent(agentId);
-    
+
     try {
       // Test basic connectivity
       const testMessage = {
-        role: 'user' as const,
-        parts: [{ kind: 'text' as const, text: 'Health check ping' }],
-        messageId: generateId()
+        role: "user" as const,
+        parts: [{ kind: "text" as const, text: "Health check ping" }],
+        messageId: generateId(),
       };
-      
+
       const response = await this.sendA2ARequest(agent, {
-        jsonrpc: '2.0',
-        id: 'health-check',
-        method: 'message/send',
+        jsonrpc: "2.0",
+        id: "health-check",
+        method: "message/send",
         params: {
           message: testMessage,
           configuration: {
-            acceptedOutputModes: ['text/plain'],
-            blocking: true
-          }
-        }
+            acceptedOutputModes: ["text/plain"],
+            blocking: true,
+          },
+        },
       });
-      
+
       return {
-        status: 'healthy',
+        status: "healthy",
         responseTime: response.responseTime,
-        lastCheck: new Date()
+        lastCheck: new Date(),
       };
     } catch (error) {
       return {
-        status: 'unhealthy',
+        status: "unhealthy",
         error: error.message,
-        lastCheck: new Date()
+        lastCheck: new Date(),
       };
     }
   }
@@ -1868,15 +2012,22 @@ Git-based agents can call external A2A agents seamlessly:
 ---
 name: "ComprehensiveAnalyzer"
 description: "Performs analysis using both internal and external specialized agents"
-allowedAgents: ["internal/data-processor", "external/legal-expert", "external/financial-analyst"]
+allowedAgents:
+  [
+    "internal/data-processor",
+    "external/legal-expert",
+    "external/financial-analyst",
+  ]
 ---
 
 You can delegate tasks to both internal and external agents:
 
 ## Internal Agents
+
 - **internal/data-processor**: For data cleaning and analysis
 
-## External Agents  
+## External Agents
+
 - **external/legal-expert**: External legal analysis service
 - **external/financial-analyst**: Partner financial modeling service
 
@@ -1886,6 +2037,7 @@ Your task: {{prompt}}
 ```
 
 **Execution Flow:**
+
 ```
 ComprehensiveAnalyzer receives: "Analyze this M&A deal for legal and financial risks"
 
@@ -1897,7 +2049,7 @@ ComprehensiveAnalyzer receives: "Analyze this M&A deal for legal and financial r
    → Receives detailed legal risk assessment
 
 3. Calls external/financial-analyst via A2A:
-   → POST https://finance-ai.vendor.com/a2a/v1  
+   → POST https://finance-ai.vendor.com/a2a/v1
    → Receives financial model and projections
 
 4. Synthesizes all results and completes:
@@ -1910,58 +2062,85 @@ ComprehensiveAnalyzer receives: "Analyze this M&A deal for legal and financial r
 
 ```typescript
 interface AgentExposureValidator {
-  validateAgentExposure(agentName: string, clientAuth: AuthContext): Promise<ExposureValidation>;
-  validateRateLimit(clientId: string, agentName: string): Promise<RateLimitStatus>;
+  validateAgentExposure(
+    agentName: string,
+    clientAuth: AuthContext
+  ): Promise<ExposureValidation>;
+  validateRateLimit(
+    clientId: string,
+    agentName: string
+  ): Promise<RateLimitStatus>;
   auditA2ARequest(request: A2ARequest, clientAuth: AuthContext): Promise<void>;
 }
 
 class AgentExposureValidatorImpl implements AgentExposureValidator {
-  async validateAgentExposure(agentName: string, clientAuth: AuthContext): Promise<ExposureValidation> {
+  async validateAgentExposure(
+    agentName: string,
+    clientAuth: AuthContext
+  ): Promise<ExposureValidation> {
     const config = this.config.agentExposure;
-    
+
     // 1. Check if exposure is enabled
     if (!config.enabled) {
-      return { allowed: false, reason: 'Agent exposure is disabled' };
+      return { allowed: false, reason: "Agent exposure is disabled" };
     }
-    
+
     // 2. Check blocked agents
     if (config.blockedAgents.includes(agentName)) {
-      return { allowed: false, reason: `Agent ${agentName} is explicitly blocked` };
+      return {
+        allowed: false,
+        reason: `Agent ${agentName} is explicitly blocked`,
+      };
     }
-    
+
     // 3. Check allowed agents list
-    if (config.allowedAgents.length > 0 && !config.allowedAgents.includes(agentName)) {
-      return { allowed: false, reason: `Agent ${agentName} is not in allowed list` };
+    if (
+      config.allowedAgents.length > 0 &&
+      !config.allowedAgents.includes(agentName)
+    ) {
+      return {
+        allowed: false,
+        reason: `Agent ${agentName} is not in allowed list`,
+      };
     }
-    
-    // 4. Check allowed prefixes  
+
+    // 4. Check allowed prefixes
     if (config.allowedPrefixes.length > 0) {
-      const hasAllowedPrefix = config.allowedPrefixes.some(prefix => 
+      const hasAllowedPrefix = config.allowedPrefixes.some((prefix) =>
         agentName.startsWith(prefix)
       );
-      
+
       if (!hasAllowedPrefix) {
-        return { allowed: false, reason: `Agent ${agentName} does not match any allowed prefix` };
+        return {
+          allowed: false,
+          reason: `Agent ${agentName} does not match any allowed prefix`,
+        };
       }
     }
-    
+
     // 5. Validate authentication if required
     if (config.requiresAuthentication && !clientAuth.isAuthenticated) {
-      return { allowed: false, reason: 'Authentication required for agent access' };
+      return {
+        allowed: false,
+        reason: "Authentication required for agent access",
+      };
     }
-    
+
     // 6. Check client-specific permissions
     if (clientAuth.isAuthenticated) {
       const hasPermission = await this.checkClientAgentPermissions(
-        clientAuth.clientId, 
+        clientAuth.clientId,
         agentName
       );
-      
+
       if (!hasPermission) {
-        return { allowed: false, reason: `Client does not have permission to access ${agentName}` };
+        return {
+          allowed: false,
+          reason: `Client does not have permission to access ${agentName}`,
+        };
       }
     }
-    
+
     return { allowed: true };
   }
 }
@@ -1971,55 +2150,64 @@ class AgentExposureValidatorImpl implements AgentExposureValidator {
 
 ```typescript
 interface ExternalAgentSecurityManager {
-  validateExternalCall(agentName: string, callerContext: AgentContext): Promise<SecurityValidation>;
+  validateExternalCall(
+    agentName: string,
+    callerContext: AgentContext
+  ): Promise<SecurityValidation>;
   rotateExternalCredentials(agentId: string): Promise<void>;
   auditExternalCall(call: ExternalAgentCall): Promise<void>;
 }
 
 class ExternalAgentSecurityManagerImpl implements ExternalAgentSecurityManager {
-  async validateExternalCall(agentName: string, callerContext: AgentContext): Promise<SecurityValidation> {
+  async validateExternalCall(
+    agentName: string,
+    callerContext: AgentContext
+  ): Promise<SecurityValidation> {
     const externalAgent = await this.externalA2ARegistry.findAgent(agentName);
     if (!externalAgent) {
-      return { allowed: false, reason: 'External agent not registered' };
+      return { allowed: false, reason: "External agent not registered" };
     }
-    
+
     // 1. Check if external calls are enabled
     if (!this.config.externalCalls.enabled) {
-      return { allowed: false, reason: 'External agent calls are disabled' };
+      return { allowed: false, reason: "External agent calls are disabled" };
     }
-    
+
     // 2. Validate domain whitelist
     const agentDomain = new URL(externalAgent.endpoint).hostname;
     if (!this.config.externalCalls.allowedDomains.includes(agentDomain)) {
-      return { allowed: false, reason: `Domain ${agentDomain} is not in allowed list` };
-    }
-    
-    // 3. Check rate limits
-    const rateLimitStatus = await this.checkExternalCallRateLimit(
-      callerContext.agentName, 
-      agentName
-    );
-    
-    if (!rateLimitStatus.allowed) {
-      return { 
-        allowed: false, 
-        reason: `Rate limit exceeded: ${rateLimitStatus.limitType}` 
+      return {
+        allowed: false,
+        reason: `Domain ${agentDomain} is not in allowed list`,
       };
     }
-    
+
+    // 3. Check rate limits
+    const rateLimitStatus = await this.checkExternalCallRateLimit(
+      callerContext.agentName,
+      agentName
+    );
+
+    if (!rateLimitStatus.allowed) {
+      return {
+        allowed: false,
+        reason: `Rate limit exceeded: ${rateLimitStatus.limitType}`,
+      };
+    }
+
     // 4. Validate agent-specific permissions
     const hasPermission = await this.checkAgentExternalPermissions(
       callerContext.agentName,
       agentName
     );
-    
+
     if (!hasPermission) {
-      return { 
-        allowed: false, 
-        reason: `Agent ${callerContext.agentName} does not have permission to call ${agentName}` 
+      return {
+        allowed: false,
+        reason: `Agent ${callerContext.agentName} does not have permission to call ${agentName}`,
       };
     }
-    
+
     return { allowed: true };
   }
 }
@@ -2192,17 +2380,17 @@ type GitAgent {
   allowedAgents: [String!]!
   examples: [String!]!
   contextScope: ContextScope!
-  
+
   # Git metadata
   repository: AgentRepository!
   filePath: String!
   gitCommit: String!
   lastModified: DateTime!
-  
+
   # Computed properties
   isNamespaced: Boolean!
   fullPath: String!
-  
+
   # Analytics
   usageCount: Int!
   lastUsed: DateTime
@@ -2278,13 +2466,13 @@ type Agent {
   description: String!
   version: String!
   source: AgentSource!
-  
+
   # Git agent fields
   gitAgent: GitAgent
-  
+
   # External A2A agent fields
   externalA2AAgent: ExternalA2AAgent
-  
+
   # Common computed fields
   tags: [String!]!
   usageCount: Int!
@@ -2420,12 +2608,12 @@ type AgentCallInfo {
   contextScope: ContextScope!
   callDepth: Int!
   callStack: [String!]!
-  
+
   # Git-specific info
   gitRepository: String
   gitCommit: String
-  
-  # A2A-specific info  
+
+  # A2A-specific info
   a2aEndpoint: String
   a2aTaskId: String
 }
@@ -2730,7 +2918,7 @@ input UpdateExternalA2AAgentInput {
 input ExternalA2AAuthInput {
   type: String!
   apiKey: String
-  oauthClientId: String  
+  oauthClientId: String
   oauthClientSecret: String
   oauthTokenUrl: String
   basicUsername: String
@@ -2860,7 +3048,7 @@ type Query {
   agentAnalytics(agentName: String!, timeRange: String = "30d"): AgentAnalytics!
   systemUsageStats(timeRange: String = "30d"): SystemUsageStats!
   costAnalytics(timeRange: String = "30d"): CostAnalytics!
-  
+
   # --- A2A Integration ---
   a2aAgentCard: JSON!
   a2aExposedAgents: [String!]!
@@ -2911,7 +3099,7 @@ type Mutation {
     response: String!
     attachments: [FileUpload!]
   ): Run!
-  
+
   skipInput(
     runId: ID!
     inputRequestId: ID!
@@ -3146,7 +3334,7 @@ type SystemAlert {
           "description": "Maximum execution time before timeout"
         },
         "inputRequestTimeout": {
-          "type": "string", 
+          "type": "string",
           "default": "24h",
           "description": "How long to wait for user input before timeout"
         },
@@ -3182,17 +3370,17 @@ type SystemAlert {
         },
         "allowedAgents": {
           "type": "array",
-          "items": {"type": "string"},
+          "items": { "type": "string" },
           "description": "Specific agents that can be exposed"
         },
         "allowedPrefixes": {
-          "type": "array", 
-          "items": {"type": "string"},
+          "type": "array",
+          "items": { "type": "string" },
           "description": "Agent path prefixes that can be exposed"
         },
         "blockedAgents": {
           "type": "array",
-          "items": {"type": "string"},
+          "items": { "type": "string" },
           "description": "Agents that are explicitly blocked from exposure"
         },
         "requiresAuthentication": {
@@ -3207,9 +3395,9 @@ type SystemAlert {
         "rateLimiting": {
           "type": "object",
           "properties": {
-            "requestsPerMinute": {"type": "integer", "default": 60},
-            "requestsPerHour": {"type": "integer", "default": 1000},
-            "requestsPerDay": {"type": "integer", "default": 10000}
+            "requestsPerMinute": { "type": "integer", "default": 60 },
+            "requestsPerHour": { "type": "integer", "default": 1000 },
+            "requestsPerDay": { "type": "integer", "default": 10000 }
           }
         }
       }
@@ -3224,7 +3412,7 @@ type SystemAlert {
         },
         "allowedDomains": {
           "type": "array",
-          "items": {"type": "string"},
+          "items": { "type": "string" },
           "description": "Domains allowed for external agent calls"
         },
         "defaultTimeout": {
@@ -3235,8 +3423,8 @@ type SystemAlert {
         "rateLimiting": {
           "type": "object",
           "properties": {
-            "callsPerMinute": {"type": "integer", "default": 30},
-            "callsPerHour": {"type": "integer", "default": 500}
+            "callsPerMinute": { "type": "integer", "default": 30 },
+            "callsPerHour": { "type": "integer", "default": 500 }
           }
         }
       }
@@ -3357,7 +3545,7 @@ type SystemAlert {
     {
       "name": "main-agents",
       "gitUrl": "git@github.com:company/main-agents.git",
-      "branch": "production", 
+      "branch": "production",
       "isRoot": true,
       "syncInterval": "5m",
       "authType": "ssh-key",
@@ -3369,7 +3557,7 @@ type SystemAlert {
       "gitUrl": "https://github.com/company/experimental-agents.git",
       "branch": "main",
       "isRoot": false,
-      "syncInterval": "15m", 
+      "syncInterval": "15m",
       "authType": "token",
       "authToken": "env(GITHUB_EXPERIMENTAL_TOKEN)"
     },
@@ -3442,7 +3630,7 @@ type SystemAlert {
       "apiKey": "env(OPENAI_API_KEY)"
     },
     "anthropic_claude": {
-      "type": "ANTHROPIC", 
+      "type": "ANTHROPIC",
       "apiKey": "env(ANTHROPIC_API_KEY)"
     },
     "groq_llama": {
@@ -3458,7 +3646,7 @@ type SystemAlert {
     },
     "crm-tools": {
       "type": "HTTP",
-      "endpoint": "https://mcp-crm.internal:3000", 
+      "endpoint": "https://mcp-crm.internal:3000",
       "apiKey": "env(MCP_CRM_API_KEY)"
     },
     "filesystem": {
