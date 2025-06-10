@@ -1,0 +1,12 @@
+{
+  "// TODO": "Implement development configuration",
+  "// Include": {
+    "port": "Development server port",
+    "database": "Local PostgreSQL connection",
+    "redis": "Local Redis connection",
+    "engine": "BullMQ for development",
+    "providers": "Local/test LLM providers",
+    "security": "Relaxed security settings",
+    "observability": "Local logging and metrics"
+  }
+}

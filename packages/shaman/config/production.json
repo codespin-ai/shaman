@@ -1,0 +1,12 @@
+{
+  "// TODO": "Implement production configuration",
+  "// Include": {
+    "port": "Production server port",
+    "database": "Production PostgreSQL with SSL",
+    "redis": "Production Redis cluster",
+    "engine": "Temporal.io for production",
+    "providers": "Production LLM providers with rate limits",
+    "security": "Full security with JWT, RBAC, and encryption",
+    "observability": "OpenTelemetry with external collectors"
+  }
+}

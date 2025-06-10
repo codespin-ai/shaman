@@ -1,0 +1,10 @@
+# Integration test directory
+# TODO: Add integration tests for:
+# - End-to-end agent execution workflows
+# - A2A protocol compliance and interoperability
+# - Git repository synchronization and discovery
+# - External agent registration and health monitoring
+# - GraphQL API functionality and performance
+# - Security and authentication systems
+# - Multi-provider LLM integration
+# - Database and Redis persistence layers

@@ -1,0 +1,18 @@
+# TODO: Define root GraphQL schema
+# Include:
+# - Root Query, Mutation, and Subscription types
+# - Custom scalar definitions
+# - Common enums and interfaces
+# - Schema directives for authorization
+# - Import other schema files
+# 
+# Root types:
+# - type Query
+# - type Mutation
+# - type Subscription
+# 
+# Scalars:
+# - scalar DateTime
+# - scalar JSON
+# - scalar ToolCallID
+# - scalar EmailAddress
