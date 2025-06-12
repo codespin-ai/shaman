@@ -1,23 +1,18 @@
-#!/bin/bash
+#!/usr/bin/env bash
+# -------------------------------------------------------------------
+# clean.sh – remove build artefacts across the monorepo
+# -------------------------------------------------------------------
+set -euo pipefail
 
-# Exit on error
-set -e
+echo "=== Cleaning Codespin Shaman ==="
 
-# Print commands for debugging
-set -x
+# remove dist folders in every workspace that has any
+for pkg in packages/*; do
+  [[ -d "$pkg" ]] || continue
+  if [[ -d "$pkg/dist" ]]; then
+    echo "Cleaning $pkg/dist…"
+    rm -rf "$pkg/dist"
+  fi
+done
 
-echo "=== Cleaning Shaman App ==="
-
-# Clean shaman server project
-echo "Cleaning shaman server project..."
-cd packages/shaman
-rm -rf dist
-cd ../..
-
-# Clean UI project
-echo "Cleaning UI project..."
-cd packages/ui
-rm -rf dist
-cd ../..
-
-echo "=== Clean completed successfully ===
+echo "=== Clean completed successfully ==="

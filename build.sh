@@ -1,54 +1,53 @@
-#!/bin/bash
+#!/usr/bin/env bash
+# -------------------------------------------------------------------
+# build.sh – monorepo-aware build helper for Codespin Shaman
+#
+# Flags:
+#   --install   Force npm install in every package even if node_modules exists
+#   --migrate   Run DB migrations after build (delegates to root npm script)
+#   --seed      Run DB seeders  after build (delegates to root npm script)
+# -------------------------------------------------------------------
+set -euo pipefail
 
-# Exit on error
-set -e
+echo "=== Building Codespin Shaman ==="
 
-# Print commands for debugging
-set -x
-
-echo "=== Building Shaman App ==="
-
-# Clean previous builds
-echo "Cleaning previous builds..."
+# 1 ▸ clean first
 ./clean.sh
 
-# Install dependencies if node_modules doesn't exist or if --install flag is used
-if [ ! -d "node_modules" ] || [[ "$*" == *--install* ]]; then
-  echo "Installing root dependencies..."
+# 2 ▸ install root deps (once)
+if [[ ! -d node_modules || "$*" == *--install* ]]; then
+  echo "Installing root dependencies…"
   npm install
-
-  echo "Installing shaman server dependencies..."
-  cd packages/shaman
-  npm install
-  cd ../..
-
-  echo "Installing UI dependencies..."
-  cd packages/ui
-  npm install
-  cd ../..
 fi
 
-# Build shaman server project
-echo "Building shaman server project..."
-cd packages/shaman
-npm run build
-cd ../..
+# 3 ▸ loop through every package in ./packages/
+for pkg in packages/*; do
+  [[ -d "$pkg" ]] || continue
+  if [[ ! -d "$pkg/node_modules" || "$*" == *--install* ]]; then
+    echo "Installing deps in $pkg…"
+    (cd "$pkg" && npm install)
+  fi
+done
 
-# Build UI project
-echo "Building UI project..."
-cd packages/ui
-npm run build
-cd ../..
+# 4 ▸ build each package that defines a build script
+for pkg in packages/*; do
+  [[ -f "$pkg/package.json" ]] || continue
+  if jq -e '.scripts.build' "$pkg/package.json" >/dev/null 2>&1; then
+    echo "Building $pkg…"
+    (cd "$pkg" && npm run build)
+  else
+    echo "Skipping build for $pkg (no build script)"
+  fi
+done
 
-# Run database migrations if --migrate flag is used
+# 5 ▸ optional migrations / seeds via root scripts
 if [[ "$*" == *--migrate* ]]; then
-  echo "Running database migrations..."
+  echo "Running database migrations…"
   npm run migrate:latest
 fi
 
-# Run database seeds if --seed flag is used
 if [[ "$*" == *--seed* ]]; then
-  echo "Running database seeds..."
+  echo "Running database seeds…"
   npm run seed:run
 fi
 
