@@ -142,12 +142,6 @@ All agents automatically have access to these system tools:
 
 **request_user_input**: Requests input from the user and pauses execution until a response is received. Supports different input types (text, choice, file, approval), optional choices for selection, required/optional input, and timeout handling.
 
-### Memory Management Tools
-
-**save_memory**: Saves data for later retrieval across runs. Takes a key, value (any JSON), and optional expiration time. Memory is namespaced by agent to prevent conflicts.
-
-**load_memory**: Retrieves previously saved data by key. Returns the stored value or null if not found or expired.
-
 These system tools provide the fundamental capabilities every agent needs: calling other agents, completing execution, interacting with users, and managing persistent state. They're injected automatically so agents don't need to configure them explicitly.
 
 ---

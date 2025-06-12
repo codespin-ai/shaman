@@ -404,7 +404,6 @@ interface WorkerProcess {
   toolCallRouter: ToolCallRouter;
   a2aClientHandler: A2AClientHandler;
   streamPublisher: StreamPublisher;
-  memoryManager: MemoryManager;
 }
 
 interface GitAgentResolver {
@@ -504,7 +503,6 @@ interface ExecutionContext {
   currentStep: Step;
   currentAgent: GitAgent;
   callStack: string[];
-  memoryAccess: MemoryManager;
   streamPublisher: StreamPublisher;
   availableTools: Tool[];
   maxCallDepth: number;
@@ -527,10 +525,6 @@ interface ToolCallRouterImpl extends ToolCallRouter {
 
       case 'request_user_input':
         return await this.systemHandler.handleInputRequest(args, context);
-
-      case 'save_memory':
-      case 'load_memory':
-        return await this.systemHandler.handleMemory(name, args, context);
 
       default:
         return await this.mcpHandler.callMcpTool(name, args, context);
@@ -777,37 +771,6 @@ interface AgentSummary {
 ```
 
 ## Infrastructure Components
-
-### Memory Manager
-
-Handles persistent agent memory:
-
-```typescript
-interface MemoryManager {
-  saveMemory(
-    key: string,
-    value: any,
-    agentName: string,
-    expiresAt?: Date
-  ): Promise<Memory>;
-  loadMemory(key: string, agentName: string): Promise<any | null>;
-  listMemories(agentName: string, limit?: number): Promise<Memory[]>;
-  deleteMemory(key: string, agentName: string): Promise<boolean>;
-  cleanupExpiredMemories(): Promise<number>;
-}
-
-interface Memory {
-  id: string;
-  key: string;
-  value: any;
-  agentName: string;
-  runId: string;
-  stepId: string;
-  expiresAt?: Date;
-  createdAt: Date;
-  updatedAt: Date;
-}
-```
 
 ### Stream Publisher
 

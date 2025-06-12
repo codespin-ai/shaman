@@ -953,12 +953,6 @@ interface AccessDecision {
           "type": "boolean",
           "default": true,
           "description": "Prevent agents from calling themselves or creating cycles"
-        },
-        "memoryRetention": {
-          "type": "string",
-          "pattern": "^\\d+[smhd]$",
-          "default": "30d",
-          "description": "How long to retain agent memory"
         }
       }
     },
@@ -1284,8 +1278,7 @@ interface AccessDecision {
     "inputRequestTimeout": "48h",
     "maxCallDepth": 15,
     "agentCallTimeout": "15m",
-    "circularCallPrevention": true,
-    "memoryRetention": "90d"
+    "circularCallPrevention": true
   },
   "agentExposure": {
     "enabled": true,

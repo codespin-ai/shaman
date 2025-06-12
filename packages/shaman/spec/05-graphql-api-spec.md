@@ -816,7 +816,6 @@ input AgentSortInput {
 input RunAgentInput {
   agentName: String!
   input: String!
-  memoryIdsToLoad: [ID!]
   contextScope: ContextScope
   maxCallDepth: Int
   gitCommit: String
@@ -1052,8 +1051,6 @@ scalar Upload
 **Execution Hierarchy**: `Run` contains multiple `Step` instances, which form a DAG through parent-child relationships. Each step can have tool calls, agent calls, and completion information.
 
 **Git Versioning**: Git-based agents maintain full versioning information through `gitCommit`, `gitRepository`, and `lastModified` fields for complete traceability.
-
-**Memory Management**: Agent memory is namespaced by agent name and can be shared across runs with configurable expiration.
 
 ### Subscription Guidelines
 
