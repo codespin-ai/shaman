@@ -1,7 +1,0 @@
-# TODO: Implement CI/CD pipeline
-# - Run tests on multiple Node.js versions
-# - Lint and type checking
-# - Build Docker images
-# - Deploy to staging/production
-# - Security scanning
-# - Integration tests with real databases
