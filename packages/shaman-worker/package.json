@@ -1,0 +1,14 @@
+{
+  "name": "@codespin/shaman-worker",
+  "version": "0.0.1",
+  "description": "Execution unit tying resolver, tool-router, LLM & workflow.",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "sideEffects": false,
+  "files": [
+    "dist"
+  ],
+  "license": "MIT",
+  "dependencies": {}
+}

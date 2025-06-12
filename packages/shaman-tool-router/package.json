@@ -1,0 +1,14 @@
+{
+  "name": "@codespin/shaman-tool-router",
+  "version": "0.0.1",
+  "description": "System-tool, MCP, and agent-call routing layer.",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "sideEffects": false,
+  "files": [
+    "dist"
+  ],
+  "license": "MIT",
+  "dependencies": {}
+}

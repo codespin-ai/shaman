@@ -1,0 +1,14 @@
+{
+  "name": "@codespin/shaman-server",
+  "version": "0.0.1",
+  "description": "GraphQL API, A2A gateway, streaming hub, security.",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "sideEffects": false,
+  "files": [
+    "dist"
+  ],
+  "license": "MIT",
+  "dependencies": {}
+}

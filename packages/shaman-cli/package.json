@@ -1,0 +1,14 @@
+{
+  "name": "@codespin/shaman-cli",
+  "version": "0.0.1",
+  "description": "Dev/Ops command-line wrapper around server & worker.",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "sideEffects": false,
+  "files": [
+    "dist"
+  ],
+  "license": "MIT",
+  "dependencies": {}
+}

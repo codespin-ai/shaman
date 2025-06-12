@@ -1,0 +1,14 @@
+{
+  "name": "@codespin/shaman-workflow-bullmq",
+  "version": "0.0.1",
+  "description": "BullMQ/Redis adapter implementing workflow-core SPI.",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "sideEffects": false,
+  "files": [
+    "dist"
+  ],
+  "license": "MIT",
+  "dependencies": {}
+}

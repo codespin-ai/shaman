@@ -1,0 +1,14 @@
+{
+  "name": "@codespin/shaman-external-registry",
+  "version": "0.0.1",
+  "description": "HTTP client for external A2A agent registry & health checks.",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "sideEffects": false,
+  "files": [
+    "dist"
+  ],
+  "license": "MIT",
+  "dependencies": {}
+}

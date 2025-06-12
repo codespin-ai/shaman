@@ -1,0 +1,14 @@
+{
+  "name": "@codespin/shaman-workflow-core",
+  "version": "0.0.1",
+  "description": "Execution-engine SPI (interfaces only, no heavy deps).",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "sideEffects": false,
+  "files": [
+    "dist"
+  ],
+  "license": "MIT",
+  "dependencies": {}
+}

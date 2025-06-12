@@ -1,0 +1,14 @@
+{
+  "name": "@codespin/shaman-llm-core",
+  "version": "0.0.1",
+  "description": "Provider-agnostic LLM interface & helpers.",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "sideEffects": false,
+  "files": [
+    "dist"
+  ],
+  "license": "MIT",
+  "dependencies": {}
+}

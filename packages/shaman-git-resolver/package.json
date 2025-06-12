@@ -1,0 +1,14 @@
+{
+  "name": "@codespin/shaman-git-resolver",
+  "version": "0.0.1",
+  "description": "Git clone/cache & agent discovery utilities.",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "sideEffects": false,
+  "files": [
+    "dist"
+  ],
+  "license": "MIT",
+  "dependencies": {}
+}
