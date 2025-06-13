@@ -361,17 +361,6 @@ type ToolResponseMessage implements Message {
 #  EXECUTION TYPES
 # =============================================================================
 
-type Memory {
-  id: ID!
-  key: String!
-  value: JSON!
-  run: Run!
-  producingStep: Step!
-  agentName: String!
-  expiresAt: DateTime
-  createdAt: DateTime!
-}
-
 type InputRequest {
   id: ID!
   runId: ID!
@@ -904,12 +893,6 @@ type Query {
   agentCallGraph(runId: ID!): JSON!
   circularCallAttempts(agentName: String, timeRange: String = "24h"): [JSON!]!
 
-  memories(
-    filter: FilterMemoriesInput!
-    limit: Int = 50
-    offset: Int = 0
-  ): [Memory!]!
-
   # --- Analytics & Reporting ---
   agentAnalytics(agentName: String!, timeRange: String = "30d"): AgentAnalytics!
   systemUsageStats(timeRange: String = "30d"): SystemUsageStats!
@@ -979,13 +962,6 @@ type Mutation {
   ): Run!
 
   skipInput(runId: ID!, inputRequestId: ID!, useDefault: String): Run!
-
-  # --- Memory Management ---
-  createMemory(key: String!, value: JSON!, agentName: String!): Memory!
-  updateMemory(id: ID!, value: JSON!): Memory!
-  removeMemory(id: ID!): Boolean!
-  expireMemory(id: ID!, expiresAt: DateTime!): Memory!
-}
 
 # =============================================================================
 #  SUBSCRIPTION TYPE

@@ -347,7 +347,6 @@ interface TemporalActivities {
   callLLM(params: LLMCallParams): Promise<LLMResponse>;
   executeTool(params: ToolCallParams): Promise<ToolResult>;
   executeChildAgent(params: ChildAgentParams): Promise<AgentCompletion>;
-  saveMemory(params: SaveMemoryParams): Promise<void>;
   publishStream(params: StreamEventParams): Promise<void>;
   resolveGitAgent(params: AgentResolveParams): Promise<ResolvedAgent>;
   waitForCompletion(

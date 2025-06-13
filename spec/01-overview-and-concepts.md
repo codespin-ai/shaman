@@ -54,8 +54,6 @@ The framework allows organizations to define AI agents in git repositories as ma
 
 **Step**: A single agent execution within a run. Each step has its own conversation history, token usage tracking, execution timeline, and parent-child relationships. Steps form the nodes in the execution DAG.
 
-**Memory**: Persistent data saved by agents with structured key-value storage. Memory can be accessed across runs, has namespace isolation by agent, and supports expiration policies for cleanup.
-
 **Message**: Individual conversation turns with role-based typing (system, user, assistant, tool). Messages support extensible part systems for different content types.
 
 **Stream Chunk**: Real-time execution events pushed via WebSocket subscriptions. Clients can subscribe to token streams, tool calls, agent calls, and completion events.
