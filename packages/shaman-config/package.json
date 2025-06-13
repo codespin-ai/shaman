@@ -1,0 +1,14 @@
+{
+  "name": "@codespin/shaman-config",
+  "version": "0.0.1",
+  "description": "Configuration loader & schema validator.",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "sideEffects": false,
+  "files": [
+    "dist"
+  ],
+  "license": "MIT",
+  "dependencies": {}
+}
