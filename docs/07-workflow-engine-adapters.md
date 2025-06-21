@@ -14,7 +14,7 @@ The workflow engine adapter acts as a **translation layer** between Shaman's age
                           │ Unified Interface
                           │
 ┌─────────────────────────▼───────────────────────────────────────┐
-│                WORKFLOW ENGINE ADAPTER                         │
+│                WORKFLOW ENGINE ADAPTER                          │
 │                                                                 │
 │  ┌─────────────────┐  ┌─────────────────┐  ┌─────────────────┐  │
 │  │   Temporal      │  │     BullMQ      │  │     Custom      │  │
