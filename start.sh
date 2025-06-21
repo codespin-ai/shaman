@@ -5,7 +5,7 @@ cd "$(dirname "$0")"
 
 # Start the server in background
 echo "Starting Shaman server..."
-cd packages/shaman
+cd node/packages/shaman
 npm run build
 npm start &
 SERVER_PID=$!

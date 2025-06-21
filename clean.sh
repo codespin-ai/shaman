@@ -7,7 +7,7 @@ set -euo pipefail
 echo "=== Cleaning Codespin Shaman ==="
 
 # remove dist folders in every workspace that has any
-for pkg in packages/*; do
+for pkg in node/packages/*; do
   [[ -d "$pkg" ]] || continue
   if [[ -d "$pkg/dist" ]]; then
     echo "Cleaning $pkg/dist…"

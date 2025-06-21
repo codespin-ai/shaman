@@ -29,11 +29,11 @@ const config = {
   },
   migrations: {
     tableName: "knex_migrations",
-    directory: "./database/migrations",
+    directory: "../database/migrations",
     loadExtensions: [".mjs"], // Add this line to load .mjs migration files
   },
   seeds: {
-    directory: "./database/seeds",
+    directory: "../database/seeds",
     loadExtensions: [".mjs"], // Add this line to load .mjs seed files
   },
 };

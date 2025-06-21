@@ -20,8 +20,8 @@ if [[ ! -d node_modules || "$*" == *--install* ]]; then
   npm install
 fi
 
-# 3 ▸ loop through every package in ./packages/
-for pkg in packages/*; do
+# 3 ▸ loop through every package in ./node/packages/
+for pkg in node/packages/*; do
   [[ -d "$pkg" ]] || continue
   if [[ ! -d "$pkg/node_modules" || "$*" == *--install* ]]; then
     echo "Installing deps in $pkg…"
@@ -30,7 +30,7 @@ for pkg in packages/*; do
 done
 
 # 4 ▸ build each package that defines a build script
-for pkg in packages/*; do
+for pkg in node/packages/*; do
   [[ -f "$pkg/package.json" ]] || continue
   if jq -e '.scripts.build' "$pkg/package.json" >/dev/null 2>&1; then
     echo "Building $pkg…"
