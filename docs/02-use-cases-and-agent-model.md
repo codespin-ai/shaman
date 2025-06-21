@@ -29,7 +29,15 @@ version: "2.1.0"
 tags: ["customer-support", "tier-1", "e-commerce"]
 model: "gpt-4-turbo"
 providers: ["openai_gpt4"]
-mcpServers: ["order-management", "customer-db", "refund-processor"]
+mcpServers:
+  order-management:
+    - "order_lookup"
+    - "order_status"
+  customer-db:
+    - "customer_profile"
+    - "account_history"
+  refund-processor:
+    - "process_standard_refund"
 allowedAgents: ["support/billing-specialist", "support/escalation-manager"]
 examples:
   - "Customer wants to check order status"
@@ -44,8 +52,10 @@ You are a Tier 1 Customer Support Agent for an e-commerce platform. Your role is
 You have access to these tools:
 
 - **order_lookup**: Search for customer orders by ID or customer info
+- **order_status**: Get current status of a specific order
 - **customer_profile**: Get customer account details and history
-- **refund_processor**: Process standard refunds within policy
+- **account_history**: View customer's transaction history
+- **process_standard_refund**: Process standard refunds within policy
 
 ## Available Agents
 
@@ -72,7 +82,6 @@ To delegate a billing issue:
   ]
 }
 ```
-````
 
 ## Completion Requirement
 
@@ -94,13 +103,11 @@ You MUST complete your work by calling:
 ```
 
 Your task: {{prompt}}
-
-```
+````
 
 ### Complete Execution Flow
 
 ```
-
 Customer: "I want to cancel order #ORDER-789 and get a refund"
 
 1. Tier1Agent calls order_lookup tool:
@@ -149,7 +156,6 @@ Customer: "I want to cancel order #ORDER-789 and get a refund"
    "confidence": 0.95
    }
    }
-
 ```
 
 ## Software Development Workflow with External Integration
@@ -159,13 +165,11 @@ A development team automates code review processes using internal agents plus ex
 ### Repository Structure
 
 ```
-
 dev-agents/
 ├── code/pr-reviewer/prompt.md
 ├── code/test-runner/prompt.md
 └── deploy/staging-manager/prompt.md
-
-````
+```
 
 ### External Agent Registration
 
@@ -187,7 +191,7 @@ mutation RegisterExternalSecurityAgent {
     }
   }
 }
-````
+```
 
 ### Code Review Agent Definition
 
@@ -199,7 +203,14 @@ version: "1.5.0"
 tags: ["development", "code-review", "security"]
 model: "gpt-4-turbo"
 providers: ["openai_gpt4"]
-mcpServers: ["github", "sonarqube"]
+mcpServers:
+  github:
+    - "github_get_pr"
+    - "github_add_comment"
+  sonarqube:
+    - "sonarqube_scan"
+  # Full access to internal CI tools
+  internal-ci-tools: "*"
 allowedAgents:
   ["code/test-runner", "deploy/staging-manager", "external/security-auditor"]
 examples:
@@ -212,8 +223,9 @@ You are a Senior Code Reviewer responsible for maintaining code quality and secu
 ## Available Tools
 
 - **github_get_pr**: Get pull request details and diff
-- **sonarqube_scan**: Run code quality analysis
 - **github_add_comment**: Add review comments
+- **sonarqube_scan**: Run code quality analysis
+- Full access to all internal CI tools for builds, tests, and deployments
 
 ## Available Agents
 
@@ -517,10 +529,10 @@ interface GitAgent {
   gitCommit: string;
   lastModified: Date;
 
-  // Configuration
+  // Configuration - Updated to support new mcpServers object format
   model?: string;
   providers: string[];
-  mcpServers: string[];
+  mcpServers: Record<string, string[] | null | "*" | "">;
   allowedAgents: string[];
   examples: string[];
 }
@@ -613,6 +625,61 @@ class GitAgentResolver {
     }
 
     return null;
+  }
+
+  // Updated to parse new mcpServers object format
+  private async parseAgentDefinition(
+    repo: AgentRepository,
+    filePath: string,
+    content: string
+  ): Promise<GitAgent> {
+    const { frontmatter, markdown } = parseMarkdownWithFrontmatter(content);
+    
+    // Parse mcpServers field - handle both old array format and new object format
+    let mcpServers: Record<string, string[] | null | "*" | "">;
+    
+    if (Array.isArray(frontmatter.mcpServers)) {
+      // Convert old array format to new object format (grant full access)
+      mcpServers = {};
+      for (const serverName of frontmatter.mcpServers) {
+        mcpServers[serverName] = "*"; // Full access
+      }
+    } else if (typeof frontmatter.mcpServers === 'object' && frontmatter.mcpServers !== null) {
+      // New object format
+      mcpServers = frontmatter.mcpServers;
+    } else {
+      // Default to empty if not specified
+      mcpServers = {};
+    }
+
+    return {
+      name: frontmatter.name,
+      description: frontmatter.description,
+      version: frontmatter.version || "1.0.0",
+      tags: frontmatter.tags || [],
+      model: frontmatter.model,
+      providers: frontmatter.providers || [],
+      mcpServers,
+      allowedAgents: frontmatter.allowedAgents || [],
+      examples: frontmatter.examples || [],
+      contextScope: frontmatter.contextScope || "FULL",
+      
+      // Git metadata
+      repository: repo,
+      filePath,
+      gitCommit: repo.currentCommit,
+      lastModified: new Date(),
+      
+      // Computed properties
+      isNamespaced: !repo.isRoot,
+      fullPath: repo.isRoot ? frontmatter.name : `${repo.name}/${frontmatter.name}`,
+      
+      // Analytics (would be populated from metrics system)
+      usageCount: 0,
+      lastUsed: null,
+      averageExecutionTime: null,
+      successRate: null
+    };
   }
 }
 ```

@@ -74,7 +74,16 @@ version: "2.1.0"
 tags: ["customer-support", "tier-1", "orders"]
 model: "gpt-4-turbo"
 providers: ["openai_gpt4"]
-mcpServers: ["order-management", "customer-db", "refund-processor"]
+mcpServers:
+  order-management:
+    - "order_lookup"
+    - "order_status"
+    - "order_cancel"
+  customer-db:
+    - "customer_profile"
+    - "account_history"
+  # Full access to internal support tools
+  internal-support-tools: "*"
 allowedAgents: ["BillingSpecialist", "EscalationManager"]
 examples:
   - "Help customer with order status inquiry"
@@ -125,6 +134,31 @@ When an agent calls another agent, the system resolves the target agent in this 
 ### Explicit Completion Model
 
 All agent-to-agent calls use explicit completion. Child agents must call a `complete_agent_execution` tool to signal task completion. This provides clear completion semantics, structured results, partial completion support when agents are blocked or uncertain, and reliable parent coordination.
+
+### Fine-Grained Tool Access Control
+
+The new `mcpServers` configuration supports both fine-grained tool access and full server access:
+
+**Fine-Grained Access**: Specify exactly which tools from each server:
+
+```yaml
+mcpServers:
+  github-api:
+    - "get_pr_diff"
+    - "add_comment"
+  jira-api:
+    - "create_ticket"
+```
+
+**Full Server Access**: Use `null`, `"*"`, or `[]` for complete access:
+
+```yaml
+mcpServers:
+  internal-tools: "*" # Full access with wildcard
+  dev-tools: null # Full access with null
+```
+
+This approach provides security through the principle of least privilege while maintaining flexibility for trusted internal tools.
 
 ## Standard System Tools
 

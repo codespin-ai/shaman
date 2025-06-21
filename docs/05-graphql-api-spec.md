@@ -181,7 +181,7 @@ type GitAgent {
   tags: [String!]!
   model: String
   providers: [String!]!
-  mcpServers: [String!]!
+  mcpServers: JSON!
   allowedAgents: [String!]!
   examples: [String!]!
   contextScope: ContextScope!
@@ -1010,6 +1010,71 @@ scalar Upload
 **EmailAddress**: Valid email address format validation
 **Upload**: File upload scalar for handling multipart form data
 
+### Runtime Type Validation
+
+The `mcpServers` field uses the `JSON` scalar for flexibility, but includes **strict runtime validation** to ensure type safety:
+
+```typescript
+import { z } from 'zod';
+
+// Runtime validation schema for mcpServers
+const McpServersSchema = z.record(
+  z.string(), // server name (dynamic key)
+  z.union([
+    z.array(z.string()),     // ["tool1", "tool2"] - specific tools
+    z.literal("*"),          // "*" - wildcard access
+    z.literal(""),           // "" - empty string access
+    z.null(),                // null - explicit null access
+    z.array(z.never()).length(0) // [] - empty array access
+  ])
+);
+
+// Validation in resolvers
+const validateMcpServers = (mcpServers: unknown): McpServersConfig => {
+  try {
+    return McpServersSchema.parse(mcpServers);
+  } catch (error) {
+    throw new GraphQLError('Invalid mcpServers configuration', {
+      extensions: {
+        code: 'INVALID_MCP_SERVERS',
+        details: error.errors
+      }
+    });
+  }
+};
+```
+
+### Type Safety Benefits
+
+This approach provides:
+- ✅ **Runtime validation**: Strict type checking at execution time
+- ✅ **Flexible schema**: Can evolve without breaking changes
+- ✅ **Clear error messages**: Detailed validation errors for debugging
+- ✅ **Client simplicity**: Clients work with simple JSON objects
+- ✅ **Full TypeScript support**: Complete type safety in the backend
+
+### MCP Server Configuration Examples
+
+**Valid configurations:**
+```json
+{
+  "github-api": ["get_pr_diff", "add_comment"],
+  "internal-tools": "*",
+  "dev-tools": null,
+  "staging-tools": [],
+  "optional-tools": ""
+}
+```
+
+**Invalid configurations (caught by validation):**
+```json
+{
+  "github-api": "invalid-string",     // ❌ Not an array or access token
+  "other-tools": ["tool1", 123],     // ❌ Array contains non-string
+  "bad-tools": "not-wildcard"        // ❌ String that isn't "*" or ""
+}
+```
+
 ### Key Interfaces
 
 **Timestamped**: Provides `createdAt` and `updatedAt` fields for audit trails
@@ -1027,6 +1092,8 @@ scalar Upload
 **Execution Hierarchy**: `Run` contains multiple `Step` instances, which form a DAG through parent-child relationships. Each step can have tool calls, agent calls, and completion information.
 
 **Git Versioning**: Git-based agents maintain full versioning information through `gitCommit`, `gitRepository`, and `lastModified` fields for complete traceability.
+
+**MCP Server Tool Configuration**: The `mcpServers` field in `GitAgent` uses JSON with runtime validation to support both fine-grained tool access (specifying tool arrays) and full server access (using null, "*", or empty arrays).
 
 ### Subscription Guidelines
 
@@ -1046,6 +1113,8 @@ Most list queries support filtering through dedicated input types and standard p
 ### Error Handling
 
 GraphQL errors follow standard conventions with field-level errors for validation issues and top-level errors for system failures. All mutations return the affected objects or boolean success indicators.
+
+Runtime validation errors for `mcpServers` include detailed context and suggested fixes.
 
 ---
 

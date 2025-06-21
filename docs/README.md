@@ -35,6 +35,11 @@ Multiple notification providers for async coordination:
 - AWS EventBridge
 - Apache Kafka
 
+### 🔐 **Fine-Grained Tool Access Control**
+New `mcpServers` configuration supports granular tool permissions:
+- Specify exact tools: `{ "github-api": ["get_pr_diff", "add_comment"] }`
+- Grant full access: `{ "internal-tools": "*" }` or `{ "dev-tools": null }`
+
 ### 📐 **Type-Based Architecture**
 No classes or inheritance - everything uses **type-safe modules**:
 ```typescript
@@ -129,12 +134,22 @@ description: "Handles customer inquiries with escalation capabilities"
 model: "gpt-4-turbo"
 temperature: 0.7
 allowedAgents: ["BillingSpecialist", "TechnicalSupport"]
-tools: ["check_account", "process_refund", "create_ticket"]
+mcpServers:
+  # Fine-grained tool access for external APIs
+  github-api:
+    - "get_pr_diff"
+    - "add_comment"
+  # Full access to trusted internal tools
+  internal-support-tools: "*"
+  # Specific tools for customer management
+  customer-db:
+    - "check_account"
+    - "get_order_history"
 ---
 
 You are a helpful customer support agent. When handling customer inquiries:
 
-1. Always check the customer's account status first
+1. Always check the customer's account status first using check_account
 2. For billing issues, delegate to the BillingSpecialist agent  
 3. For technical issues, delegate to TechnicalSupport agent
 4. For refunds over $100, the process_refund tool requires manager approval
