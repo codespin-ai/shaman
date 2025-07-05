@@ -4,7 +4,7 @@ cd "$(dirname "$0")"
 
 if (( $# < 1 ))
 then
-  echo "Usage run.sh up/down"
+  echo "Usage: $0 up|down|verbose|logs [service_name]"
   exit 1
 fi
 
@@ -31,5 +31,18 @@ case $COMMAND in
   ;;
   down)
       docker compose down
+  ;;
+  logs)
+      if [ -z "$2" ]; then
+        echo "Error: service name is required for logs command."
+        echo "Usage: $0 logs <service_name>"
+        exit 1
+      fi
+      docker compose logs -f "$2"
+  ;;
+  *)
+    echo "Invalid command: $COMMAND"
+    echo "Usage: $0 up|down|verbose|logs [service_name]"
+    exit 1
   ;;
 esac
