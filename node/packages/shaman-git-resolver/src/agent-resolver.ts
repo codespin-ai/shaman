@@ -1,24 +1,28 @@
 import {
   saveAgentRepository,
   getAgentRepositoryByUrl,
+  getAgentRepositoryByUrlAndBranch,
   updateAgentRepository
 } from '@codespin/shaman-persistence';
 import { AgentRepository, GitAgent } from '@codespin/shaman-types';
-import { updateGitAgents, discoverAgentsFromDefaultBranch } from './git-discovery.js';
+import { updateGitAgents, discoverAgentsFromBranch } from './git-discovery.js';
 import * as fs from 'fs';
 import { homedir } from 'os';
 import { resolve } from 'path';
 
 const projectsDir = resolve(homedir(), 'projects/shaman');
 
-export async function resolveAgents(repoUrl: string): Promise<GitAgent[]> {
-  let repository = await getAgentRepositoryByUrl(repoUrl);
+export async function resolveAgents(repoUrl: string, branch: string = 'main'): Promise<GitAgent[]> {
+  let repository = await getAgentRepositoryByUrlAndBranch(repoUrl, branch);
   
   if (!repository) {
+    // Extract repository name from URL
+    const repoName = repoUrl.split('/').pop()?.replace('.git', '') || 'unnamed-repo';
+    
     const newRepo: Omit<AgentRepository, 'id' | 'createdAt' | 'updatedAt'> = {
-      name: 'Auto-discovered',
+      name: `${repoName}-${branch}`,
       gitUrl: repoUrl,
-      branch: 'main',
+      branch: branch,
       isRoot: false,
       lastSyncCommitHash: null,
       lastSyncAt: null,
@@ -28,22 +32,30 @@ export async function resolveAgents(repoUrl: string): Promise<GitAgent[]> {
     repository = await saveAgentRepository(newRepo);
   }
 
-  const localRepoPath = resolve(projectsDir, repository.id.toString());
+  const localRepoPath = resolve(projectsDir, `${repository.id}-${branch}`);
   
-  const agents = await updateGitAgents(repository, localRepoPath);
-  
-  const updatedRepo: AgentRepository = {
-    ...repository,
-    lastSyncAt: new Date(),
-    lastSyncStatus: 'SUCCESS'
-  };
-  await updateAgentRepository(updatedRepo);
-  
-  return agents;
+  try {
+    const agents = await updateGitAgents(repository, localRepoPath, branch);
+    
+    // Note: updateGitAgents already updates the repository status on success
+    return agents;
+  } catch (error) {
+    // Update repository status on failure
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    const updatedRepo: AgentRepository = {
+      ...repository,
+      lastSyncAt: new Date(),
+      lastSyncStatus: 'FAILED',
+      lastSyncErrors: { error: errorMessage }
+    };
+    await updateAgentRepository(updatedRepo);
+    
+    throw error;
+  }
 }
 
-export async function discoverAgents(repoUrl: string): Promise<Omit<GitAgent, 'id' | 'agentRepositoryId' | 'createdAt' | 'updatedAt'>[]> {
-  return discoverAgentsFromDefaultBranch(repoUrl);
+export async function discoverAgents(repoUrl: string, branch: string = 'main'): Promise<Omit<GitAgent, 'id' | 'agentRepositoryId' | 'createdAt' | 'updatedAt'>[]> {
+  return discoverAgentsFromBranch(repoUrl, branch);
 }
 
 export async function ensureProjectsDirectory(): Promise<void> {

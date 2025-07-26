@@ -11,10 +11,7 @@
     "@codespin/shaman-types": "file:../shaman-types",
     "glob": "^10.4.1",
     "gray-matter": "^4.0.3",
-    "isomorphic-git": "^1.25.9",
-    "fs-extra": "^11.2.0",
-    "http-proxy-agent": "^7.0.2",
-    "https-proxy-agent": "^7.0.4"
+    "fs-extra": "^11.2.0"
   },
   "devDependencies": {
     "typescript": "^5.5.4",

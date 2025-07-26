@@ -39,6 +39,18 @@ export async function getAgentRepositoryByUrl(gitUrl: string): Promise<AgentRepo
   return result;
 }
 
+export async function getAgentRepositoryByUrlAndBranch(gitUrl: string, branch: string): Promise<AgentRepository | null> {
+  const result = await db.oneOrNone(
+    `SELECT id, name, git_url as "gitUrl", branch, is_root as "isRoot", 
+            last_sync_commit_hash as "lastSyncCommitHash", last_sync_at as "lastSyncAt", 
+            last_sync_status as "lastSyncStatus", last_sync_errors as "lastSyncErrors",
+            created_at as "createdAt", updated_at as "updatedAt"
+     FROM agent_repository WHERE git_url = $1 AND branch = $2`,
+    [gitUrl, branch]
+  );
+  return result;
+}
+
 export async function updateAgentRepository(repository: AgentRepository): Promise<AgentRepository> {
   const result = await db.one(
     `UPDATE agent_repository 
