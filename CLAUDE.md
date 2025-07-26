@@ -95,13 +95,14 @@ Located in `/node/packages/`, build order matters:
 9. **@codespin/shaman-external-registry** - External agent registry
 10. **@codespin/shaman-git-resolver** - Git-based agent discovery (with caching)
 11. **@codespin/shaman-agents** - Unified agent resolution from all sources
-12. **@codespin/shaman-llm-vercel** - Vercel AI SDK provider
-13. **@codespin/shaman-tool-router** - Tool execution routing
-14. **@codespin/shaman-workflow-bullmq** - BullMQ workflow adapter
-15. **@codespin/shaman-workflow-temporal** - Temporal workflow adapter
-16. **@codespin/shaman-server** - Main GraphQL server
-17. **@codespin/shaman-worker** - Background worker
-18. **@codespin/shaman-cli** - CLI tool
+12. **@codespin/shaman-a2a-provider** - Expose Git agents via A2A protocol
+13. **@codespin/shaman-llm-vercel** - Vercel AI SDK provider
+14. **@codespin/shaman-tool-router** - Tool execution routing
+15. **@codespin/shaman-workflow-bullmq** - BullMQ workflow adapter
+16. **@codespin/shaman-workflow-temporal** - Temporal workflow adapter
+17. **@codespin/shaman-server** - Main GraphQL server
+18. **@codespin/shaman-worker** - Background worker
+19. **@codespin/shaman-cli** - CLI tool
 
 ## Development Workflow
 
@@ -217,3 +218,17 @@ Key functions:
 - `getAgentRepositoryByUrlAndBranch()` - Queries repos by URL and branch
 - Commit hashes stored in `agent_repository.last_sync_commit_hash`
 - Per-file hashes in `git_agent.last_modified_commit_hash`
+
+## A2A Provider
+
+The shaman-a2a-provider module exposes Git agents via the A2A protocol:
+- Express-based HTTP server with A2A endpoints
+- Agent discovery, execution, and health check endpoints
+- Configurable authentication and rate limiting
+- Whitelist/blacklist support for agent exposure
+- Can run standalone or integrate with main server
+
+Key endpoints:
+- `GET /a2a/v1/agents` - Discover available agents
+- `POST /a2a/v1/agents/:name/execute` - Execute an agent
+- `GET /a2a/v1/health` - Health check

@@ -478,6 +478,113 @@ Organization A agent receives: "Screen this transaction for AML violations"
    → Returns comprehensive compliance assessment
 ```
 
+## A2A Provider: Exposing Shaman Agents Externally
+
+The `shaman-a2a-provider` module enables organizations to expose their Git-based agents to external systems via the standardized A2A protocol. This transforms Shaman from just a consumer of external agents into a provider that can share its specialized capabilities.
+
+### Provider Configuration
+
+```typescript
+// server.ts
+import { createA2AServer } from '@codespin/shaman-a2a-provider';
+import { agentsConfig } from './config';
+
+const a2aConfig: A2AProviderConfig = {
+  port: 3001,
+  basePath: '/a2a/v1',
+  
+  // Authentication configuration
+  authentication: {
+    type: 'bearer',
+    validateToken: async (token) => {
+      // Validate against your auth system
+      return await authService.validateBearerToken(token);
+    }
+  },
+  
+  // Rate limiting
+  rateLimiting: {
+    enabled: true,
+    maxRequests: 100,
+    windowMs: 60000 // 1 minute
+  },
+  
+  // CORS settings
+  cors: {
+    enabled: true,
+    allowedOrigins: ['https://partner.com', 'https://client.org']
+  },
+  
+  // Agent exposure control
+  allowedAgents: ['CustomerSupport', 'BillingAssistant'],
+  blockedCategories: ['internal', 'experimental']
+};
+
+const server = createA2AServer(a2aConfig, agentsConfig);
+await server.start();
+```
+
+### Agent Whitelisting Strategies
+
+**By Name**: Explicitly list which agents can be exposed
+```typescript
+allowedAgents: ['CustomerSupport', 'BillingAssistant', 'ComplianceChecker']
+```
+
+**By Category**: Expose agents based on their tags
+```typescript
+allowedCategories: ['public', 'partner-api'],
+blockedCategories: ['internal', 'beta']
+```
+
+**By Namespace**: Use prefixes for bulk exposure
+```typescript
+// In agent repository configuration
+{
+  "agentExposure": {
+    "allowedPrefixes": ["public/", "partner/"],
+    "blockedPrefixes": ["internal/", "dev/"]
+  }
+}
+```
+
+### External Integration Example
+
+When an external system wants to use your Shaman agents:
+
+```bash
+# 1. Discover available agents
+curl -H "Authorization: Bearer $TOKEN" \
+  https://your-domain.com/a2a/v1/agents
+
+# 2. Get specific agent details
+curl -H "Authorization: Bearer $TOKEN" \
+  https://your-domain.com/a2a/v1/agents/CustomerSupport
+
+# 3. Execute the agent
+curl -X POST \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "prompt": "Help me check order status for #12345",
+    "context": {
+      "sessionId": "ext-session-789",
+      "conversationHistory": []
+    }
+  }' \
+  https://your-domain.com/a2a/v1/agents/CustomerSupport/execute
+```
+
+### Security Considerations
+
+1. **Authentication**: Always enable authentication in production
+2. **Rate Limiting**: Protect against abuse with appropriate limits
+3. **Agent Filtering**: Only expose agents meant for external use
+4. **Network Security**: Use HTTPS and consider IP whitelisting
+5. **Audit Logging**: Track all external agent invocations
+
+This bidirectional A2A capability enables Shaman deployments to participate as both consumers and providers in the federated agent ecosystem.
+
 ## Repository Configuration Schema
 
 ### Agent Repository Definition

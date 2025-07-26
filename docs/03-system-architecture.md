@@ -9,7 +9,7 @@ Shaman's architecture is designed around **pluggable components** and **type-bas
 │                        SHAMAN CORE                              │
 │                                                                 │
 │  ┌─────────────────┐  ┌─────────────────┐  ┌─────────────────┐  │
-│  │   GraphQL API   │  │   Agent Resolver │  │ Stream Publisher│  │
+│  │   GraphQL API   │  │  A2A Provider   │  │ Stream Publisher│  │
 │  └─────────────────┘  └─────────────────┘  └─────────────────┘  │
 │                                │                                │
 │  ┌─────────────────────────────▼─────────────────────────────┐  │
@@ -250,6 +250,128 @@ const eventBridgeNotifications = notifications.eventbridge({
 - High throughput and reliability
 - Integration with AWS/cloud services
 
+### 6. A2A Provider (shaman-a2a-provider)
+
+**HTTP server that exposes Shaman's Git agents** to external systems via the standardized A2A protocol.
+
+**Key Features:**
+- Express-based REST API server
+- Configurable agent exposure (whitelist/blacklist)
+- Authentication and rate limiting
+- OpenAPI-compliant endpoints
+- Health monitoring
+
+**Core Configuration:**
+```typescript
+export type A2AProviderConfig = {
+  port: number;
+  basePath: string;
+  authentication?: {
+    type: 'bearer' | 'api-key' | 'none';
+    validateToken?: (token: string) => Promise<boolean>;
+    validateApiKey?: (apiKey: string) => Promise<boolean>;
+  };
+  rateLimiting?: {
+    enabled: boolean;
+    maxRequests: number;
+    windowMs: number;
+  };
+  cors?: {
+    enabled: boolean;
+    allowedOrigins: string[];
+  };
+  allowedAgents?: string[];      // Whitelist specific agents
+  blockedAgents?: string[];      // Blacklist specific agents
+  allowedCategories?: string[];  // Allow by category
+  blockedCategories?: string[];  // Block by category
+};
+```
+
+**API Endpoints:**
+```typescript
+// Agent Discovery
+GET /a2a/v1/agents
+Response: {
+  agents: [{
+    name: string;
+    description: string;
+    version: string;
+    endpoint: string;
+    inputSchema: object;
+    outputSchema: object;
+    metadata: {
+      category?: string;
+      tags?: string[];
+      capabilities?: string[];
+    };
+  }]
+}
+
+// Agent Details
+GET /a2a/v1/agents/:name
+Response: { /* Single agent details */ }
+
+// Agent Execution
+POST /a2a/v1/agents/:name/execute
+Body: {
+  prompt: string;
+  context?: {
+    sessionId?: string;
+    conversationHistory?: Message[];
+    variables?: Record<string, any>;
+  };
+  parameters?: Record<string, any>;
+}
+Response: {
+  success: boolean;
+  result?: {
+    response: string;
+    metadata?: Record<string, any>;
+  };
+  error?: {
+    code: string;
+    message: string;
+  };
+}
+
+// Health Check
+GET /a2a/v1/health
+Response: { status: 'healthy' | 'unhealthy', version: string }
+```
+
+**Integration Example:**
+```typescript
+import { createA2AServer } from '@codespin/shaman-a2a-provider';
+
+// Configure which agents to expose
+const a2aConfig: A2AProviderConfig = {
+  port: 3001,
+  basePath: '/a2a/v1',
+  authentication: {
+    type: 'bearer',
+    validateToken: async (token) => {
+      // Validate against your auth system
+      return await authService.validateToken(token);
+    }
+  },
+  rateLimiting: {
+    enabled: true,
+    maxRequests: 100,
+    windowMs: 60000 // 1 minute
+  },
+  // Only expose specific agents
+  allowedAgents: ['CustomerSupport', 'BillingAssistant'],
+  // Or expose by category
+  allowedCategories: ['support', 'billing']
+};
+
+// Create and start the A2A server
+const server = createA2AServer(a2aConfig, agentsConfig);
+await server.start();
+```
+
+This component enables Shaman to act as an agent provider in federated architectures, allowing external systems to discover and execute Shaman's agents through a standardized protocol.
+
 ## Agent-to-Agent Communication (A2A)
 
 ### Internal A2A Flow
@@ -285,11 +407,12 @@ await workflowAdapter.signalRun(parentRunId, 'childAgentCompleted', childResult)
 
 ### External A2A Protocol
 
-Shaman implements the A2A protocol for federation with external agent systems:
+Shaman implements the A2A protocol for bidirectional federation with external agent systems:
 
-**Outbound:** Shaman agents can call external A2A-compliant agents
-**Inbound:** External systems can call Shaman agents via A2A endpoints
+**Outbound (Consumer):** Shaman agents can call external A2A-compliant agents via `shaman-external-registry`
+**Inbound (Provider):** External systems can call Shaman agents via `shaman-a2a-provider`
 
+#### A2A Consumer (shaman-external-registry)
 ```typescript
 // Call external agent
 const externalResult = await a2aGateway.callAgent({
@@ -297,6 +420,29 @@ const externalResult = await a2aGateway.callAgent({
   prompt: 'Review this contract for compliance issues',
   context: currentContext
 });
+```
+
+#### A2A Provider (shaman-a2a-provider)
+```typescript
+// Expose Shaman's Git agents via A2A protocol
+const a2aConfig: A2AProviderConfig = {
+  port: 3001,
+  basePath: '/a2a/v1',
+  authentication: { type: 'bearer', validateToken },
+  rateLimiting: { enabled: true, maxRequests: 100, windowMs: 60000 },
+  allowedAgents: ['CustomerSupport', 'BillingAssistant'] // Whitelist
+};
+
+const a2aServer = createA2AServer(a2aConfig, agentsConfig);
+```
+
+**A2A Provider Endpoints:**
+- `GET /a2a/v1/agents` - Discover available Shaman agents
+- `GET /a2a/v1/agents/:name` - Get specific agent details
+- `POST /a2a/v1/agents/:name/execute` - Execute a Shaman agent
+- `GET /a2a/v1/health` - Health check
+
+This bidirectional capability enables Shaman to participate as both a consumer and provider in the federated agent ecosystem.
 ```
 
 ## Execution Flow Examples

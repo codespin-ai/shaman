@@ -24,6 +24,7 @@ PACKAGES=(
   "shaman-external-registry"
   "shaman-git-resolver"
   "shaman-agents"
+  "shaman-a2a-provider"
   "shaman-llm-vercel"
   "shaman-tool-router"
   "shaman-workflow-bullmq"
