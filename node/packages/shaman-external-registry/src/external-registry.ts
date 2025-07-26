@@ -1,84 +1,83 @@
-/**
- * @fileoverview Manages the registration and resolution of external A2A agents.
- */
+import { Result, success, failure } from '@codespin/shaman-core/types/result.js';
+import { ExternalAgent } from '@codespin/shaman-core/types/agent.js';
+import { RegistryResponse, HealthStatus } from './types.js';
 
-import { Result, success } from '@shaman/core/types/result.js';
-import { ExternalAgent } from '@shaman/core/types/agent.js';
-import { ExternalAgentConfig, RegisteredAgent } from './types.js';
+interface RegistryConfig {
+  url: string;
+  timeout?: number;
+  retries?: number;
+}
 
-export class ExternalAgentRegistry {
-  private agents = new Map<string, RegisteredAgent>();
-
-  constructor(private initialConfig: ExternalAgentConfig[] = []) {
-    for (const config of this.initialConfig) {
-      this.registerAgent(config);
+export async function fetchAgentsFromRegistry(
+  config: RegistryConfig
+): Promise<Result<ExternalAgent[], string>> {
+  try {
+    const response = await fetch(`${config.url}/agents`, {
+      signal: AbortSignal.timeout(config.timeout || 30000)
+    });
+    
+    if (!response.ok) {
+      return failure(`HTTP ${response.status}: ${response.statusText}`);
     }
+    
+    const data: RegistryResponse = await response.json();
+    return success(data.agents);
+  } catch (error) {
+    return failure(`Registry fetch failed: ${error instanceof Error ? error.message : String(error)}`);
   }
+}
 
-  /**
-   * Registers a new external agent or updates an existing one.
-   * @param config - The configuration of the external agent.
-   * @returns A result indicating success or an error.
-   */
-  registerAgent(config: ExternalAgentConfig): Result<true, Error> {
-    // In a real implementation, we would fetch the agent card from the URL.
-    // For this stub, we'll create a placeholder agent definition.
-    const agent: ExternalAgent = {
-      name: config.name,
-      description: `External agent at ${config.url}`,
-      source: 'external',
-      endpoint: config.url,
-      // Placeholder values
-      agentCard: {},
+export async function healthCheckRegistry(
+  config: RegistryConfig
+): Promise<Result<HealthStatus, string>> {
+  const startTime = Date.now();
+  
+  try {
+    const response = await fetch(`${config.url}/health`, {
+      signal: AbortSignal.timeout(config.timeout || 10000)
+    });
+    
+    if (!response.ok) {
+      return failure(`Health check failed: HTTP ${response.status}`);
+    }
+    
+    const status: HealthStatus = {
+      healthy: true,
+      lastCheck: new Date()
     };
-
-    this.agents.set(agent.name, { ...agent, config });
-    return success(true);
+    
+    return success(status);
+  } catch (error) {
+    const status: HealthStatus = {
+      healthy: false,
+      lastCheck: new Date(),
+      error: error instanceof Error ? error.message : String(error)
+    };
+    
+    return success(status);
   }
+}
 
-  /**
-   * Unregisters an agent.
-   * @param agentName - The name of the agent to unregister.
-   */
-  unregisterAgent(agentName: string): void {
-    this.agents.delete(agentName);
-  }
-
-  /**
-   * Resolves an agent by name.
-   * @param agentName - The name of the agent to resolve.
-   * @returns The registered agent or undefined if not found.
-   */
-  resolve(agentName: string): RegisteredAgent | undefined {
-    return this.agents.get(agentName);
-  }
-
-  /**
-   * Lists all registered agents.
-   * @returns An array of all registered agents.
-   */
-  listAgents(): RegisteredAgent[] {
-    return Array.from(this.agents.values());
-  }
-
-  /**
-   * Updates the health status of a registered agent.
-   * @param agentName - The name of the agent.
-   * @param status - The new health status.
-   * @param error - An optional error message if unhealthy.
-   */
-  updateHealthStatus(
-    agentName: string,
-    status: 'healthy' | 'unhealthy',
-    error?: string
-  ): void {
-    const agent = this.agents.get(agentName);
-    if (agent) {
-      agent.lastHealthCheck = {
-        status,
-        timestamp: Date.now(),
-        error,
-      };
+export async function registerAgent(
+  config: RegistryConfig,
+  agent: ExternalAgent
+): Promise<Result<void, string>> {
+  try {
+    const response = await fetch(`${config.url}/agents`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(agent),
+      signal: AbortSignal.timeout(config.timeout || 30000)
+    });
+    
+    if (!response.ok) {
+      return failure(`Registration failed: HTTP ${response.status}`);
     }
+    
+    return success(undefined);
+  } catch (error) {
+    return failure(`Registration failed: ${error instanceof Error ? error.message : String(error)}`);
   }
 }

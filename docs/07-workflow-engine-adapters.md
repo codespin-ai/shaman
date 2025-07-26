@@ -107,7 +107,7 @@ const temporalConfig: TemporalConfig = {
 };
 
 // Create Temporal adapter
-import { temporal } from '@shaman/workflow-engine';
+import { temporal } from '@codespin/shaman-workflow-engine';
 const workflowAdapter = temporal.createWorkflowEngineAdapter(temporalConfig);
 ```
 
@@ -375,7 +375,7 @@ const bullmqConfig: BullMQConfig = {
 };
 
 // Create BullMQ adapter
-import { bullmq } from '@shaman/workflow-engine';
+import { bullmq } from '@codespin/shaman-workflow-engine';
 const workflowAdapter = bullmq.createWorkflowEngineAdapter(bullmqConfig);
 ```
 

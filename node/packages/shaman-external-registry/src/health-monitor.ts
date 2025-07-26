@@ -2,12 +2,13 @@
  * @fileoverview Performs periodic health checks for external agents.
  */
 
-import { ExternalAgentRegistry } from './external-registry.js';
+import { healthCheckRegistry } from './external-registry.js';
+import { RegistryConfig, HealthStatus } from './types.js';
 
 export class HealthMonitor {
   private intervalId?: NodeJS.Timeout;
 
-  constructor(private registry: ExternalAgentRegistry) {}
+  constructor(private configs: RegistryConfig[]) {}
 
   /**
    * Starts the periodic health checks.
@@ -34,26 +35,24 @@ export class HealthMonitor {
   }
 
   private getShortestInterval(): number {
-    const agents = this.registry.listAgents();
-    if (agents.length === 0) return 0;
-    return agents.reduce((min, agent) => {
-      const interval = agent.config.healthCheck?.interval;
-      return interval && interval < min ? interval : min;
+    if (this.configs.length === 0) return 0;
+    return this.configs.reduce((min: number, config: RegistryConfig) => {
+      const interval = config.timeout || 30000;
+      return interval < min ? interval : min;
     }, Infinity);
   }
 
   private async runChecks(): Promise<void> {
-    const agents = this.registry.listAgents();
-    for (const agent of agents) {
-      if (agent.config.healthCheck) {
-        // In a real implementation, we would make an HTTP request.
-        // For this stub, we'll just simulate a health check.
-        const isHealthy = Math.random() > 0.2; // 80% chance of being healthy
-        this.registry.updateHealthStatus(
-          agent.name,
-          isHealthy ? 'healthy' : 'unhealthy',
-          isHealthy ? undefined : 'Simulated health check failure.'
-        );
+    for (const config of this.configs) {
+      try {
+        const result = await healthCheckRegistry(config);
+        if (result.success) {
+          console.log(`Health check passed for ${config.url}`);
+        } else {
+          console.error(`Health check failed for ${config.url}: ${result.error}`);
+        }
+      } catch (error) {
+        console.error(`Health check error for ${config.url}:`, error);
       }
     }
   }

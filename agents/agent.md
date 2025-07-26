@@ -22,16 +22,16 @@ Welcome, Agent. This is your primary operational guide. Adherence to these instr
 ### Monorepo Structure
 The codebase is a NodeJS/TypeScript monorepo located under `/node/packages`. Each package has a single responsibility.
 
--   **`@shaman/types`**: Contains shared TypeScript interfaces. **Always start here.**
--   **`@shaman/persistence`**: Handles all database interactions.
--   **`@shaman/git-resolver`**: Manages Git-based agent discovery.
--   **`@shaman/server`**: The main server application (GraphQL API).
+-   **`@codespin/shaman-types`**: Contains shared TypeScript interfaces. **Always start here.**
+-   **`@codespin/shaman-persistence`**: Handles all database interactions.
+-   **`@codespin/shaman-git-resolver`**: Manages Git-based agent discovery.
+-   **`@codespin/shaman-server`**: The main server application (GraphQL API).
 -   *(Review the full list in this directory for other packages)*
 
 ### Dependency Management
 -   This project **deliberately avoids npm workspaces** (and other workspace implementations) in favor of a custom build system.
 -   Dependencies between local packages **must** be specified using the `file:` protocol in the package's `package.json`.
-    -   Example: `"@shaman/types": "file:../shaman-types"`
+    -   Example: `"@codespin/shaman-types": "file:../shaman-types"`
 
 ### Build System
 -   The project uses a **custom build system** via the **`./build.sh`** script in the root directory instead of npm workspaces.
@@ -57,11 +57,11 @@ The codebase is a NodeJS/TypeScript monorepo located under `/node/packages`. Eac
 
 Follow these steps **in order**:
 
-1.  **Define Types**: Add or update `camelCase` interfaces in `@shaman/types`.
+1.  **Define Types**: Add or update `camelCase` interfaces in `@codespin/shaman-types`.
 2.  **Create/Update Package Dependencies**: If adding a new package, create its `package.json` and update the `package.json` of any package that depends on it using a `file:` reference.
 3.  **Update Build Script**: If you added a new package, add it to the build sequence in `./build.sh`.
 4.  **Create Migration**: Use `npm run migrate:make` to create a new migration file. Define the `snake_case`, singular-named tables and columns here.
-5.  **Implement Persistence Functions**: In `@shaman/persistence`, create functional modules to interact with the new tables. Handle the `camelCase` to `snake_case` mapping within these functions.
-6.  **Implement Business Logic**: In the appropriate package (e.g., `@shaman/git-resolver`), import functions from the persistence layer and implement the core feature logic.
+5.  **Implement Persistence Functions**: In `@codespin/shaman-persistence`, create functional modules to interact with the new tables. Handle the `camelCase` to `snake_case` mapping within these functions.
+6.  **Implement Business Logic**: In the appropriate package (e.g., `@codespin/shaman-git-resolver`), import functions from the persistence layer and implement the core feature logic.
 7.  **Build**: Run `./build.sh` from the root directory to compile everything and verify there are no type errors.
 8.  **Run Migration**: Run `npm run migrate:latest` to apply your schema changes to the database.

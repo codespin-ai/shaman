@@ -1,12 +1,12 @@
 {
-  "name": "@shaman/persistence",
+  "name": "@codespin/shaman-persistence",
   "version": "1.0.0",
   "main": "dist/index.js",
   "scripts": {
     "build": "tsc"
   },
   "dependencies": {
-    "@shaman/types": "file:../shaman-types",
+    "@codespin/shaman-types": "file:../shaman-types",
     "pg-promise": "^11.5.4"
   },
   "devDependencies": {

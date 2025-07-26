@@ -43,7 +43,7 @@ New `mcpServers` configuration supports granular tool permissions:
 ### 📐 **Type-Based Architecture**
 No classes or inheritance - everything uses **type-safe modules**:
 ```typescript
-import { temporal, notifications, tools } from '@shaman/workflow-engine';
+import { temporal, notifications, tools } from '@codespin/shaman-workflow-engine';
 
 const workflowAdapter = temporal.createWorkflowEngineAdapter(config);
 const notificationProvider = notifications.redis(redisConfig);

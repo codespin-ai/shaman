@@ -1,30 +1,18 @@
-/**
- * @fileoverview Defines types for the external agent registry.
- */
+import { ExternalAgent } from '@codespin/shaman-core/types/agent.js';
 
-import { ExternalAgent } from '@shaman/core/types/agent.js';
+export interface RegistryResponse {
+  agents: ExternalAgent[];
+  nextPage?: string;
+}
 
-export type ExternalAgentAuthConfig = {
-  type: 'none' | 'apiKey' | 'bearer';
-  token?: string;
-  header?: string;
-};
+export interface HealthStatus {
+  healthy: boolean;
+  lastCheck: Date;
+  error?: string;
+}
 
-export type ExternalAgentConfig = {
-  name: string;
+export interface RegistryConfig {
   url: string;
-  auth: ExternalAgentAuthConfig;
-  healthCheck?: {
-    interval: number; // in seconds
-    timeout: number; // in milliseconds
-  };
-};
-
-export type RegisteredAgent = ExternalAgent & {
-  config: ExternalAgentConfig;
-  lastHealthCheck?: {
-    status: 'healthy' | 'unhealthy';
-    timestamp: number;
-    error?: string;
-  };
-};
+  timeout?: number;
+  retries?: number;
+}

@@ -1,5 +1,5 @@
 {
-  "name": "@shaman/git-resolver",
+  "name": "@codespin/shaman-git-resolver",
   "version": "1.0.0",
   "main": "dist/index.js",
   "scripts": {
@@ -7,8 +7,8 @@
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "dependencies": {
-    "@shaman/persistence": "file:../shaman-persistence",
-    "@shaman/types": "file:../shaman-types",
+    "@codespin/shaman-persistence": "file:../shaman-persistence",
+    "@codespin/shaman-types": "file:../shaman-types",
     "glob": "^10.4.1",
     "gray-matter": "^4.0.3",
     "isomorphic-git": "^1.25.9",

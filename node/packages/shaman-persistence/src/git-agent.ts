@@ -1,78 +1,71 @@
-/**
- * packages/shaman-persistence/src/git-agent.ts
- *
- * This module provides functions for interacting with the 'git_agent' table.
- */
-
-import { GitAgent } from '@shaman/types';
-import pgPromise, { IDatabase } from 'pg-promise';
+import { GitAgent } from '@codespin/shaman-types';
 import { db } from './db.js';
 
-const pgp = pgPromise({});
-
-// Helper to convert snake_case from DB to camelCase
-function toCamelCase(obj: any): GitAgent {
-  return {
-    id: obj.id,
-    agentRepositoryId: obj.agent_repository_id,
-    name: obj.name,
-    description: obj.description,
-    version: obj.version,
-    filePath: obj.file_path,
-    model: obj.model,
-    providers: obj.providers,
-    mcpServers: obj.mcp_servers,
-    allowedAgents: obj.allowed_agents,
-    tags: obj.tags,
-    lastModifiedCommitHash: obj.last_modified_commit_hash,
-    createdAt: obj.created_at,
-    updatedAt: obj.updated_at,
-  };
+export async function saveGitAgent(agent: Omit<GitAgent, 'id' | 'createdAt' | 'updatedAt'>): Promise<GitAgent> {
+  const result = await db.one(
+    `INSERT INTO git_agent (agent_repository_id, name, description, version, file_path, model, providers, mcp_servers, allowed_agents, tags, last_modified_commit_hash) 
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) 
+     RETURNING id, agent_repository_id as "agentRepositoryId", name, description, version, file_path as "filePath", 
+               model, providers, mcp_servers as "mcpServers", allowed_agents as "allowedAgents", tags, 
+               last_modified_commit_hash as "lastModifiedCommitHash", created_at as "createdAt", updated_at as "updatedAt"`,
+    [agent.agentRepositoryId, agent.name, agent.description, agent.version, agent.filePath, agent.model, 
+     agent.providers, agent.mcpServers, agent.allowedAgents, agent.tags, agent.lastModifiedCommitHash]
+  );
+  return result;
 }
 
-export async function upsertGitAgent(agent: Omit<GitAgent, 'id' | 'createdAt' | 'updatedAt'>): Promise<GitAgent> {
-  const now = new Date();
-
-  const agentWithDbKeys = {
-    agent_repository_id: agent.agentRepositoryId,
-    name: agent.name,
-    description: agent.description,
-    version: agent.version,
-    file_path: agent.filePath,
-    model: agent.model,
-    providers: agent.providers,
-    mcp_servers: agent.mcpServers,
-    allowed_agents: agent.allowedAgents,
-    tags: agent.tags,
-    last_modified_commit_hash: agent.lastModifiedCommitHash,
-    created_at: now,
-    updated_at: now,
-  };
-
-  const cs = new pgp.helpers.ColumnSet(Object.keys(agentWithDbKeys), { table: 'git_agent' });
-  
-  const query = `
-    INSERT INTO git_agent AS t (agent_repository_id, name, description, version, file_path, model, providers, mcp_servers, allowed_agents, tags, last_modified_commit_hash, created_at, updated_at)
-    VALUES ($/agent_repository_id/, $/name/, $/description/, $/version/, $/file_path/, $/model/, $/providers/, $/mcp_servers/, $/allowed_agents/, $/tags/, $/last_modified_commit_hash/, $/created_at/, $/updated_at/)
-    ON CONFLICT (agent_repository_id, file_path)
-    DO UPDATE SET
-      name = EXCLUDED.name,
-      description = EXCLUDED.description,
-      version = EXCLUDED.version,
-      model = EXCLUDED.model,
-      providers = EXCLUDED.providers,
-      mcp_servers = EXCLUDED.mcp_servers,
-      allowed_agents = EXCLUDED.allowed_agents,
-      tags = EXCLUDED.tags,
-      last_modified_commit_hash = EXCLUDED.last_modified_commit_hash,
-      updated_at = NOW()
-    RETURNING *;
-  `;
-
-  const result = await db.one(query, agentWithDbKeys);
-  return toCamelCase(result);
+export async function getGitAgent(id: number): Promise<GitAgent | null> {
+  const result = await db.oneOrNone(
+    `SELECT id, agent_repository_id as "agentRepositoryId", name, description, version, file_path as "filePath", 
+            model, providers, mcp_servers as "mcpServers", allowed_agents as "allowedAgents", tags, 
+            last_modified_commit_hash as "lastModifiedCommitHash", created_at as "createdAt", updated_at as "updatedAt"
+     FROM git_agent WHERE id = $1`,
+    [id]
+  );
+  return result;
 }
 
-export async function deleteGitAgentsByFilePaths(repoId: number, filePathsToKeep: string[]): Promise<void> {
-  await db.none('DELETE FROM git_agent WHERE agent_repository_id = $1 AND file_path NOT IN ($2:list)', [repoId, filePathsToKeep]);
+export async function getGitAgentsByRepositoryId(agentRepositoryId: number): Promise<GitAgent[]> {
+  const result = await db.any(
+    `SELECT id, agent_repository_id as "agentRepositoryId", name, description, version, file_path as "filePath", 
+            model, providers, mcp_servers as "mcpServers", allowed_agents as "allowedAgents", tags, 
+            last_modified_commit_hash as "lastModifiedCommitHash", created_at as "createdAt", updated_at as "updatedAt"
+     FROM git_agent WHERE agent_repository_id = $1`,
+    [agentRepositoryId]
+  );
+  return result;
+}
+
+export async function updateGitAgent(agent: GitAgent): Promise<GitAgent> {
+  const result = await db.one(
+    `UPDATE git_agent 
+     SET agent_repository_id = $2, name = $3, description = $4, version = $5, file_path = $6, 
+         model = $7, providers = $8, mcp_servers = $9, allowed_agents = $10, tags = $11, 
+         last_modified_commit_hash = $12, updated_at = CURRENT_TIMESTAMP
+     WHERE id = $1
+     RETURNING id, agent_repository_id as "agentRepositoryId", name, description, version, file_path as "filePath", 
+               model, providers, mcp_servers as "mcpServers", allowed_agents as "allowedAgents", tags, 
+               last_modified_commit_hash as "lastModifiedCommitHash", created_at as "createdAt", updated_at as "updatedAt"`,
+    [agent.id, agent.agentRepositoryId, agent.name, agent.description, agent.version, agent.filePath, 
+     agent.model, agent.providers, agent.mcpServers, agent.allowedAgents, agent.tags, agent.lastModifiedCommitHash]
+  );
+  return result;
+}
+
+export async function deleteGitAgent(id: number): Promise<boolean> {
+  const result = await db.result(
+    'DELETE FROM git_agent WHERE id = $1',
+    [id]
+  );
+  return result.rowCount > 0;
+}
+
+export async function getAllGitAgents(): Promise<GitAgent[]> {
+  const result = await db.any(
+    `SELECT id, agent_repository_id as "agentRepositoryId", name, description, version, file_path as "filePath", 
+            model, providers, mcp_servers as "mcpServers", allowed_agents as "allowedAgents", tags, 
+            last_modified_commit_hash as "lastModifiedCommitHash", created_at as "createdAt", updated_at as "updatedAt"
+     FROM git_agent`
+  );
+  return result;
 }

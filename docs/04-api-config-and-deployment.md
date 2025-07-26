@@ -7,7 +7,7 @@ Shaman's modular, type-based architecture allows for flexible configuration and 
 Shaman uses **type-safe configuration objects** rather than classes or inheritance, making it easy to validate, version, and deploy configurations.
 
 ```typescript
-import { temporal, notifications, tools } from '@shaman/workflow-engine';
+import { temporal, notifications, tools } from '@codespin/shaman-workflow-engine';
 
 // Complete Shaman configuration
 const shamanConfig: ShamanConfig = {
