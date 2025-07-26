@@ -60,7 +60,8 @@ for pkg_name in "${PACKAGES[@]}"; do
   if [[ ! -f "$pkg/package.json" ]]; then
     continue
   fi
-  if jq -e '.scripts.build' "$pkg/package.json" >/dev/null 2>&1; then
+  # Use node to check for build script instead of jq
+  if node -e "process.exit(require('./$pkg/package.json').scripts?.build ? 0 : 1)"; then
     echo "Building $pkg…"
     (cd "$pkg" && npm run build)
   else

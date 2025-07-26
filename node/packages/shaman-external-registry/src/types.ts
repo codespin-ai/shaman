@@ -2,7 +2,7 @@
  * @fileoverview Defines types for the external agent registry.
  */
 
-import { A2AAgent } from '@shaman/core/types/agent.js';
+import { ExternalAgent } from '@shaman/core/types/agent.js';
 
 export type ExternalAgentAuthConfig = {
   type: 'none' | 'apiKey' | 'bearer';
@@ -20,7 +20,7 @@ export type ExternalAgentConfig = {
   };
 };
 
-export type RegisteredAgent = A2AAgent & {
+export type RegisteredAgent = ExternalAgent & {
   config: ExternalAgentConfig;
   lastHealthCheck?: {
     status: 'healthy' | 'unhealthy';

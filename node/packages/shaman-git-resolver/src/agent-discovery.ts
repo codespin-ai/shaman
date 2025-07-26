@@ -12,6 +12,29 @@ import * as yaml from 'js-yaml';
 const AGENT_FILE_NAMES = ['prompt.md', 'agent.json'];
 
 /**
+ * Validates the parsed agent data.
+ * @param data - The parsed data from the definition file.
+ * @param filePath - The path to the file for error reporting.
+ * @returns A result indicating success or failure.
+ */
+function validateAgent(data: any, filePath: string): Result<true, Error> {
+  if (!data || typeof data !== 'object') {
+    return failure(new Error(`Invalid agent definition in ${filePath}: not an object.`));
+  }
+  if (!data.name || typeof data.name !== 'string') {
+    return failure(new Error(`Missing or invalid 'name' in ${filePath}`));
+  }
+  if (!data.description || typeof data.description !== 'string') {
+    return failure(new Error(`Missing or invalid 'description' in ${filePath}`));
+  }
+  if (!data.llm || typeof data.llm !== 'object') {
+    return failure(new Error(`Missing or invalid 'llm' config in ${filePath}`));
+  }
+  return success(true);
+}
+
+
+/**
  * Scans a directory for agent definition files.
  * @param dir - The directory to scan.
  * @returns A list of paths to agent definition files.
@@ -45,7 +68,10 @@ async function parseAgentFile(filePath: string): Promise<Result<any, Error>> {
       const match = content.match(/^---([\s\S]+?)---/);
       if (match) {
         const frontmatter = yaml.load(match[1]);
-        return success({ ...frontmatter, prompt: content });
+        if (typeof frontmatter !== 'object' || frontmatter === null) {
+          return failure(new Error(`Invalid frontmatter in ${filePath}: not an object`));
+        }
+        return success({ ...(frontmatter as object), prompt: content });
       }
       return failure(new Error(`No frontmatter found in ${filePath}`));
     }

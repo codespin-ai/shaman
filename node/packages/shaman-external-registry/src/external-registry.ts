@@ -2,8 +2,8 @@
  * @fileoverview Manages the registration and resolution of external A2A agents.
  */
 
-import { Result, success, failure } from '@shaman/core/types/result.js';
-import { A2AAgent } from '@shaman/core/types/agent.js';
+import { Result, success } from '@shaman/core/types/result.js';
+import { ExternalAgent } from '@shaman/core/types/agent.js';
 import { ExternalAgentConfig, RegisteredAgent } from './types.js';
 
 export class ExternalAgentRegistry {
@@ -23,15 +23,13 @@ export class ExternalAgentRegistry {
   registerAgent(config: ExternalAgentConfig): Result<true, Error> {
     // In a real implementation, we would fetch the agent card from the URL.
     // For this stub, we'll create a placeholder agent definition.
-    const agent: A2AAgent = {
+    const agent: ExternalAgent = {
       name: config.name,
       description: `External agent at ${config.url}`,
-      source: 'a2a',
+      source: 'external',
       endpoint: config.url,
       // Placeholder values
       agentCard: {},
-      authConfig: {},
-      skills: [],
     };
 
     this.agents.set(agent.name, { ...agent, config });

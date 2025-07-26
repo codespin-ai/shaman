@@ -3,7 +3,7 @@
  */
 
 import { GitRepository } from './types.js';
-import { GitAgent } from '@shaman/core/dist/types/agent.js';
+import { GitAgent } from '@shaman/core/types/agent.js';
 import { syncRepository } from './git-manager.js';
 import { discoverAgents as discoverAgentsInRepo } from './agent-discovery.js';
 import * as path from 'path';
@@ -43,11 +43,19 @@ export async function discoverAllAgents(
     const agentMap = new Map<string, GitAgent>();
     for (const agent of allAgents) {
         const repo = repositories.find(r => r.url === agent.repositoryUrl);
+        if (!repo) {
+            allErrors.push({ 
+                error: 'Could not find repository for discovered agent',
+                agentName: agent.name,
+                filePath: agent.filePath,
+            });
+            continue;
+        }
         const agentDir = path.dirname(agent.filePath);
         
         const normalizedAgentPath = agentDir.replace(/\\/g, '/');
 
-        const agentName = repo?.isRoot 
+        const agentName = repo.isRoot 
             ? normalizedAgentPath
             : `${repo.name}/${normalizedAgentPath}`;
         
@@ -56,7 +64,7 @@ export async function discoverAllAgents(
                 error: `Duplicate agent name "${agentName}" found.`,
                 file1: agentMap.get(agentName)?.filePath,
                 file2: agent.filePath,
-                repo: repo?.name
+                repo: repo.name
             });
         }
         agentMap.set(agentName, { ...agent, name: agentName });
