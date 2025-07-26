@@ -11,6 +11,27 @@ set -euo pipefail
 
 echo "=== Building Codespin Shaman ==="
 
+# Define the build order
+PACKAGES=(
+  "shaman-types"
+  "shaman-core"
+  "shaman-config"
+  "shaman-llm-core"
+  "shaman-workflow-core"
+  "shaman-persistence"
+  "shaman-observability"
+  "shaman-security"
+  "shaman-external-registry"
+  "shaman-git-resolver"
+  "shaman-llm-vercel"
+  "shaman-tool-router"
+  "shaman-workflow-bullmq"
+  "shaman-workflow-temporal"
+  "shaman-server"
+  "shaman-worker"
+  "shaman-cli"
+)
+
 # 1 ▸ clean first
 ./clean.sh
 
@@ -20,18 +41,25 @@ if [[ ! -d node_modules || "$*" == *--install* ]]; then
   npm install
 fi
 
-# 3 ▸ loop through every package in ./node/packages/
-for pkg in node/packages/*; do
-  [[ -d "$pkg" ]] || continue
+# 3 ▸ loop through every package in build order
+for pkg_name in "${PACKAGES[@]}"; do
+  pkg="node/packages/$pkg_name"
+  if [[ ! -d "$pkg" ]]; then
+    echo "Package $pkg not found, skipping."
+    continue
+  fi
   if [[ ! -d "$pkg/node_modules" || "$*" == *--install* ]]; then
     echo "Installing deps in $pkg…"
     (cd "$pkg" && npm install)
   fi
 done
 
-# 4 ▸ build each package that defines a build script
-for pkg in node/packages/*; do
-  [[ -f "$pkg/package.json" ]] || continue
+# 4 ▸ build each package that defines a build script, in order
+for pkg_name in "${PACKAGES[@]}"; do
+  pkg="node/packages/$pkg_name"
+  if [[ ! -f "$pkg/package.json" ]]; then
+    continue
+  fi
   if jq -e '.scripts.build' "$pkg/package.json" >/dev/null 2>&1; then
     echo "Building $pkg…"
     (cd "$pkg" && npm run build)

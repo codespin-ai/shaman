@@ -9,6 +9,11 @@
   "files": [
     "dist"
   ],
+  "scripts": {
+    "build": "tsc"
+  },
   "license": "MIT",
-  "dependencies": {}
+  "devDependencies": {
+    "typescript": "^5.8.3"
+  }
 }

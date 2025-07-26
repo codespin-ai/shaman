@@ -9,6 +9,13 @@
   "files": [
     "dist"
   ],
+  "scripts": {
+    "build": "tsc"
+  },
   "license": "MIT",
-  "dependencies": {}
+  "dependencies": {
+    "@codespin/shaman-config": "file:../shaman-config",
+    "@codespin/shaman-server": "file:../shaman-server",
+    "@codespin/shaman-worker": "file:../shaman-worker"
+  }
 }

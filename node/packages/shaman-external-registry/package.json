@@ -10,5 +10,10 @@
     "dist"
   ],
   "license": "MIT",
-  "dependencies": {}
+  "dependencies": {
+    "@codespin/shaman-core": "file:../shaman-core"
+  },
+  "scripts": {
+    "build": "tsc"
+  }
 }

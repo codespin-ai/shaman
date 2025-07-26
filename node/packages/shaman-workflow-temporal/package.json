@@ -10,5 +10,7 @@
     "dist"
   ],
   "license": "MIT",
-  "dependencies": {}
+  "dependencies": {
+    "@codespin/shaman-workflow-core": "file:../shaman-workflow-core"
+  }
 }
