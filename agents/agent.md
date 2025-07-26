@@ -29,12 +29,12 @@ The codebase is a NodeJS/TypeScript monorepo located under `/node/packages`. Eac
 -   *(Review the full list in this directory for other packages)*
 
 ### Dependency Management
--   This is **not** an `npm` or `yarn` workspace.
+-   This project **deliberately avoids npm workspaces** (and other workspace implementations) in favor of a custom build system.
 -   Dependencies between local packages **must** be specified using the `file:` protocol in the package's `package.json`.
     -   Example: `"@shaman/types": "file:../shaman-types"`
 
 ### Build System
--   The project is built using the **`./build.sh`** script in the root directory.
+-   The project uses a **custom build system** via the **`./build.sh`** script in the root directory instead of npm workspaces.
 -   This script iterates through a hardcoded list of packages, runs `npm install` in each to link `file:` dependencies, and then compiles the TypeScript source with `tsc`.
 -   **If you add a new package, you MUST update `./build.sh` to include it in the build sequence.**
 
