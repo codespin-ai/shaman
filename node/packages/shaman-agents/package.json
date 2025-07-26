@@ -1,0 +1,26 @@
+{
+  "name": "@codespin/shaman-agents",
+  "version": "0.0.1",
+  "description": "Unified agent resolution and management across git and external sources",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "sideEffects": false,
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc"
+  },
+  "license": "MIT",
+  "dependencies": {
+    "@codespin/shaman-core": "file:../shaman-core",
+    "@codespin/shaman-types": "file:../shaman-types",
+    "@codespin/shaman-git-resolver": "file:../shaman-git-resolver",
+    "@codespin/shaman-external-registry": "file:../shaman-external-registry",
+    "@codespin/shaman-persistence": "file:../shaman-persistence"
+  },
+  "devDependencies": {
+    "typescript": "^5.5.4"
+  }
+}

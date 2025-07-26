@@ -9,7 +9,7 @@ Shaman's architecture is designed around **pluggable components** and **type-bas
 │                        SHAMAN CORE                              │
 │                                                                 │
 │  ┌─────────────────┐  ┌─────────────────┐  ┌─────────────────┐  │
-│  │   GraphQL API   │  │  Git Resolver   │  │ Stream Publisher│  │
+│  │   GraphQL API   │  │   Agent Resolver │  │ Stream Publisher│  │
 │  └─────────────────┘  └─────────────────┘  └─────────────────┘  │
 │                                │                                │
 │  ┌─────────────────────────────▼─────────────────────────────┐  │
@@ -20,6 +20,15 @@ Shaman's architecture is designed around **pluggable components** and **type-bas
 │  │  └─────────────────┘  └─────────────────┘              │  │
 │  └─────────────────────────────┬─────────────────────────────┘  │
 └─────────────────────────────────┼─────────────────────────────────┘
+                                  │
+┌─────────────────────────────────▼─────────────────────────────────┐
+│                    AGENT RESOLUTION LAYER                         │
+│                    (shaman-agents module)                         │
+│  ┌─────────────────┐                      ┌─────────────────┐    │
+│  │  Git Resolver   │                      │ External Registry│    │
+│  │  (with caching) │                      │   (A2A agents)   │    │
+│  └─────────────────┘                      └─────────────────┘    │
+└───────────────────────────────────────────────────────────────────┘
                                   │
                                   │
 ┌─────────────────────────────────▼─────────────────────────────────┐
@@ -44,16 +53,40 @@ Shaman's architecture is designed around **pluggable components** and **type-bas
 
 ## Core Components
 
-### 1. Agent Orchestrator
+### 1. Agent Resolution Layer (shaman-agents)
+
+Provides unified agent discovery and resolution across all sources.
+
+**Key Features:**
+- Unified interface for both Git and External agents
+- Intelligent caching for Git repositories (commit-hash based)
+- Branch-aware agent resolution
+- Search and filtering capabilities
+
+**Core Type:**
+```typescript
+export type UnifiedAgent = 
+  | { source: 'git'; agent: GitAgent }
+  | { source: 'external'; agent: ExternalAgent };
+
+export type AgentResolver = {
+  getAllAgents: (config: AgentsConfig, options?: AgentSearchOptions) => Promise<Result<UnifiedAgent[]>>;
+  resolveAgent: (name: string, config: AgentsConfig, options?: AgentResolveOptions) => Promise<Result<AgentResolution | null>>;
+  searchAgents: (query: string, config: AgentsConfig, options?: AgentSearchOptions) => Promise<Result<UnifiedAgent[]>>;
+  syncGitRepositories: (config: AgentsConfig) => Promise<Result<SyncResult>>;
+};
+```
+
+### 2. Agent Orchestrator
 
 The heart of Shaman that manages agent execution, tool calls, and conversation flow.
 
 **Key Responsibilities:**
-- Agent resolution from git repositories
 - LLM provider abstraction and routing
 - Tool execution coordination (sync/async)
 - Conversation context management
 - Real-time event streaming
+- Delegates agent resolution to Agent Resolution Layer
 
 **Type-based Design:**
 ```typescript
@@ -66,7 +99,7 @@ export type AgentOrchestrator = {
 };
 ```
 
-### 2. Workflow Engine Adapter
+### 3. Workflow Engine Adapter
 
 **Engine-agnostic interface** that allows Shaman to work with any workflow engine (Temporal, BullMQ, custom implementations).
 
@@ -93,7 +126,7 @@ export type WorkflowEngineAdapter = {
 - **BullMQ**: Development-friendly with Redis-based queuing
 - **Custom**: Extensible interface for any workflow engine
 
-### 3. Tool Execution System
+### 4. Tool Execution System
 
 **Dual-mode tool execution** supporting both synchronous and asynchronous tools with context retention.
 
@@ -167,7 +200,7 @@ type ExecutionContext = {
 - Restored when tool actually executes
 - Conversation continues seamlessly
 
-### 4. Pluggable Notification System
+### 5. Pluggable Notification System
 
 **Provider-agnostic notification** for async tool completion, approvals, and external events.
 

@@ -1,5 +1,5 @@
-import { Result, success, failure } from '@codespin/shaman-core/types/result.js';
-import { ExternalAgent } from '@codespin/shaman-core/types/agent.js';
+import { Result, success, failure } from '@codespin/shaman-core/dist/types/result.js';
+import { ExternalAgent } from '@codespin/shaman-core/dist/types/agent.js';
 import { RegistryResponse, HealthStatus } from './types.js';
 
 interface RegistryConfig {

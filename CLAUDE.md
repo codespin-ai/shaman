@@ -6,6 +6,13 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Shaman is a comprehensive backend framework for managing and coordinating AI agents through a federated ecosystem. It's a NodeJS/TypeScript monorepo that deliberately avoids npm workspaces in favor of a custom build system.
 
+## Recent Important Changes
+
+- **Git Operations**: Now uses native git commands instead of isomorphic-git
+- **Agent Caching**: Git agents are cached by commit hash for performance
+- **Branch Support**: All git operations support branch parameters
+- **Unified Agent Resolution**: New `shaman-agents` package provides single interface for all agent sources
+
 ## Essential Commands
 
 ### Build Commands
@@ -86,14 +93,15 @@ Located in `/node/packages/`, build order matters:
 7. **@codespin/shaman-observability** - Metrics and tracing
 8. **@codespin/shaman-security** - Auth, RBAC, rate limiting
 9. **@codespin/shaman-external-registry** - External agent registry
-10. **@codespin/shaman-git-resolver** - Git-based agent discovery
-11. **@codespin/shaman-llm-vercel** - Vercel AI SDK provider
-12. **@codespin/shaman-tool-router** - Tool execution routing
-13. **@codespin/shaman-workflow-bullmq** - BullMQ workflow adapter
-14. **@codespin/shaman-workflow-temporal** - Temporal workflow adapter
-15. **@codespin/shaman-server** - Main GraphQL server
-16. **@codespin/shaman-worker** - Background worker
-17. **@codespin/shaman-cli** - CLI tool
+10. **@codespin/shaman-git-resolver** - Git-based agent discovery (with caching)
+11. **@codespin/shaman-agents** - Unified agent resolution from all sources
+12. **@codespin/shaman-llm-vercel** - Vercel AI SDK provider
+13. **@codespin/shaman-tool-router** - Tool execution routing
+14. **@codespin/shaman-workflow-bullmq** - BullMQ workflow adapter
+15. **@codespin/shaman-workflow-temporal** - Temporal workflow adapter
+16. **@codespin/shaman-server** - Main GraphQL server
+17. **@codespin/shaman-worker** - Background worker
+18. **@codespin/shaman-cli** - CLI tool
 
 ## Development Workflow
 
@@ -196,3 +204,16 @@ import { executeAgent } from "./agent-runner";
 3. Run migration: `npm run migrate:latest`
 4. Update types in `@codespin/shaman-types`
 5. Update persistence layer in `@codespin/shaman-persistence`
+
+## Git Agent Caching
+
+The git-resolver implements intelligent caching:
+- Repository-level: Checks if commit hash changed before processing
+- File-level: Only re-processes agent files that have been modified
+- Branch-aware: Different branches are treated as separate repositories
+
+Key functions:
+- `resolveAgents(repoUrl, branch)` - Syncs and caches agents from a git repo
+- `getAgentRepositoryByUrlAndBranch()` - Queries repos by URL and branch
+- Commit hashes stored in `agent_repository.last_sync_commit_hash`
+- Per-file hashes in `git_agent.last_modified_commit_hash`

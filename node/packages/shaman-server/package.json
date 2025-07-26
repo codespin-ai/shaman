@@ -23,6 +23,7 @@
     "@codespin/shaman-llm-core": "file:../shaman-llm-core",
     "@codespin/shaman-workflow-core": "file:../shaman-workflow-core",
     "@codespin/shaman-types": "file:../shaman-types",
+    "@codespin/shaman-agents": "file:../shaman-agents",
     "@codespin/shaman-external-registry": "file:../shaman-external-registry",
     "@codespin/shaman-git-resolver": "file:../shaman-git-resolver",
     "@codespin/shaman-llm-vercel": "file:../shaman-llm-vercel",

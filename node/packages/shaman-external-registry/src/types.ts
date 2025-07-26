@@ -1,4 +1,4 @@
-import { ExternalAgent } from '@codespin/shaman-core/types/agent.js';
+import { ExternalAgent } from '@codespin/shaman-core/dist/types/agent.js';
 
 export interface RegistryResponse {
   agents: ExternalAgent[];

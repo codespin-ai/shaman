@@ -23,6 +23,7 @@ PACKAGES=(
   "shaman-security"
   "shaman-external-registry"
   "shaman-git-resolver"
+  "shaman-agents"
   "shaman-llm-vercel"
   "shaman-tool-router"
   "shaman-workflow-bullmq"
