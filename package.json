@@ -1,0 +1,27 @@
+{
+  "name": "shaman",
+  "private": true,
+  "license": "UNLICENSED",
+  "type": "module",
+  "scripts": {
+    "build": "./build.sh",
+    "clean": "./clean.sh",
+    "migrate:latest": "knex migrate:latest --knexfile knexfile.mjs",
+    "migrate:make": "knex migrate:make -x mjs --knexfile knexfile.mjs",
+    "seed:make": "knex seed:make -x mjs --knexfile knexfile.mjs",
+    "seed:run": "knex seed:run --knexfile knexfile.mjs",
+    "start": "concurrently --kill-others-on-fail \"npm run start:server\"",
+    "start:server": "echo 'Starting server...'"
+  },
+  "dependencies": {
+    "knex": "^3.1.0",
+    "pg": "^8.12.0",
+    "pg-promise": "^11.5.4"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.6",
+    "@types/pg": "^8.11.6",
+    "concurrently": "^8.2.2",
+    "typescript": "^5.5.4"
+  }
+}
