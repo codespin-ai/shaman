@@ -1,17 +1,11 @@
 {
-  "name": "@codespin/shaman-types",
-  "version": "0.0.1",
-  "description": "Generated GraphQL & JSON-Schema type declarations.",
-  "type": "module",
-  "main": "./dist/index.js",
-  "types": "./dist/index.d.ts",
-  "sideEffects": false,
-  "files": [
-    "dist"
-  ],
+  "name": "@shaman/types",
+  "version": "1.0.0",
+  "main": "dist/index.js",
   "scripts": {
     "build": "tsc"
   },
-  "license": "MIT",
-  "dependencies": {}
+  "devDependencies": {
+    "typescript": "^5.5.4"
+  }
 }

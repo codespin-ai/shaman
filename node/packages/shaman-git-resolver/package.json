@@ -1,19 +1,23 @@
 {
-  "name": "@codespin/shaman-git-resolver",
-  "version": "0.0.1",
-  "description": "Git clone/cache & agent discovery utilities.",
-  "type": "module",
-  "main": "./dist/index.js",
-  "types": "./dist/index.d.ts",
-  "sideEffects": false,
-  "files": [
-    "dist"
-  ],
-  "license": "MIT",
-  "dependencies": {
-    "@codespin/shaman-core": "file:../shaman-core"
-  },
+  "name": "@shaman/git-resolver",
+  "version": "1.0.0",
+  "main": "dist/index.js",
   "scripts": {
-    "build": "tsc"
+    "build": "tsc",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "dependencies": {
+    "@shaman/persistence": "file:../shaman-persistence",
+    "@shaman/types": "file:../shaman-types",
+    "glob": "^10.4.1",
+    "gray-matter": "^4.0.3",
+    "isomorphic-git": "^1.25.9",
+    "fs-extra": "^11.2.0",
+    "http-proxy-agent": "^7.0.2",
+    "https-proxy-agent": "^7.0.4"
+  },
+  "devDependencies": {
+    "typescript": "^5.5.4",
+    "@types/fs-extra": "^11.0.4"
   }
 }

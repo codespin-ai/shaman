@@ -1,7 +1,7 @@
 /**
  * packages/shaman-types/src/index.ts
  *
- * Barrel export for generated declaration files.
- *
- * NOTE: Scaffold stub – replace with real implementation.
+ * Barrel export for all shared type definitions.
  */
+
+export * from './types.js';

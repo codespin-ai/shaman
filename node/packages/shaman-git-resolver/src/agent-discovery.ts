@@ -1,134 +1,34 @@
 /**
- * @fileoverview Discovers and parses agent definitions from a Git repository.
+ * packages/shaman-git-resolver/src/agent-discovery.ts
+ *
+ * This module is responsible for finding and parsing agent definition files from a local directory.
  */
 
-import { Result, success, failure } from '@shaman/core/types/result.js';
-import { GitAgent } from '@shaman/core/types/agent.js';
-import { GitRepository } from './types.js';
-import * as fs from 'fs/promises';
-import * as path from 'path';
-import * as yaml from 'js-yaml';
+import { glob } from 'glob';
+import matter from 'gray-matter';
+import fs from 'fs-extra';
+import path from 'path';
 
-const AGENT_FILE_NAMES = ['prompt.md', 'agent.json'];
-
-/**
- * Validates the parsed agent data.
- * @param data - The parsed data from the definition file.
- * @param filePath - The path to the file for error reporting.
- * @returns A result indicating success or failure.
- */
-function validateAgent(data: any, filePath: string): Result<true, Error> {
-  if (!data || typeof data !== 'object') {
-    return failure(new Error(`Invalid agent definition in ${filePath}: not an object.`));
-  }
-  if (!data.name || typeof data.name !== 'string') {
-    return failure(new Error(`Missing or invalid 'name' in ${filePath}`));
-  }
-  if (!data.description || typeof data.description !== 'string') {
-    return failure(new Error(`Missing or invalid 'description' in ${filePath}`));
-  }
-  if (!data.llm || typeof data.llm !== 'object') {
-    return failure(new Error(`Missing or invalid 'llm' config in ${filePath}`));
-  }
-  return success(true);
+export interface ParsedAgentFile {
+  filePath: string;
+  frontmatter: Record<string, any>;
+  content: string;
 }
 
-
-/**
- * Scans a directory for agent definition files.
- * @param dir - The directory to scan.
- * @returns A list of paths to agent definition files.
- */
-async function findAgentFiles(dir: string): Promise<string[]> {
-  const entries = await fs.readdir(dir, { withFileTypes: true });
-  const files = await Promise.all(entries.map(async (entry) => {
-    const fullPath = path.join(dir, entry.name);
-    if (entry.isDirectory()) {
-      return findAgentFiles(fullPath);
-    }
-    if (AGENT_FILE_NAMES.includes(entry.name)) {
-      return [fullPath];
-    }
-    return [];
-  }));
-  return files.flat();
+export async function findAgentFiles(dir: string): Promise<string[]> {
+  // Find all markdown files, but ignore node_modules
+  const pattern = '**/*.md';
+  const files = await glob(pattern, {
+    cwd: dir,
+    nodir: true,
+    absolute: true,
+    ignore: '**/node_modules/**',
+  });
+  return files;
 }
 
-/**
- * Parses an agent definition file.
- * @param filePath - The path to the agent definition file.
- * @returns The parsed agent configuration.
- */
-async function parseAgentFile(filePath: string): Promise<Result<any, Error>> {
-  try {
-    const content = await fs.readFile(filePath, 'utf-8');
-    if (path.basename(filePath) === 'agent.json') {
-      return success(JSON.parse(content));
-    } else {
-      const match = content.match(/^---([\s\S]+?)---/);
-      if (match) {
-        const frontmatter = yaml.load(match[1]);
-        if (typeof frontmatter !== 'object' || frontmatter === null) {
-          return failure(new Error(`Invalid frontmatter in ${filePath}: not an object`));
-        }
-        return success({ ...(frontmatter as object), prompt: content });
-      }
-      return failure(new Error(`No frontmatter found in ${filePath}`));
-    }
-  } catch (error) {
-    return failure(error as Error);
-  }
-}
-
-/**
- * Discovers and parses all agents in a repository.
- * @param repo - The repository to scan.
- * @param commitHash - The commit hash of the repository.
- * @param baseDir - The base directory where repositories are stored.
- * @returns A list of discovered agents and a list of errors.
- */
-export async function discoverAgents(
-  repo: GitRepository,
-  commitHash: string,
-  baseDir: string
-): Promise<{ agents: GitAgent[], errors: { file: string, error: Error }[] }> {
-  const repoPath = path.join(baseDir, repo.path);
-  const agentFiles = await findAgentFiles(repoPath);
-  const results = await Promise.all(agentFiles.map(async (file) => {
-    const parseResult = await parseAgentFile(file);
-    if (!parseResult.success) {
-      return { file, error: parseResult.error };
-    }
-    const agentData = parseResult.data;
-    const validationResult = validateAgent(agentData, file);
-    if (!validationResult.success) {
-        return { file, error: validationResult.error };
-    }
-    const agent: GitAgent = {
-      name: agentData.name,
-      description: agentData.description,
-      llm: agentData.llm,
-      allowedTools: agentData.allowedTools || [],
-      allowedAgents: agentData.allowedAgents || [],
-      source: 'git',
-      repositoryUrl: repo.url,
-      commitHash,
-      filePath: path.relative(repoPath, file),
-      prompt: agentData.prompt || '',
-    };
-    return { agent };
-  }));
-
-  const agents: GitAgent[] = [];
-  const errors: { file: string, error: Error }[] = [];
-
-  for (const result of results) {
-    if (result.agent) {
-      agents.push(result.agent);
-    } else {
-      errors.push(result as { file: string, error: Error });
-    }
-  }
-
-  return { agents, errors };
+export async function parseAgentFile(filePath: string): Promise<ParsedAgentFile> {
+  const fileContent = await fs.readFile(filePath, 'utf8');
+  const { data, content } = matter(fileContent);
+  return { filePath, frontmatter: data, content };
 }

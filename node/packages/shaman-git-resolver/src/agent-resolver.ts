@@ -1,41 +1,78 @@
 /**
- * @fileoverview Provides a class to resolve agent names to definitions.
+ * packages/shaman-git-resolver/src/agent-resolver.ts
+ *
+ * This is the main orchestration module for the git-resolver package.
+ * It coordinates the process of syncing a repository and updating the database.
  */
 
-import { GitAgent } from '@shaman/core/types/agent.js';
-import { GitRepository } from './types.js';
-import { discoverAllAgents } from './git-discovery.js';
+import {
+  findAgentRepositoryByName,
+  updateAgentRepositorySyncStatus,
+  upsertGitAgent,
+  deleteGitAgentsByFilePaths
+} from '@shaman/persistence';
+import { AgentRepository, GitAgent } from '@shaman/types';
+import path from 'path';
+import {
+  cloneOrPull,
+  getLatestCommitHash
+} from './git-manager.js';
+import {
+  findAgentFiles,
+  parseAgentFile,
+  ParsedAgentFile
+} from './agent-discovery.js';
 
-export class AgentResolver {
-  private agents: Map<string, GitAgent> = new Map();
-  
-  constructor(private repositories: GitRepository[], private baseDir: string) {}
+export async function syncRepository(name: string): Promise<void> {
+  const repo = await findAgentRepositoryByName(name);
+  if (!repo) {
+    throw new Error(`Repository '${name}' not found in the database.`);
+  }
 
-  /**
-   * Syncs repositories and refreshes the agent map.
-   */
-  async refresh(): Promise<void> {
-    const { agents, errors } = await discoverAllAgents(this.repositories, this.baseDir);
-    if (errors.length > 0) {
-      console.error("Errors encountered during agent discovery:", errors);
+  await updateAgentRepositorySyncStatus(repo.id, 'IN_PROGRESS');
+
+  try {
+    const repoDir = await cloneOrPull(repo.gitUrl, repo.branch, repo.name);
+    const latestCommitHash = await getLatestCommitHash(repo.name);
+
+    if (repo.lastSyncCommitHash === latestCommitHash) {
+      await updateAgentRepositorySyncStatus(repo.id, 'SUCCESS', latestCommitHash);
+      console.log(`Repository '${name}' is already up-to-date.`);
+      return;
     }
-    this.agents = agents;
-  }
 
-  /**
-   * Resolves an agent by its full name.
-   * @param agentName - The full name of the agent (e.g., "namespace/agent-path").
-   * @returns The agent definition or undefined if not found.
-   */
-  resolve(agentName: string): GitAgent | undefined {
-    return this.agents.get(agentName);
-  }
+    const agentFilePaths = await findAgentFiles(repoDir);
+    const agentsToKeep: string[] = [];
 
-  /**
-   * Returns a list of all discovered agents.
-   * @returns An array of agent definitions.
-   */
-  listAgents(): GitAgent[] {
-    return Array.from(this.agents.values());
+    for (const filePath of agentFilePaths) {
+      const parsedFile = await parseAgentFile(filePath);
+      const relativePath = path.relative(repoDir, filePath);
+      agentsToKeep.push(relativePath);
+
+      const agentData: Omit<GitAgent, 'id' | 'createdAt' | 'updatedAt'> = {
+        agentRepositoryId: repo.id,
+        name: parsedFile.frontmatter.name || path.basename(relativePath, '.md'),
+        description: parsedFile.frontmatter.description || null,
+        version: parsedFile.frontmatter.version || null,
+        filePath: relativePath,
+        model: parsedFile.frontmatter.model || null,
+        providers: parsedFile.frontmatter.providers || null,
+        mcpServers: parsedFile.frontmatter.mcpServers || null,
+        allowedAgents: parsedFile.frontmatter.allowedAgents || null,
+        tags: parsedFile.frontmatter.tags || null,
+        lastModifiedCommitHash: latestCommitHash,
+      };
+
+      await upsertGitAgent(agentData);
+    }
+
+    // Delete agents that are no longer in the repository
+    await deleteGitAgentsByFilePaths(repo.id, agentsToKeep);
+    await updateAgentRepositorySyncStatus(repo.id, 'SUCCESS', latestCommitHash);
+
+    console.log(`Successfully synced repository '${name}' at commit ${latestCommitHash}`);
+  } catch (error: any) {
+    await updateAgentRepositorySyncStatus(repo.id, 'FAILED', repo.lastSyncCommitHash, { message: error.message, stack: error.stack });
+    throw error;
   }
 }

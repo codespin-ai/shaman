@@ -1,20 +1,15 @@
 {
-  "name": "@codespin/shaman-persistence",
-  "version": "0.0.1",
-  "description": "PostgreSQL & Redis connection helpers plus migrations.",
-  "type": "module",
-  "main": "./dist/index.js",
-  "types": "./dist/index.d.ts",
-  "sideEffects": false,
-  "files": [
-    "dist"
-  ],
+  "name": "@shaman/persistence",
+  "version": "1.0.0",
+  "main": "dist/index.js",
   "scripts": {
     "build": "tsc"
   },
-  "license": "MIT",
   "dependencies": {
-    "@codespin/shaman-core": "file:../shaman-core",
-    "@codespin/shaman-config": "file:../shaman-config"
+    "@shaman/types": "file:../shaman-types",
+    "pg-promise": "^11.5.4"
+  },
+  "devDependencies": {
+    "typescript": "^5.5.4"
   }
 }

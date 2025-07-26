@@ -1,7 +1,9 @@
 /**
- * /shaman-persistence/src/index.ts
+ * packages/shaman-persistence/src/index.ts
  *
- * Package public API.
- *
- * NOTE: Scaffold stub – replace with real implementation.
+ * Barrel export for the persistence layer.
  */
+
+export * from './db.js';
+export * from './agent-repository.js';
+export * from './git-agent.js';
