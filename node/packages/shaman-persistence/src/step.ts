@@ -7,6 +7,7 @@ import { db } from './db.js';
 
 /**
  * Database row type for step table
+ * Mirrors the exact database schema
  */
 type StepDbRow = {
   id: string;
@@ -24,8 +25,8 @@ type StepDbRow = {
   duration: number | null;
   tool_name: string | null;
   tool_call_id: string | null;
-  messages: string | null;
-  metadata: string | null;
+  messages: unknown;
+  metadata: unknown;
   prompt_tokens: number | null;
   completion_tokens: number | null;
   cost: number | null;
@@ -37,28 +38,29 @@ type StepDbRow = {
 export async function createStep(
   step: Omit<Step, 'id' | 'startTime'> & { id?: string }
 ): Promise<Step> {
+  const dbData = mapStepToDb(step);
   const result = await db.one<StepDbRow>(
     `INSERT INTO step 
      (id, run_id, parent_step_id, type, status, agent_name, agent_source, 
       input, start_time, tool_name, tool_call_id, messages, metadata)
-     VALUES ($(id), $(runId), $(parentStepId), $(type), $(status), $(agentName), 
-      $(agentSource), $(input), $(startTime), $(toolName), $(toolCallId), 
+     VALUES ($(id), $(run_id), $(parent_step_id), $(type), $(status), $(agent_name), 
+      $(agent_source), $(input), $(start_time), $(tool_name), $(tool_call_id), 
       $(messages), $(metadata))
      RETURNING *`,
     {
-      id: step.id || generateStepId(),
-      runId: step.runId,
-      parentStepId: step.parentStepId || null,
-      type: step.type,
-      status: step.status,
-      agentName: step.agentName || null,
-      agentSource: step.agentSource || null,
-      input: step.input || null,
-      startTime: new Date(),
-      toolName: step.toolName || null,
-      toolCallId: step.toolCallId || null,
-      messages: step.messages ? JSON.stringify(step.messages) : null,
-      metadata: step.metadata ? JSON.stringify(step.metadata) : null
+      id: dbData.id || generateStepId(),
+      run_id: dbData.run_id,
+      parent_step_id: dbData.parent_step_id,
+      type: dbData.type,
+      status: dbData.status,
+      agent_name: dbData.agent_name,
+      agent_source: dbData.agent_source,
+      input: dbData.input,
+      start_time: new Date(),
+      tool_name: dbData.tool_name,
+      tool_call_id: dbData.tool_call_id,
+      messages: dbData.messages,
+      metadata: dbData.metadata
     }
   );
   
@@ -129,12 +131,12 @@ export async function updateStep(
   
   if (updates.messages !== undefined) {
     sets.push('messages = $(messages)');
-    params.messages = JSON.stringify(updates.messages);
+    params.messages = updates.messages;
   }
   
   if (updates.metadata !== undefined) {
     sets.push('metadata = $(metadata)');
-    params.metadata = JSON.stringify(updates.metadata);
+    params.metadata = updates.metadata;
   }
   
   const result = await db.one<StepDbRow>(
@@ -210,12 +212,34 @@ export async function getStepsByAgent(
 }
 
 /**
- * Database row type for step table
+ * Map domain type to database row (for inserts/updates)
  */
-
+function mapStepToDb(step: Omit<Step, 'id' | 'startTime'> & { id?: string }): Partial<StepDbRow> {
+  return {
+    id: step.id,
+    run_id: step.runId,
+    parent_step_id: step.parentStepId || null,
+    type: step.type,
+    status: step.status,
+    agent_name: step.agentName || null,
+    agent_source: step.agentSource || null,
+    input: step.input || null,
+    output: step.output || null,
+    error: step.error || null,
+    tool_name: step.toolName || null,
+    tool_call_id: step.toolCallId || null,
+    messages: step.messages || null,
+    metadata: step.metadata || null,
+    end_time: step.endTime || null,
+    duration: step.duration || null,
+    prompt_tokens: step.promptTokens || null,
+    completion_tokens: step.completionTokens || null,
+    cost: step.cost || null
+  };
+}
 
 /**
- * Helper to map database row to Step type
+ * Map database row to domain type
  */
 function mapStepFromDb(row: StepDbRow): Step {
   return {
@@ -237,8 +261,8 @@ function mapStepFromDb(row: StepDbRow): Step {
     cost: row.cost || undefined,
     toolName: row.tool_name || undefined,
     toolCallId: row.tool_call_id || undefined,
-    messages: row.messages ? JSON.parse(row.messages) as Message[] : undefined,
-    metadata: row.metadata ? JSON.parse(row.metadata) as Record<string, unknown> : undefined
+    messages: row.messages as Message[] | undefined,
+    metadata: row.metadata as Record<string, unknown> | undefined
   };
 }
 

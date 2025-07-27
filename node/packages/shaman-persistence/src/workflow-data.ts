@@ -8,17 +8,48 @@ import { v4 as uuidv4 } from 'uuid';
 
 /**
  * Database row type for workflow_data table
+ * Mirrors the exact database schema
  */
 type WorkflowDataDbRow = {
   id: string;
   run_id: string;
   key: string;
-  value: string;
+  value: unknown;
   created_by_step_id: string;
   created_by_agent_name: string;
   created_by_agent_source: string;
   created_at: Date;
 };
+
+/**
+ * Map database row to domain type
+ */
+function mapWorkflowDataFromDb(row: WorkflowDataDbRow): WorkflowData {
+  return {
+    id: row.id,
+    runId: row.run_id,
+    key: row.key,
+    value: row.value,
+    createdByStepId: row.created_by_step_id,
+    createdByAgentName: row.created_by_agent_name,
+    createdByAgentSource: row.created_by_agent_source as AgentSource,
+    createdAt: row.created_at
+  };
+}
+
+/**
+ * Map domain type to database row (for inserts)
+ */
+function mapWorkflowDataToDb(data: Omit<WorkflowData, 'id' | 'createdAt'>): Omit<WorkflowDataDbRow, 'id' | 'created_at'> {
+  return {
+    run_id: data.runId,
+    key: data.key,
+    value: data.value,
+    created_by_step_id: data.createdByStepId,
+    created_by_agent_name: data.createdByAgentName,
+    created_by_agent_source: data.createdByAgentSource
+  };
+}
 
 /**
  * Create a workflow data entry
@@ -28,34 +59,26 @@ export async function createWorkflowData(
 ): Promise<WorkflowData> {
   const id = uuidv4();
   const createdAt = new Date();
+  const dbData = mapWorkflowDataToDb(data);
   
   const result = await db.one<WorkflowDataDbRow>(
     `INSERT INTO workflow_data 
      (id, run_id, key, value, created_by_step_id, created_by_agent_name, created_by_agent_source, created_at)
-     VALUES ($(id), $(runId), $(key), $(value), $(createdByStepId), $(createdByAgentName), $(createdByAgentSource), $(createdAt))
+     VALUES ($(id), $(run_id), $(key), $(value), $(created_by_step_id), $(created_by_agent_name), $(created_by_agent_source), $(created_at))
      RETURNING *`,
     {
       id,
-      runId: data.runId,
-      key: data.key,
-      value: JSON.stringify(data.value),
-      createdByStepId: data.createdByStepId,
-      createdByAgentName: data.createdByAgentName,
-      createdByAgentSource: data.createdByAgentSource,
-      createdAt
+      run_id: dbData.run_id,
+      key: dbData.key,
+      value: dbData.value,
+      created_by_step_id: dbData.created_by_step_id,
+      created_by_agent_name: dbData.created_by_agent_name,
+      created_by_agent_source: dbData.created_by_agent_source,
+      created_at: createdAt
     }
   );
   
-  return {
-    id: result.id,
-    runId: result.run_id,
-    key: result.key,
-    value: JSON.parse(result.value) as unknown,
-    createdByStepId: result.created_by_step_id,
-    createdByAgentName: result.created_by_agent_name,
-    createdByAgentSource: result.created_by_agent_source as AgentSource,
-    createdAt: result.created_at
-  };
+  return mapWorkflowDataFromDb(result);
 }
 
 /**
@@ -72,16 +95,7 @@ export async function getWorkflowData(
     { runId, key }
   );
   
-  return results.map(row => ({
-    id: row.id,
-    runId: row.run_id,
-    key: row.key,
-    value: JSON.parse(row.value) as unknown,
-    createdByStepId: row.created_by_step_id,
-    createdByAgentName: row.created_by_agent_name,
-    createdByAgentSource: row.created_by_agent_source as AgentSource,
-    createdAt: row.created_at
-  }));
+  return results.map(mapWorkflowDataFromDb);
 }
 
 /**
@@ -110,16 +124,7 @@ export async function queryWorkflowData(
     limit
   });
   
-  return results.map(row => ({
-    id: row.id,
-    runId: row.run_id,
-    key: row.key,
-    value: JSON.parse(row.value) as unknown,
-    createdByStepId: row.created_by_step_id,
-    createdByAgentName: row.created_by_agent_name,
-    createdByAgentSource: row.created_by_agent_source as AgentSource,
-    createdAt: row.created_at
-  }));
+  return results.map(mapWorkflowDataFromDb);
 }
 
 /**
@@ -177,16 +182,7 @@ export async function getAllWorkflowData(
     { runId }
   );
   
-  return results.map(row => ({
-    id: row.id,
-    runId: row.run_id,
-    key: row.key,
-    value: JSON.parse(row.value) as unknown,
-    createdByStepId: row.created_by_step_id,
-    createdByAgentName: row.created_by_agent_name,
-    createdByAgentSource: row.created_by_agent_source as AgentSource,
-    createdAt: row.created_at
-  }));
+  return results.map(mapWorkflowDataFromDb);
 }
 
 /**

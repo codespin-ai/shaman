@@ -11,20 +11,21 @@ import { db } from './db.js';
 export async function createRun(
   run: Omit<Run, 'id' | 'startTime'> & { id?: string }
 ): Promise<Run> {
+  const dbData = mapRunToDb(run);
   const result = await db.one<RunDbRow>(
     `INSERT INTO run 
      (id, status, initial_input, total_cost, start_time, created_by, trace_id, metadata)
-     VALUES ($(id), $(status), $(initialInput), $(totalCost), $(startTime), $(createdBy), $(traceId), $(metadata))
+     VALUES ($(id), $(status), $(initial_input), $(total_cost), $(start_time), $(created_by), $(trace_id), $(metadata))
      RETURNING *`,
     {
-      id: run.id || generateRunId(),
-      status: run.status,
-      initialInput: run.initialInput,
-      totalCost: run.totalCost,
-      startTime: new Date(),
-      createdBy: run.createdBy,
-      traceId: run.traceId || null,
-      metadata: run.metadata ? JSON.stringify(run.metadata) : null
+      id: dbData.id || generateRunId(),
+      status: dbData.status,
+      initial_input: dbData.initial_input,
+      total_cost: dbData.total_cost,
+      start_time: new Date(),
+      created_by: dbData.created_by,
+      trace_id: dbData.trace_id,
+      metadata: dbData.metadata
     }
   );
   
@@ -75,7 +76,7 @@ export async function updateRun(
   
   if (updates.metadata !== undefined) {
     sets.push('metadata = $(metadata)');
-    params.metadata = JSON.stringify(updates.metadata);
+    params.metadata = updates.metadata;
   }
   
   const result = await db.one<RunDbRow>(
@@ -156,6 +157,7 @@ export async function getRunsNeedingInput(limit?: number): Promise<Run[]> {
 
 /**
  * Database row type for run table
+ * Mirrors the exact database schema
  */
 type RunDbRow = {
   id: string;
@@ -167,11 +169,11 @@ type RunDbRow = {
   duration: number | null;
   created_by: string;
   trace_id: string | null;
-  metadata: string | null;
+  metadata: unknown;
 };
 
 /**
- * Helper to map database row to Run type
+ * Map database row to domain type
  */
 function mapRunFromDb(row: RunDbRow): Run {
   return {
@@ -184,7 +186,24 @@ function mapRunFromDb(row: RunDbRow): Run {
     duration: row.duration || undefined,
     createdBy: row.created_by,
     traceId: row.trace_id || undefined,
-    metadata: row.metadata ? JSON.parse(row.metadata) as Record<string, unknown> : undefined
+    metadata: row.metadata as Record<string, unknown> | undefined
+  };
+}
+
+/**
+ * Map domain type to database row (for inserts/updates)
+ */
+function mapRunToDb(run: Omit<Run, 'id' | 'startTime'> & { id?: string }): Partial<RunDbRow> {
+  return {
+    id: run.id,
+    status: run.status,
+    initial_input: run.initialInput,
+    total_cost: run.totalCost,
+    created_by: run.createdBy,
+    trace_id: run.traceId || null,
+    metadata: run.metadata || null,
+    end_time: run.endTime || null,
+    duration: run.duration || null
   };
 }
 
