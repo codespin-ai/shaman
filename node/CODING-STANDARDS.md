@@ -285,7 +285,74 @@ export type ExecutionState =
 
 ## 🗄️ Database Access Patterns
 
-### 1. **Named Parameters in SQL**
+### 1. **DbRow Pattern**
+
+All database access must use the DbRow pattern for type safety and clear separation between database schema and domain types.
+
+```typescript
+// ✅ Good - DbRow type mirrors exact database schema
+type RunDbRow = {
+  id: string;
+  status: string;
+  initial_input: string;
+  total_cost: number;
+  start_time: Date;
+  end_time: Date | null;
+  duration: number | null;
+  created_by: string;
+  trace_id: string | null;
+  metadata: unknown;  // JSONB fields typed as unknown
+};
+
+// ✅ Good - Bidirectional mapper functions
+function mapRunFromDb(row: RunDbRow): Run {
+  return {
+    id: row.id,
+    status: row.status as ExecutionState,
+    initialInput: row.initial_input,
+    totalCost: row.total_cost,
+    startTime: row.start_time,
+    endTime: row.end_time || undefined,
+    duration: row.duration || undefined,
+    createdBy: row.created_by,
+    traceId: row.trace_id || undefined,
+    metadata: row.metadata as Record<string, unknown> | undefined
+  };
+}
+
+function mapRunToDb(run: Omit<Run, 'id' | 'startTime'> & { id?: string }): Partial<RunDbRow> {
+  return {
+    id: run.id,
+    status: run.status,
+    initial_input: run.initialInput,
+    total_cost: run.totalCost,
+    created_by: run.createdBy,
+    trace_id: run.traceId || null,
+    metadata: run.metadata || null,
+    end_time: run.endTime || null,
+    duration: run.duration || null
+  };
+}
+
+// ✅ Good - Type-safe queries
+export async function getRun(id: string): Promise<Run | null> {
+  const result = await db.oneOrNone<RunDbRow>(
+    `SELECT * FROM run WHERE id = $(id)`,
+    { id }
+  );
+  return result ? mapRunFromDb(result) : null;
+}
+```
+
+**Key Rules:**
+- DbRow types use **snake_case** to match database columns exactly
+- Domain types use **camelCase** for TypeScript conventions
+- JSONB fields typed as `unknown` in DbRow types
+- All queries must specify the DbRow type: `db.one<XxxDbRow>(...)`
+- Mapper functions handle all conversions including null/undefined mapping
+- Use `Partial<XxxDbRow>` for insert/update operations
+
+### 2. **Named Parameters in SQL**
 
 Always use named parameters in SQL queries for clarity and safety. Use pg-promise's named parameter syntax.
 

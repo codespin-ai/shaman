@@ -77,7 +77,9 @@ cd node/packages/[package-name] && npm run build
 - Table names: **singular** and **snake_case** (e.g., `agent_repository`)
 - TypeScript: **camelCase** for all variables/properties
 - SQL: **snake_case** for all table/column names
-- The persistence layer (`shaman-persistence`) handles camelCase ↔ snake_case mapping
+- **DbRow Pattern**: All persistence functions use `XxxDbRow` types that mirror exact database schema
+- **Mapper Functions**: `mapXxxFromDb()` and `mapXxxToDb()` handle conversions between snake_case DB and camelCase domain types
+- **Type-safe Queries**: All queries use `db.one<XxxDbRow>()` with explicit type parameters
 
 ### 4. ESM Modules
 - All imports MUST include `.js` extension: `import { foo } from './bar.js'`
@@ -130,6 +132,48 @@ Required PostgreSQL connection variables:
 - `SHAMAN_DB_PASSWORD`
 
 ## Code Patterns
+
+### Database Row Pattern (DbRow)
+```typescript
+// ✅ Good - DbRow type mirrors exact database schema
+type AgentRepositoryDbRow = {
+  id: number;
+  name: string;
+  git_url: string;  // snake_case matching DB column
+  branch: string;
+  is_root: boolean;
+  last_sync_commit_hash: string | null;
+  last_sync_at: Date | null;
+  last_sync_status: string;
+  last_sync_errors: unknown;  // JSONB fields typed as unknown
+  created_at: Date;
+  updated_at: Date;
+};
+
+// ✅ Good - Mapper functions for DB ↔ Domain conversions
+function mapAgentRepositoryFromDb(row: AgentRepositoryDbRow): AgentRepository {
+  return {
+    id: row.id,
+    name: row.name,
+    gitUrl: row.git_url,  // snake_case to camelCase
+    branch: row.branch,
+    isRoot: row.is_root,
+    lastSyncCommitHash: row.last_sync_commit_hash,
+    lastSyncAt: row.last_sync_at,
+    lastSyncStatus: row.last_sync_status as AgentRepository['lastSyncStatus'],
+    lastSyncErrors: row.last_sync_errors as Record<string, unknown> | null,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at
+  };
+}
+
+// ✅ Good - Type-safe queries with explicit type parameters
+const result = await db.one<AgentRepositoryDbRow>(
+  `SELECT * FROM agent_repository WHERE id = $1`,
+  [id]
+);
+return mapAgentRepositoryFromDb(result);
+```
 
 ### Function Export Pattern
 ```typescript
