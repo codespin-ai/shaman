@@ -204,8 +204,8 @@ function mapTemporalStatus(code: number): ExecutionState {
 }
 
 // Export factory function
-export const createExecutionEngine: (config: any) => Promise<Result<ExecutionEngine>> = 
-  async (config: TemporalConfig) => {
+export const createExecutionEngine: (config: TemporalConfig) => Promise<Result<ExecutionEngine>> = 
+  async (config) => {
     try {
       const engine = createTemporalEngine(config);
       return { success: true, data: engine };

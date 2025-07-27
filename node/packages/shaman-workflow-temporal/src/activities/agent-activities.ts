@@ -49,10 +49,10 @@ export async function createStep(step: {
   runId: string;
   parentStepId?: string;
   agentName: string;
-  agentSource: string;
+  agentSource: 'GIT' | 'A2A_EXTERNAL';
   input: string;
   status: ExecutionState;
-  type: string;
+  type: 'agent_execution' | 'llm_call' | 'tool_call' | 'agent_call';
   depth: number;
 }): Promise<void> {
   if (!stepRepository) {
@@ -64,10 +64,10 @@ export async function createStep(step: {
     runId: step.runId,
     parentStepId: step.parentStepId,
     agentName: step.agentName,
-    agentSource: step.agentSource as any,
+    agentSource: step.agentSource,
     input: step.input,
     status: step.status,
-    type: step.type as any,
+    type: step.type,
     startTime: new Date()
   });
 }

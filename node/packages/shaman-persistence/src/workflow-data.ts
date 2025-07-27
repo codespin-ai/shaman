@@ -127,7 +127,7 @@ export async function listWorkflowDataKeys(
     WHERE run_id = $(runId)
   `;
   
-  const params: any = { runId };
+  const params: Record<string, unknown> = { runId };
   
   if (filters?.agentName) {
     query += ` AND created_by_agent_name = $(agentName)`;

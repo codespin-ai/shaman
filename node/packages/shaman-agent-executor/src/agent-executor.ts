@@ -11,7 +11,8 @@ import type {
   Message,
   ToolCall,
   ExecutionState,
-  Step
+  Step,
+  WorkflowContext
 } from '@codespin/shaman-types';
 import type {
   AgentDefinition,
@@ -20,6 +21,7 @@ import type {
   LLMCompletionResult,
   ToolExecutionResult
 } from './types.js';
+import type { LLMProvider, LLMMessage } from '@codespin/shaman-llm-core';
 import { canAgentCall } from './agent-resolver.js';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -188,14 +190,21 @@ export async function executeAgent(
 async function getLLMCompletion(
   messages: Message[],
   agent: AgentDefinition,
-  llmProvider: any // LLMProvider type
+  llmProvider: LLMProvider
 ): Promise<Result<LLMCompletionResult>> {
   try {
     // Convert messages to LLM format
-    const llmMessages = messages.map(msg => ({
+    const llmMessages: LLMMessage[] = messages.map(msg => ({
       role: msg.role.toLowerCase() as 'system' | 'user' | 'assistant' | 'tool',
       content: msg.content,
-      tool_calls: msg.toolCalls,
+      tool_calls: msg.toolCalls?.map(tc => ({
+        id: tc.id,
+        type: 'function' as const,
+        function: {
+          name: tc.toolName,
+          arguments: JSON.stringify(tc.input)
+        }
+      })),
       tool_call_id: msg.toolCallId
     }));
 
@@ -211,7 +220,7 @@ async function getLLMCompletion(
       success: true,
       data: {
         content: response.content || '',
-        toolCalls: response.tool_calls?.map((tc: any) => ({
+        toolCalls: response.tool_calls?.map(tc => ({
           id: tc.id,
           toolName: tc.function.name,
           input: JSON.parse(tc.function.arguments),
@@ -323,7 +332,7 @@ async function executeToolCalls(
 /**
  * Build context message from workflow memory
  */
-function buildContextMessage(context: any): Message | null {
+function buildContextMessage(context: WorkflowContext): Message | null {
   if (context.memory.size === 0) {
     return null;
   }

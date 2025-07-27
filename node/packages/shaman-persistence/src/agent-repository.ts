@@ -77,7 +77,7 @@ export async function deleteAgentRepository(id: number): Promise<boolean> {
 }
 
 export async function getAllAgentRepositories(): Promise<AgentRepository[]> {
-  const result = await db.any(
+  const result = await db.any<AgentRepository>(
     `SELECT id, name, git_url as "gitUrl", branch, is_root as "isRoot", 
             last_sync_commit_hash as "lastSyncCommitHash", last_sync_at as "lastSyncAt", 
             last_sync_status as "lastSyncStatus", last_sync_errors as "lastSyncErrors",

@@ -41,8 +41,8 @@ export type AgentExecutorDependencies = {
   readonly llmProvider: LLMProvider;
   readonly toolRouter: ToolRouter;
   readonly persistence: {
-    createStep: (step: any) => Promise<Step>;
-    updateStep: (id: string, updates: any) => Promise<Step>;
+    createStep: (step: Partial<Step>) => Promise<Step>;
+    updateStep: (id: string, updates: Partial<Step>) => Promise<Step>;
     getStep: (id: string) => Promise<Step | null>;
   };
   readonly workflowEngine?: {

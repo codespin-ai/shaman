@@ -11,7 +11,7 @@ import path from 'path';
 
 export interface ParsedAgentFile {
   filePath: string;
-  frontmatter: Record<string, any>;
+  frontmatter: Record<string, unknown>;
   content: string;
 }
 

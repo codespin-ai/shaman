@@ -26,7 +26,7 @@ export async function getGitAgent(id: number): Promise<GitAgent | null> {
 }
 
 export async function getGitAgentsByRepositoryId(agentRepositoryId: number): Promise<GitAgent[]> {
-  const result = await db.any(
+  const result = await db.any<GitAgent>(
     `SELECT id, agent_repository_id as "agentRepositoryId", name, description, version, file_path as "filePath", 
             model, providers, mcp_servers as "mcpServers", allowed_agents as "allowedAgents", tags, 
             last_modified_commit_hash as "lastModifiedCommitHash", created_at as "createdAt", updated_at as "updatedAt"
@@ -61,7 +61,7 @@ export async function deleteGitAgent(id: number): Promise<boolean> {
 }
 
 export async function getAllGitAgents(): Promise<GitAgent[]> {
-  const result = await db.any(
+  const result = await db.any<GitAgent>(
     `SELECT id, agent_repository_id as "agentRepositoryId", name, description, version, file_path as "filePath", 
             model, providers, mcp_servers as "mcpServers", allowed_agents as "allowedAgents", tags, 
             last_modified_commit_hash as "lastModifiedCommitHash", created_at as "createdAt", updated_at as "updatedAt"

@@ -9,9 +9,10 @@ import type {
   ToolRouterDependencies,
   McpServerConnection,
   PlatformToolName,
+  PlatformToolSchemas,
   ToolHandler
 } from './types.js';
-import { createPlatformToolHandlers, PLATFORM_TOOL_DEFINITIONS } from './platform-tools.js';
+import { createPlatformToolHandlers, PLATFORM_TOOL_DEFINITIONS, type PlatformToolHandlers } from './platform-tools.js';
 
 /**
  * Tool router configuration
@@ -40,7 +41,7 @@ export function createToolRouter(
 ) {
   const platformHandlers = config.enablePlatformTools !== false 
     ? createPlatformToolHandlers(dependencies)
-    : {} as Record<PlatformToolName, ToolHandler<any, any>>;
+    : {} as PlatformToolHandlers;
 
   return {
     /**
@@ -53,7 +54,8 @@ export function createToolRouter(
     ): Promise<Result<ToolExecutionResult>> {
       // 1. Check if it's a platform tool
       if (isPlatformTool(toolName)) {
-        const handler = platformHandlers[toolName as PlatformToolName];
+        const platformToolName = toolName as PlatformToolName;
+        const handler = platformHandlers[platformToolName];
         if (!handler) {
           return {
             success: false,
@@ -61,7 +63,9 @@ export function createToolRouter(
           };
         }
 
-        const result = await handler(args, context);
+        // Type-safe handler call - TypeScript can't infer the exact handler type
+        // from the dynamic key lookup, so we need to help it
+        const result = await (handler as ToolHandler<unknown, unknown>)(args, context);
         return {
           success: true,
           data: {

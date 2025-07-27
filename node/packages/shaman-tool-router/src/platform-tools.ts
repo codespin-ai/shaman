@@ -16,9 +16,13 @@ import { v4 as uuidv4 } from 'uuid';
 /**
  * Create platform tool handlers
  */
+export type PlatformToolHandlers = {
+  [K in keyof PlatformToolSchemas]: ToolHandler<PlatformToolSchemas[K], PlatformToolResults[K]>
+};
+
 export function createPlatformToolHandlers(
   deps: ToolRouterDependencies
-): Record<keyof PlatformToolSchemas, ToolHandler<any, any>> {
+): PlatformToolHandlers {
   return {
     workflow_data_write: createWorkflowDataWriteHandler(deps),
     workflow_data_read: createWorkflowDataReadHandler(deps),
@@ -143,7 +147,7 @@ export const PLATFORM_TOOL_DEFINITIONS = {
       type: 'object',
       properties: {
         key: { type: 'string', description: 'Key to store the data under' },
-        value: { description: 'Value to store (any JSON-serializable data)' },
+        value: { type: 'unknown', description: 'Value to store (JSON-serializable data)' },
         metadata: {
           type: 'object',
           properties: {

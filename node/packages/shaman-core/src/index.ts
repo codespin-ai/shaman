@@ -2,6 +2,8 @@
  * packages/shaman-core/src/index.ts
  *
  * Package public API.
- *
- * NOTE: Scaffold stub – replace with real implementation.
  */
+
+export * from './types/index.js';
+export * from './utils/logger.js';
+export * from './utils/validate.js';

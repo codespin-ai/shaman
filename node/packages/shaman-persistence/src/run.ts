@@ -51,7 +51,7 @@ export async function updateRun(
   updates: Partial<Omit<Run, 'id' | 'startTime' | 'createdBy'>>
 ): Promise<Run> {
   const sets = [];
-  const params: any = { id };
+  const params: Record<string, unknown> = { id };
   
   if (updates.status !== undefined) {
     sets.push('status = $(status)');
@@ -101,7 +101,7 @@ export async function listRuns(filters: {
   offset?: number;
 }): Promise<Run[]> {
   let query = 'SELECT * FROM run WHERE 1=1';
-  const params: any = {};
+  const params: Record<string, unknown> = {};
   
   if (filters.status) {
     query += ' AND status = $(status)';
@@ -157,10 +157,29 @@ export async function getRunsNeedingInput(limit?: number): Promise<Run[]> {
 /**
  * Helper to map database row to Run type
  */
-function mapRunFromDb(row: any): Run {
+/**
+ * Database row type for run table
+ */
+type RunDbRow = {
+  id: string;
+  status: string;
+  initial_input: string;
+  total_cost: number;
+  start_time: Date;
+  end_time: Date | null;
+  duration: number | null;
+  created_by: string;
+  trace_id: string | null;
+  metadata: string | null;
+};
+
+/**
+ * Helper to map database row to Run type
+ */
+function mapRunFromDb(row: RunDbRow): Run {
   return {
     id: row.id,
-    status: row.status,
+    status: row.status as ExecutionState,
     initialInput: row.initial_input,
     totalCost: row.total_cost,
     startTime: row.start_time,

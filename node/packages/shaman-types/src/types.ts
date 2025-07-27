@@ -21,7 +21,7 @@ export interface AgentRepository {
   lastSyncCommitHash: string | null;
   lastSyncAt: Date | null;
   lastSyncStatus: 'NEVER_SYNCED' | 'SUCCESS' | 'IN_PROGRESS' | 'FAILED';
-  lastSyncErrors: Record<string, any> | null;
+  lastSyncErrors: Record<string, unknown> | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -37,8 +37,8 @@ export interface GitAgent {
   version: string | null;
   filePath: string;
   model: string | null;
-  providers: Record<string, any> | null;
-  mcpServers: Record<string, any> | null;
+  providers: Record<string, unknown> | null;
+  mcpServers: Record<string, unknown> | null;
   allowedAgents: string[] | null;
   tags: string[] | null;
   lastModifiedCommitHash: string | null;

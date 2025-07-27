@@ -1,7 +1,6 @@
 /**
- * packages/shaman-llm-vercel/src/index.ts
- *
- * Re-export vercelProvider factory.
- *
- * NOTE: Scaffold stub – replace with real implementation.
+ * Vercel AI SDK LLM provider exports
  */
+
+export * from './types.js';
+export { createVercelLLMProvider } from './vercel-provider.js';

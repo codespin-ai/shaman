@@ -59,7 +59,7 @@ export async function updateStep(
   updates: Partial<Omit<Step, 'id' | 'runId' | 'parentStepId' | 'type'>>
 ): Promise<Step> {
   const sets = [];
-  const params: any = { id };
+  const params: Record<string, unknown> = { id };
   
   if (updates.status !== undefined) {
     sets.push('status = $(status)');
@@ -184,9 +184,35 @@ export async function getStepsByAgent(
 }
 
 /**
+ * Database row type for step table
+ */
+type StepDbRow = {
+  id: string;
+  run_id: string;
+  parent_step_id: string | null;
+  type: string;
+  status: string;
+  agent_name: string | null;
+  agent_source: string | null;
+  input: string | null;
+  output: string | null;
+  error: string | null;
+  start_time: Date | null;
+  end_time: Date | null;
+  duration: number | null;
+  prompt_tokens: number | null;
+  completion_tokens: number | null;
+  cost: number | null;
+  tool_name: string | null;
+  tool_call_id: string | null;
+  messages: string | null;
+  metadata: string | null;
+};
+
+/**
  * Helper to map database row to Step type
  */
-function mapStepFromDb(row: any): Step {
+function mapStepFromDb(row: StepDbRow): Step {
   return {
     id: row.id,
     runId: row.run_id,
