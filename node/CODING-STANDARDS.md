@@ -227,6 +227,94 @@ export type ExecutionState =
     };
 ```
 
+## 🗄️ Database Access Patterns
+
+### 1. **Named Parameters in SQL**
+
+Always use named parameters in SQL queries for clarity and safety. Use pg-promise's named parameter syntax.
+
+```typescript
+// ✅ Good - Named parameters
+export async function createWorkflowData(
+  data: WorkflowDataInput,
+  db: Database
+): Promise<Result<WorkflowData, DatabaseError>> {
+  try {
+    const result = await db.one(
+      `INSERT INTO workflow_data 
+       (run_id, key, value, created_by_agent_name, created_by_agent_source, created_by_step_id)
+       VALUES ($(runId), $(key), $(value), $(agentName), $(agentSource), $(stepId))
+       RETURNING *`,
+      {
+        runId: data.runId,
+        key: data.key,
+        value: JSON.stringify(data.value),
+        agentName: data.agentName,
+        agentSource: data.agentSource,
+        stepId: data.stepId
+      }
+    );
+    return { success: true, data: result };
+  } catch (error) {
+    return { success: false, error: adaptDatabaseError(error) };
+  }
+}
+
+// ❌ Bad - Positional parameters
+export async function createWorkflowData(data: WorkflowDataInput, db: Database) {
+  const result = await db.query(
+    `INSERT INTO workflow_data VALUES ($1, $2, $3, $4, $5, $6)`,
+    [data.runId, data.key, data.value, data.agentName, data.agentSource, data.stepId]
+  );
+}
+
+// ✅ Good - Complex queries with named parameters
+export async function findWorkflowDataByAgent(
+  filters: WorkflowDataFilters,
+  db: Database
+): Promise<Result<WorkflowData[], DatabaseError>> {
+  const query = `
+    SELECT * FROM workflow_data 
+    WHERE run_id = $(runId)
+      AND created_by_agent_name = $(agentName)
+      ${filters.afterDate ? 'AND created_at > $(afterDate)' : ''}
+    ORDER BY created_at DESC
+    LIMIT $(limit)
+  `;
+  
+  try {
+    const results = await db.manyOrNone(query, {
+      runId: filters.runId,
+      agentName: filters.agentName,
+      afterDate: filters.afterDate,
+      limit: filters.limit || 100
+    });
+    return { success: true, data: results };
+  } catch (error) {
+    return { success: false, error: adaptDatabaseError(error) };
+  }
+}
+```
+
+### 2. **Database Connection Patterns**
+
+```typescript
+// ✅ Good - Pass database connection explicitly
+export async function executeInTransaction<T>(
+  operation: (tx: DatabaseTransaction) => Promise<T>,
+  db: Database
+): Promise<Result<T, DatabaseError>> {
+  try {
+    const result = await db.tx(async (tx) => {
+      return await operation(tx);
+    });
+    return { success: true, data: result };
+  } catch (error) {
+    return { success: false, error: adaptDatabaseError(error) };
+  }
+}
+```
+
 ## 🔄 Async Patterns
 
 ### 1. **Promise-Based Functions**
