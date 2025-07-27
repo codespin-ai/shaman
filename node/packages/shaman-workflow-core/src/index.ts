@@ -1,7 +1,9 @@
 /**
  * packages/shaman-workflow-core/src/index.ts
  *
- * Public API for workflow-core.
- *
- * NOTE: Scaffold stub – replace with real implementation.
+ * Barrel export for workflow-core types and interfaces.
  */
+
+export * from './execution-engine.js';
+export * from './step-types.js';
+export * from './result.js';
