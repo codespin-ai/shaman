@@ -16,6 +16,7 @@ This document defines the coding standards and conventions for the Shaman AI Age
 - Modern ES modules with `.js` file extensions in imports
 - Strong typing with comprehensive type definitions
 - Prefer `type` over `interface` (use `interface` only for extensible contracts)
+- **NO `any` types** - All code must be fully typed
 
 ### 3. **Explicit and Predictable**
 
@@ -23,6 +24,14 @@ This document defines the coding standards and conventions for the Shaman AI Age
 - No hidden state or side effects
 - Clear input/output contracts
 - Explicit error handling with Result types
+
+### 4. **Recent Architectural Decisions**
+
+- **Git Operations**: Use native git commands instead of isomorphic-git
+- **Agent Caching**: Cache agents by commit hash for performance
+- **Unified Interfaces**: Single interface for all agent sources
+- **Platform Tools**: Immutable, attributed workflow data storage
+- **Workflow Abstraction**: ExecutionEngine interface for all workflow adapters
 
 ## 📁 File Structure and Naming
 
@@ -141,6 +150,53 @@ if (!result.success) {
   return;
 }
 const agentDef = result.data; // Type-safe access
+```
+
+### 4. **LLM Provider Pattern**
+
+```typescript
+// ✅ Good - Unified LLM provider interface
+import type { LLMProvider, LLMCompletionRequest } from '@codespin/shaman-llm-core';
+
+export async function callLLM(
+  request: LLMCompletionRequest,
+  provider: LLMProvider
+): Promise<Result<LLMCompletionResponse>> {
+  try {
+    const response = await provider.complete(request);
+    return { success: true, data: response };
+  } catch (error) {
+    return { success: false, error };
+  }
+}
+
+// ✅ Good - Provider implementation with Vercel AI SDK
+export function createVercelLLMProvider(config: VercelConfig): LLMProvider {
+  return {
+    async complete(request) {
+      const model = getModelFromConfig(request.model, config);
+      return await generateText({
+        model,
+        messages: request.messages,
+        tools: request.tools,
+        temperature: request.temperature
+      });
+    },
+    
+    async streamComplete(request) {
+      const model = getModelFromConfig(request.model, config);
+      const stream = await streamText({
+        model,
+        messages: request.messages,
+        tools: request.tools
+      });
+      
+      for await (const chunk of stream.textStream) {
+        yield { content: chunk };
+      }
+    }
+  };
+}
 ```
 
 ## 📊 Type Definitions
@@ -565,6 +621,49 @@ export function validateCreateUserRequest(
 }
 ```
 
+## 🛠️ Platform Tools Pattern
+
+```typescript
+// ✅ Good - Type-safe platform tool implementation
+import type { PlatformToolName, PlatformToolSchemas, PlatformToolResults } from './types.js';
+
+export type PlatformToolHandlers = {
+  [K in PlatformToolName]: ToolHandler<
+    PlatformToolSchemas[K],
+    PlatformToolResults[K]
+  >;
+};
+
+// Type-safe handler implementation
+export function createPlatformToolHandlers(
+  dependencies: ToolRouterDependencies
+): PlatformToolHandlers {
+  return {
+    workflow_data_write: async (input, context) => {
+      const data = await dependencies.persistenceLayer.createWorkflowData({
+        runId: context.runId,
+        key: input.key,
+        value: input.value,
+        createdByAgentName: context.agentName,
+        createdByAgentSource: context.agentSource,
+        createdByStepId: context.stepId,
+        metadata: input.metadata
+      });
+      return { success: true, data: undefined };
+    },
+    
+    workflow_data_read: async (input, context) => {
+      const data = await dependencies.persistenceLayer.getWorkflowData(
+        context.runId,
+        input.key
+      );
+      return { success: true, data };
+    }
+    // ... other handlers
+  };
+}
+```
+
 ## 🚫 Anti-Patterns to Avoid
 
 ### 1. **Don't Use Classes**
@@ -654,6 +753,10 @@ Example ESLint configuration:
   "extends": ["@typescript-eslint/recommended"],
   "rules": {
     "@typescript-eslint/no-explicit-any": "error",
+    "@typescript-eslint/no-unsafe-assignment": "error",
+    "@typescript-eslint/no-unsafe-member-access": "error",
+    "@typescript-eslint/no-unsafe-call": "error",
+    "@typescript-eslint/no-unsafe-return": "error",
     "@typescript-eslint/explicit-function-return-type": "warn",
     "@typescript-eslint/no-unused-vars": "error",
     "prefer-const": "error",

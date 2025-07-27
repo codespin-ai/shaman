@@ -36,37 +36,131 @@ The workflow engine adapter acts as a **translation layer** between Shaman's age
 
 ## Core Adapter Interface
 
-All workflow engine adapters implement the same type-based interface:
+All workflow engine adapters implement the ExecutionEngine interface from `@codespin/shaman-workflow-core`:
 
 ```typescript
-export type WorkflowEngineAdapter = {
-  // Workflow lifecycle
-  startRuns: (inputs: RunAgentInput[]) => Promise<RunIdentifier[]>;
-  getRun: (id: RunIdentifier) => Promise<Run | null>;
-  listRuns: (options: ListRunsOptions) => Promise<Run[]>;
-  terminateRun: (id: RunIdentifier) => Promise<boolean>;
+export interface ExecutionEngine {
+  // Start a new workflow run
+  startRun(request: {
+    agentName: string;
+    input: string;
+    context?: WorkflowContext;
+    metadata?: Record<string, unknown>;
+  }): Promise<Result<Run>>;
+
+  // Execute an agent within a workflow
+  executeAgent(request: AgentExecutionRequest): Promise<Result<AgentExecutionResult>>;
+
+  // Get run status and details
+  getRun(runId: string): Promise<Result<Run | null>>;
+
+  // List runs with filtering
+  listRuns(options?: {
+    status?: ExecutionState[];
+    limit?: number;
+    offset?: number;
+  }): Promise<Result<Run[]>>;
+
+  // Send signals to running workflows
+  sendSignal(runId: string, signal: {
+    name: string;
+    payload: unknown;
+  }): Promise<Result<void>>;
+
+  // Query workflow state
+  queryWorkflow<T = unknown>(runId: string, query: {
+    name: string;
+    args?: unknown;
+  }): Promise<Result<T>>;
+
+  // Cancel a running workflow
+  cancelRun(runId: string, reason: string): Promise<Result<void>>;
+
+  // Get detailed execution history
+  getExecutionHistory(runId: string): Promise<Result<Step[]>>;
+}
+```
+
+## Implementation Status
+
+### ✅ Temporal Adapter (Implemented)
+
+The Temporal adapter provides enterprise-grade workflow orchestration:
+
+```typescript
+import { createExecutionEngine } from '@codespin/shaman-workflow-temporal';
+
+const engine = await createExecutionEngine({
+  connection: {
+    address: process.env.TEMPORAL_ADDRESS || 'localhost:7233',
+  },
+  namespace: 'default',
+  taskQueue: 'shaman-agents',
+});
+```
+
+Features:
+- Durable execution with automatic retries
+- Activity-based agent execution
+- Signal handling for runtime control
+- Query support for workflow introspection
+- Full execution history tracking
+
+### 🚧 BullMQ Adapter (Planned)
+
+The BullMQ adapter will provide lightweight queue-based orchestration using Redis.
+
+## Platform Tools Integration
+
+All workflow adapters have access to platform tools for agent collaboration:
+
+```typescript
+// Available to all agents via tool router
+const platformTools = {
+  workflow_data_write: {
+    description: 'Write data for other agents to access',
+    parameters: {
+      key: 'string',
+      value: 'any JSON-serializable data',
+      metadata: {
+        description: 'optional string',
+        schema: 'optional JSON schema',
+        ttl: 'optional seconds'
+      }
+    }
+  },
   
-  // Signal & Query (universal async coordination)
-  signalRun: (id: RunIdentifier, signalName: string, payload: any) => Promise<void>;
-  queryRun: <T>(id: RunIdentifier, queryName: string) => Promise<T>;
+  workflow_data_read: {
+    description: 'Read data written by other agents',
+    parameters: {
+      key: 'string',
+      includeMetadata: 'boolean'
+    }
+  },
   
-  // User interaction
-  pauseRunForUserInput: (id: RunIdentifier, request: UserInputRequest) => Promise<void>;
-  resumeRunWithUserInput: (id: RunIdentifier, userInput: string) => Promise<void>;
+  workflow_data_query: {
+    description: 'Search for data by pattern',
+    parameters: {
+      pattern: 'string (supports wildcards)',
+      limit: 'number'
+    }
+  },
   
-  // Streaming & monitoring
-  streamRunEvents: (id: RunIdentifier) => AsyncIterable<RunEvent>;
-  subscribeToRunStatus: (id: RunIdentifier, callback: (status: RunStatus) => void) => () => void;
-  
-  // History & analytics
-  getRunHistory: (id: RunIdentifier) => Promise<Step[]>;
-  getRunMetrics: (id: RunIdentifier) => Promise<RunMetrics>;
-  
-  // Engine management
-  getEngineHealth: () => Promise<EngineHealth>;
-  getEngineInfo: () => Promise<EngineInfo>;
+  workflow_data_list: {
+    description: 'List all workflow data',
+    parameters: {
+      filterByAgent: 'optional agent name',
+      prefix: 'optional key prefix',
+      limit: 'number'
+    }
+  }
 };
 ```
+
+All workflow data is:
+- **Immutable**: Once written, data cannot be modified
+- **Attributed**: Tracked by agent name and step ID
+- **Persistent**: Stored in PostgreSQL for durability
 
 ## Temporal Adapter
 

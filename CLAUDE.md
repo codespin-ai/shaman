@@ -12,6 +12,10 @@ Shaman is a comprehensive backend framework for managing and coordinating AI age
 - **Agent Caching**: Git agents are cached by commit hash for performance
 - **Branch Support**: All git operations support branch parameters
 - **Unified Agent Resolution**: New `shaman-agents` package provides single interface for all agent sources
+- **Type Safety**: All `any` types removed from codebase, replaced with proper types
+- **LLM Provider**: Vercel AI SDK provider implemented with OpenAI and Anthropic support
+- **Agent Executor**: Complete agent execution engine with tool calling and conversation management
+- **Workflow Foundation**: Temporal adapter, tool router, and platform tools implemented
 
 ## Essential Commands
 
@@ -98,11 +102,12 @@ Located in `/node/packages/`, build order matters:
 12. **@codespin/shaman-a2a-provider** - Expose Git agents via A2A protocol
 13. **@codespin/shaman-llm-vercel** - Vercel AI SDK provider
 14. **@codespin/shaman-tool-router** - Tool execution routing
-15. **@codespin/shaman-workflow-bullmq** - BullMQ workflow adapter
-16. **@codespin/shaman-workflow-temporal** - Temporal workflow adapter
-17. **@codespin/shaman-server** - Main GraphQL server
-18. **@codespin/shaman-worker** - Background worker
-19. **@codespin/shaman-cli** - CLI tool
+15. **@codespin/shaman-agent-executor** - Core agent execution engine
+16. **@codespin/shaman-workflow-bullmq** - BullMQ workflow adapter
+17. **@codespin/shaman-workflow-temporal** - Temporal workflow adapter
+18. **@codespin/shaman-server** - Main GraphQL server
+19. **@codespin/shaman-worker** - Background worker
+20. **@codespin/shaman-cli** - CLI tool
 
 ## Development Workflow
 
@@ -232,3 +237,45 @@ Key endpoints:
 - `GET /a2a/v1/agents` - Discover available agents
 - `POST /a2a/v1/agents/:name/execute` - Execute an agent
 - `GET /a2a/v1/health` - Health check
+
+## Agent Executor
+
+The agent-executor package provides the core execution engine:
+- Manages agent conversations with full message history
+- Handles tool calls and agent-to-agent communication
+- Integrates with LLM providers for AI responses
+- Tracks execution state through persistence layer
+- Supports context sharing between agents
+
+## LLM Provider (Vercel AI SDK)
+
+The llm-vercel package implements the LLM provider interface:
+```typescript
+const provider = createVercelLLMProvider({
+  models: {
+    'gpt-4': { provider: 'openai', modelId: 'gpt-4' },
+    'claude-3': { provider: 'anthropic', modelId: 'claude-3-opus-20240229' }
+  },
+  defaultModel: 'gpt-4',
+  apiKeys: {
+    openai: process.env.OPENAI_API_KEY,
+    anthropic: process.env.ANTHROPIC_API_KEY
+  }
+});
+```
+
+Features:
+- Support for OpenAI and Anthropic models
+- Streaming responses
+- Token usage tracking
+- Tool/function calling support
+
+## Platform Tools
+
+The tool-router provides built-in platform tools for workflow data management:
+- `workflow_data_write` - Store data for agent collaboration
+- `workflow_data_read` - Retrieve specific data by key
+- `workflow_data_query` - Search data by patterns
+- `workflow_data_list` - List all stored data with metadata
+
+All workflow data is immutable and tracked by agent/step for full auditability.
