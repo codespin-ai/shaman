@@ -4,10 +4,13 @@
  * Express server implementing the A2A protocol for agent federation
  */
 
-import express, { Request, Response, NextFunction } from 'express';
-import { getAllAgents, getAgent, type AgentsConfig } from '@codespin/shaman-agents';
-import { GitAgent } from '@codespin/shaman-types';
-import {
+import type { Request, Response, NextFunction } from 'express';
+import express from 'express';
+
+import { getAllAgents, getAgent } from '@codespin/shaman-agents';
+import type { AgentsConfig } from '@codespin/shaman-agents';
+
+import type {
   A2AProviderConfig,
   A2ADiscoveryResponse,
   A2AExecutionRequest,
@@ -32,7 +35,9 @@ export function createA2AServer(
   
   // Authentication middleware if configured
   if (config.authentication && config.authentication.type !== 'none') {
-    app.use(createAuthMiddleware(config));
+    app.use((req, res, next) => {
+      void createAuthMiddleware(config)(req, res, next);
+    });
   }
   
   // Rate limiting middleware if configured
@@ -45,7 +50,8 @@ export function createA2AServer(
   /**
    * GET /agents - Discover available agents
    */
-  app.get(`${basePath}/agents`, async (req: Request, res: Response) => {
+  app.get(`${basePath}/agents`, (req: Request, res: Response) => {
+    void (async () => {
     try {
       // Get all Git agents (we only expose Git agents, not external ones)
       const agentsResult = await getAllAgents(agentsConfig, { source: 'git' });
@@ -62,7 +68,7 @@ export function createA2AServer(
       // Filter agents based on configuration
       const exposableAgents = agentsResult.data
         .filter(ua => ua.source === 'git')
-        .map(ua => ua.agent as GitAgent)
+        .map(ua => ua.agent)
         .filter(agent => canExposeAgent(agent, config));
       
       // Convert to A2A cards
@@ -86,12 +92,14 @@ export function createA2AServer(
         }
       });
     }
+    })();
   });
   
   /**
    * GET /agents/:agentName - Get specific agent details
    */
-  app.get(`${basePath}/agents/:agentName`, async (req: Request, res: Response) => {
+  app.get(`${basePath}/agents/:agentName`, (req: Request, res: Response) => {
+    void (async () => {
     try {
       const { agentName } = req.params;
       
@@ -115,7 +123,7 @@ export function createA2AServer(
         });
       }
       
-      const gitAgent = agentResult.data.agent as GitAgent;
+      const gitAgent = agentResult.data.agent;
       
       // Check if agent can be exposed
       if (!canExposeAgent(gitAgent, config)) {
@@ -140,12 +148,14 @@ export function createA2AServer(
         }
       });
     }
+    })();
   });
   
   /**
    * POST /agents/:agentName/execute - Execute an agent
    */
-  app.post(`${basePath}/agents/:agentName/execute`, async (req: Request, res: Response) => {
+  app.post(`${basePath}/agents/:agentName/execute`, (req: Request, res: Response) => {
+    void (async () => {
     try {
       const { agentName } = req.params;
       const executionRequest = req.body as A2AExecutionRequest;
@@ -172,7 +182,7 @@ export function createA2AServer(
         });
       }
       
-      const gitAgent = agentResult.data.agent as GitAgent;
+      const gitAgent = agentResult.data.agent;
       
       // Check if agent can be exposed
       if (!canExposeAgent(gitAgent, config)) {
@@ -198,14 +208,16 @@ export function createA2AServer(
         }
       });
     }
+    })();
   });
   
   /**
    * GET /health - Health check endpoint
    */
-  app.get(`${basePath}/health`, async (req: Request, res: Response) => {
+  app.get(`${basePath}/health`, (req: Request, res: Response) => {
+    void (async () => {
     try {
-      const startTime = process.hrtime();
+      const _startTime = process.hrtime();
       
       // Check if we can fetch agents
       const agentsCheck = await checkAgentsHealth(agentsConfig);
@@ -234,6 +246,7 @@ export function createA2AServer(
         }
       });
     }
+    })();
   });
   
   /**
@@ -259,16 +272,17 @@ export function createA2AServer(
  * Create authentication middleware
  */
 function createAuthMiddleware(config: A2AProviderConfig) {
-  return async (req: Request, res: Response, next: NextFunction) => {
+  return async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     const authHeader = req.headers.authorization;
     
     if (!authHeader) {
-      return res.status(401).json({
+      res.status(401).json({
         error: {
           code: 'UNAUTHORIZED',
           message: 'Authorization header required'
         }
       });
+      return;
     }
     
     if (config.authentication?.type === 'bearer') {
@@ -277,12 +291,13 @@ function createAuthMiddleware(config: A2AProviderConfig) {
       if (config.authentication.validateToken) {
         const isValid = await config.authentication.validateToken(token);
         if (!isValid) {
-          return res.status(401).json({
+          res.status(401).json({
             error: {
               code: 'INVALID_TOKEN',
               message: 'Invalid authentication token'
             }
           });
+          return;
         }
       }
     }

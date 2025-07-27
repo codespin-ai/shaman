@@ -40,7 +40,7 @@ export async function cloneOrPull(gitUrl: string, branch: string, repoName: stri
       }
     }
   } catch (error) {
-    console.error(`Git operation failed: ${error}`);
+    console.error(`Git operation failed: ${error instanceof Error ? error.message : String(error)}`);
     throw error;
   }
   
@@ -52,7 +52,7 @@ export async function getLatestCommitHash(repoPath: string, branch: string = 'ma
     const { stdout } = await execAsync(`git rev-parse ${branch}`, { cwd: repoPath });
     return stdout.trim();
   } catch (error) {
-    console.error(`Failed to get commit hash for branch ${branch}:`, error);
+    console.error(`Failed to get commit hash for branch ${branch}:`, error instanceof Error ? error.message : String(error));
     throw error;
   }
 }

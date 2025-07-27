@@ -9,7 +9,6 @@ import type {
   ToolRouterDependencies,
   McpServerConnection,
   PlatformToolName,
-  PlatformToolSchemas,
   ToolHandler
 } from './types.js';
 import { createPlatformToolHandlers, PLATFORM_TOOL_DEFINITIONS, type PlatformToolHandlers } from './platform-tools.js';
@@ -33,17 +32,54 @@ export type ToolExecutionResult = {
 };
 
 /**
+ * Tool router interface
+ */
+export interface ToolRouter {
+  executeTool(
+    toolName: string,
+    args: unknown,
+    context: ToolExecutionContext
+  ): Promise<Result<ToolExecutionResult>>;
+  listTools(): Promise<Result<ToolDefinition[]>>;
+  getTool(toolName: string): Promise<Result<ToolDefinition | null>>;
+  hasTool(toolName: string): Promise<boolean>;
+}
+
+/**
  * Create a tool router instance
  */
 export function createToolRouter(
   config: ToolRouterConfig,
   dependencies: ToolRouterDependencies
-) {
+): ToolRouter {
   const platformHandlers = config.enablePlatformTools !== false 
     ? createPlatformToolHandlers(dependencies)
     : {} as PlatformToolHandlers;
 
-  return {
+  async function getTool(toolName: string): Promise<Result<ToolDefinition | null>> {
+    // Check platform tools
+    if (isPlatformTool(toolName)) {
+      const definition = PLATFORM_TOOL_DEFINITIONS[toolName];
+      return { success: true, data: definition || null };
+    }
+
+    // Check MCP tools
+    if (dependencies.mcpClient && config.mcpServers) {
+      for (const server of config.mcpServers) {
+        const tools = await dependencies.mcpClient.listTools(server);
+        if (!tools.success) continue;
+
+        const tool = tools.data.find(t => t.name === toolName);
+        if (tool) {
+          return { success: true, data: tool };
+        }
+      }
+    }
+
+    return { success: true, data: null };
+  }
+
+  const router: ToolRouter = {
     /**
      * Execute a tool by name
      */
@@ -54,7 +90,7 @@ export function createToolRouter(
     ): Promise<Result<ToolExecutionResult>> {
       // 1. Check if it's a platform tool
       if (isPlatformTool(toolName)) {
-        const platformToolName = toolName as PlatformToolName;
+        const platformToolName = toolName;
         const handler = platformHandlers[platformToolName];
         if (!handler) {
           return {
@@ -79,7 +115,6 @@ export function createToolRouter(
 
       // 2. Check if it's an agent call (tools starting with 'agent:')
       if (toolName.startsWith('agent:')) {
-        const agentName = toolName.substring(6);
         return {
           success: true,
           data: {
@@ -104,7 +139,7 @@ export function createToolRouter(
               data: {
                 success: result.success,
                 output: result.success ? result.data : undefined,
-                error: result.success ? undefined : (result.error as Error).message,
+                error: result.success ? undefined : result.error.message,
                 toolType: 'mcp'
               }
             };
@@ -146,37 +181,18 @@ export function createToolRouter(
     /**
      * Get tool definition by name
      */
-    async getTool(toolName: string): Promise<Result<ToolDefinition | null>> {
-      // Check platform tools
-      if (isPlatformTool(toolName)) {
-        const definition = PLATFORM_TOOL_DEFINITIONS[toolName as PlatformToolName];
-        return { success: true, data: definition || null };
-      }
-
-      // Check MCP tools
-      if (dependencies.mcpClient && config.mcpServers) {
-        for (const server of config.mcpServers) {
-          const tools = await dependencies.mcpClient.listTools(server);
-          if (!tools.success) continue;
-
-          const tool = tools.data.find(t => t.name === toolName);
-          if (tool) {
-            return { success: true, data: tool };
-          }
-        }
-      }
-
-      return { success: true, data: null };
-    },
+    getTool,
 
     /**
      * Check if a tool exists
      */
     async hasTool(toolName: string): Promise<boolean> {
-      const result = await this.getTool(toolName);
+      const result = await getTool(toolName);
       return result.success && result.data !== null;
     }
   };
+  
+  return router;
 }
 
 /**
@@ -186,7 +202,3 @@ function isPlatformTool(toolName: string): toolName is PlatformToolName {
   return toolName in PLATFORM_TOOL_DEFINITIONS;
 }
 
-/**
- * Tool router type
- */
-export type ToolRouter = ReturnType<typeof createToolRouter>;

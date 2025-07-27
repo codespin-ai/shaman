@@ -1,6 +1,7 @@
 import js from '@eslint/js';
 import typescript from '@typescript-eslint/eslint-plugin';
 import typescriptParser from '@typescript-eslint/parser';
+import globals from 'globals';
 
 export default [
   js.configs.recommended,
@@ -12,6 +13,10 @@ export default [
         ecmaVersion: 2022,
         sourceType: 'module',
         project: './tsconfig.json'
+      },
+      globals: {
+        ...globals.node,
+        ...globals.es2022
       }
     },
     plugins: {
@@ -63,6 +68,6 @@ export default [
     }
   },
   {
-    ignores: ['dist/**', 'node_modules/**', '*.js', '*.d.ts', '*.cjs']
+    ignores: ['dist/**', 'node_modules/**', '*.js', '*.d.ts', '*.cjs', 'eslint.config.js']
   }
 ];

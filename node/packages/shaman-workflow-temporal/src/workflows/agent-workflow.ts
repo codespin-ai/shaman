@@ -6,7 +6,6 @@ import {
   proxyActivities,
   defineSignal,
   setHandler,
-  condition,
   sleep,
   workflowInfo,
   ApplicationFailure
@@ -16,7 +15,7 @@ import type { WorkflowContext, ExecutionState } from '@codespin/shaman-types';
 import type * as activities from '../activities/index.js';
 
 // Import activity types
-const { executeAgentActivity, createStep, updateStep, logEvent } = proxyActivities<typeof activities>({
+const { executeAgentActivity, createStep, updateStep } = proxyActivities<typeof activities>({
   startToCloseTimeout: '30 minutes',
   retry: {
     initialInterval: '1s',
@@ -30,7 +29,7 @@ const { executeAgentActivity, createStep, updateStep, logEvent } = proxyActiviti
 export const userInputSignal = defineSignal<[{ inputRequestId: string; response: string }]>('userInput');
 
 // Workflow state
-let pendingInputRequests = new Map<string, { resolve: (value: string) => void }>();
+const pendingInputRequests = new Map<string, { resolve: (value: string) => void }>();
 
 /**
  * Main agent workflow

@@ -11,7 +11,7 @@ import { db } from './db.js';
 export async function createRun(
   run: Omit<Run, 'id' | 'startTime'> & { id?: string }
 ): Promise<Run> {
-  const result = await db.one(
+  const result = await db.one<RunDbRow>(
     `INSERT INTO run 
      (id, status, initial_input, total_cost, start_time, created_by, trace_id, metadata)
      VALUES ($(id), $(status), $(initialInput), $(totalCost), $(startTime), $(createdBy), $(traceId), $(metadata))
@@ -35,7 +35,7 @@ export async function createRun(
  * Get a run by ID
  */
 export async function getRun(id: string): Promise<Run | null> {
-  const result = await db.oneOrNone(
+  const result = await db.oneOrNone<RunDbRow>(
     `SELECT * FROM run WHERE id = $(id)`,
     { id }
   );
@@ -78,7 +78,7 @@ export async function updateRun(
     params.metadata = JSON.stringify(updates.metadata);
   }
   
-  const result = await db.one(
+  const result = await db.one<RunDbRow>(
     `UPDATE run 
      SET ${sets.join(', ')}
      WHERE id = $(id)
@@ -135,7 +135,7 @@ export async function listRuns(filters: {
     params.offset = filters.offset;
   }
   
-  const results = await db.manyOrNone(query, params);
+  const results = await db.manyOrNone<RunDbRow>(query, params);
   return results.map(mapRunFromDb);
 }
 
@@ -150,13 +150,10 @@ export async function getRunsNeedingInput(limit?: number): Promise<Run[]> {
     ${limit ? 'LIMIT $(limit)' : ''}
   `;
   
-  const results = await db.manyOrNone(query, { limit });
+  const results = await db.manyOrNone<RunDbRow>(query, { limit });
   return results.map(mapRunFromDb);
 }
 
-/**
- * Helper to map database row to Run type
- */
 /**
  * Database row type for run table
  */
@@ -187,7 +184,7 @@ function mapRunFromDb(row: RunDbRow): Run {
     duration: row.duration || undefined,
     createdBy: row.created_by,
     traceId: row.trace_id || undefined,
-    metadata: row.metadata ? JSON.parse(row.metadata) : undefined
+    metadata: row.metadata ? JSON.parse(row.metadata) as Record<string, unknown> : undefined
   };
 }
 

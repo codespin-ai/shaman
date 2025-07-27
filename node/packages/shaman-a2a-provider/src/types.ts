@@ -4,7 +4,7 @@
  * A2A protocol type definitions for exposing agents
  */
 
-import { GitAgent } from '@codespin/shaman-types';
+import type { GitAgent } from '@codespin/shaman-types';
 
 /**
  * A2A Agent Card - Public metadata about an agent

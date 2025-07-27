@@ -10,8 +10,6 @@ import type {
 import type {
   Message,
   ToolCall,
-  ExecutionState,
-  WorkflowContext,
   Step
 } from '@codespin/shaman-types';
 import type { ToolRouter } from '@codespin/shaman-tool-router';

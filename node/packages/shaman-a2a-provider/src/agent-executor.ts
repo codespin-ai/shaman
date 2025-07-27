@@ -4,8 +4,8 @@
  * Agent execution handler for A2A requests
  */
 
-import { GitAgent } from '@codespin/shaman-types';
-import { A2AExecutionRequest, A2AExecutionResponse } from './types.js';
+import type { GitAgent } from '@codespin/shaman-types';
+import type { A2AExecutionRequest, A2AExecutionResponse } from './types.js';
 import { v4 as uuidv4 } from 'uuid';
 
 /**
@@ -72,7 +72,7 @@ export async function executeAgentForA2A(
  */
 export async function* executeAgentStreamingForA2A(
   agent: GitAgent,
-  request: A2AExecutionRequest
+  _request: A2AExecutionRequest
 ): AsyncGenerator<A2AExecutionResponse> {
   const executionId = uuidv4();
   const startTime = new Date().toISOString();

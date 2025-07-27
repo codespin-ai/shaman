@@ -98,13 +98,13 @@ export async function updateStep(update: {
 /**
  * Log an event (tool calls, LLM calls, etc.)
  */
-export async function logEvent(event: {
+export function logEvent(event: {
   stepId: string;
   type: 'TOOL_CALL' | 'LLM_CALL' | 'LOG';
   data: Record<string, unknown>;
   timestamp: Date;
-}): Promise<void> {
+}): void {
   // For now, we'll just log to console
   // Later this will write to a proper event store
-  console.log('Workflow event:', event);
+  console.error('Workflow event:', event);
 }

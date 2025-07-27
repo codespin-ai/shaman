@@ -5,7 +5,7 @@
 import { Worker } from '@temporalio/worker';
 import type { NativeConnection } from '@temporalio/worker';
 import * as activities from './activities/index.js';
-import { agentWorkflow, executeAgentWorkflow } from './workflows/agent-workflow.js';
+
 
 export type WorkerConfig = {
   connection: NativeConnection;
@@ -35,7 +35,7 @@ export async function createWorker(config: WorkerConfig): Promise<Worker> {
 export async function runWorker(config: WorkerConfig): Promise<void> {
   const worker = await createWorker(config);
   
-  console.log(`Starting Temporal worker on task queue: ${config.taskQueue}`);
+  console.error(`Starting Temporal worker on task queue: ${config.taskQueue}`);
   
   // Handle shutdown gracefully
   process.on('SIGINT', () => worker.shutdown());

@@ -3,10 +3,10 @@
  */
 
 import { healthCheckRegistry } from './external-registry.js';
-import { RegistryConfig, HealthStatus } from './types.js';
+import type { RegistryConfig } from './types.js';
 
 export class HealthMonitor {
-  private intervalId?: NodeJS.Timeout;
+  private intervalId?: ReturnType<typeof setInterval>;
 
   constructor(private configs: RegistryConfig[]) {}
 
@@ -17,10 +17,12 @@ export class HealthMonitor {
     if (this.intervalId) {
       this.stop();
     }
-    this.runChecks(); // Run once immediately
+    void this.runChecks(); // Run once immediately
     const checkInterval = this.getShortestInterval();
     if (checkInterval > 0) {
-      this.intervalId = setInterval(() => this.runChecks(), checkInterval * 1000);
+      this.intervalId = setInterval(() => {
+        void this.runChecks();
+      }, checkInterval * 1000);
     }
   }
 
@@ -47,7 +49,7 @@ export class HealthMonitor {
       try {
         const result = await healthCheckRegistry(config);
         if (result.success) {
-          console.log(`Health check passed for ${config.url}`);
+          // Health check passed for ${config.url}
         } else {
           console.error(`Health check failed for ${config.url}: ${result.error}`);
         }

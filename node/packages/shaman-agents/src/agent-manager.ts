@@ -4,13 +4,15 @@
  * Core agent management functions that unify git and external sources
  */
 
-import { GitAgent } from '@codespin/shaman-types';
+import type { GitAgent } from '@codespin/shaman-types';
 import type { ExternalAgent } from '@codespin/shaman-core/dist/types/agent.js';
-import { Result, success, failure } from '@codespin/shaman-core/dist/types/result.js';
-import { resolveAgents as resolveGitAgents, discoverAgents as discoverGitAgents } from '@codespin/shaman-git-resolver';
+import type { Result } from '@codespin/shaman-core/dist/types/result.js';
+import { success, failure } from '@codespin/shaman-core/dist/types/result.js';
+
 import { fetchAgentsFromRegistry } from '@codespin/shaman-external-registry';
 import { getAllGitAgents } from '@codespin/shaman-persistence';
-import { 
+import { resolveAgents } from '@codespin/shaman-git-resolver';
+import type { 
   UnifiedAgent, 
   AgentSearchOptions, 
   AgentResolveOptions,
@@ -36,7 +38,7 @@ export async function getAllAgents(
         
         // Filter by repository if specified
         const filteredGitAgents = options.repository
-          ? gitAgents.filter(agent => {
+          ? gitAgents.filter(_agent => {
               // TODO: Need to join with agent_repository table to filter by repository URL
               return true;
             })
@@ -222,7 +224,7 @@ export async function syncGitRepositories(
 
   for (const repo of config.gitRepositories) {
     try {
-      await resolveGitAgents(repo.url, repo.branch || 'main');
+      await resolveAgents(repo.url, repo.branch || 'main');
       synced++;
     } catch (error) {
       errors.push(`${repo.url}: ${error instanceof Error ? error.message : String(error)}`);
@@ -236,7 +238,7 @@ export async function syncGitRepositories(
 
 async function resolveFromGit(
   agentName: string, 
-  branch?: string
+  _branch?: string
 ): Promise<AgentResolution | null> {
   try {
     // Get all git agents from the database

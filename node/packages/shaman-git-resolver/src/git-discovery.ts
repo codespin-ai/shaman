@@ -1,4 +1,4 @@
-import { GitAgent, AgentRepository } from '@codespin/shaman-types';
+import type { GitAgent, AgentRepository } from '@codespin/shaman-types';
 import { saveGitAgent, getGitAgentsByRepositoryId, updateGitAgent, deleteGitAgent, updateAgentRepository } from '@codespin/shaman-persistence';
 import fs from 'fs';
 import { join } from 'path';
@@ -19,12 +19,10 @@ export async function updateGitAgents(repository: AgentRepository, localPath: st
   
   // If the commit hash hasn't changed, return cached agents from DB
   if (repository.lastSyncCommitHash === currentCommitHash) {
-    console.log(`Repository ${repository.name} on branch ${branch} hasn't changed (commit: ${currentCommitHash}). Using cached agents.`);
+    // Repository hasn't changed, using cached agents
     return await getGitAgentsByRepositoryId(repository.id);
   }
-  
-  console.log(`Repository ${repository.name} on branch ${branch} has changed. Previous: ${repository.lastSyncCommitHash}, Current: ${currentCommitHash}`);
-  
+
   // Find all agent files
   const agentFiles = await findAgentFiles(localPath);
   const agentsWithHashes = await parseAgentFilesWithCommitHashes(agentFiles, localPath, branch);
@@ -40,16 +38,16 @@ export async function updateGitAgents(repository: AgentRepository, localPath: st
     if (existing) {
       // Only update if the file's commit hash has changed
       if (existing.lastModifiedCommitHash !== agentData.lastModifiedCommitHash) {
-        console.log(`Updating agent ${agentData.name} - file changed (${existing.lastModifiedCommitHash} -> ${agentData.lastModifiedCommitHash})`);
+        // Updating agent - file changed
         const updated = { ...existing, ...agentData, agentRepositoryId: repository.id };
         const savedAgent = await updateGitAgent(updated);
         result.push(savedAgent);
       } else {
-        console.log(`Skipping agent ${agentData.name} - file unchanged`);
+
         result.push(existing);
       }
     } else {
-      console.log(`Adding new agent ${agentData.name}`);
+
       const newAgent = { ...agentData, agentRepositoryId: repository.id };
       const savedAgent = await saveGitAgent(newAgent);
       result.push(savedAgent);
@@ -59,7 +57,7 @@ export async function updateGitAgents(repository: AgentRepository, localPath: st
   // Delete agents that no longer exist in the repository
   for (const existing of existingAgents) {
     if (!processedFilePaths.has(existing.filePath)) {
-      console.log(`Deleting agent ${existing.name} - file no longer exists`);
+
       await deleteGitAgent(existing.id);
     }
   }
@@ -111,7 +109,7 @@ async function findAgentFiles(repoPath: string): Promise<string[]> {
   return glob(pattern);
 }
 
-async function parseAgentFiles(files: string[]): Promise<Omit<GitAgent, 'id' | 'agentRepositoryId' | 'createdAt' | 'updatedAt'>[]> {
+async function _parseAgentFiles(files: string[]): Promise<Omit<GitAgent, 'id' | 'agentRepositoryId' | 'createdAt' | 'updatedAt'>[]> {
   const agents: Omit<GitAgent, 'id' | 'agentRepositoryId' | 'createdAt' | 'updatedAt'>[] = [];
   
   for (const file of files) {
@@ -119,15 +117,15 @@ async function parseAgentFiles(files: string[]): Promise<Omit<GitAgent, 'id' | '
     const parsed = matter(content);
     
     agents.push({
-      name: parsed.data.name || 'Unnamed Agent',
-      description: parsed.data.description || null,
-      version: parsed.data.version || null,
+      name: (parsed.data.name as string) || 'Unnamed Agent',
+      description: (parsed.data.description as string | null) || null,
+      version: (parsed.data.version as string | null) || null,
       filePath: file,
-      model: parsed.data.model || null,
-      providers: parsed.data.providers || null,
-      mcpServers: parsed.data.mcpServers || null,
-      allowedAgents: parsed.data.allowedAgents || null,
-      tags: parsed.data.tags || null,
+      model: (parsed.data.model as string | null) || null,
+      providers: (parsed.data.providers as Record<string, unknown> | null) || null,
+      mcpServers: (parsed.data.mcpServers as Record<string, unknown> | null) || null,
+      allowedAgents: (parsed.data.allowedAgents as string[] | null) || null,
+      tags: (parsed.data.tags as string[] | null) || null,
       lastModifiedCommitHash: null
     });
   }
@@ -146,15 +144,15 @@ async function parseAgentFilesWithCommitHashes(files: string[], repoPath: string
     const fileCommitHash = await getFileCommitHash(repoPath, file, branch);
     
     agents.push({
-      name: parsed.data.name || 'Unnamed Agent',
-      description: parsed.data.description || null,
-      version: parsed.data.version || null,
+      name: (parsed.data.name as string) || 'Unnamed Agent',
+      description: (parsed.data.description as string | null) || null,
+      version: (parsed.data.version as string | null) || null,
       filePath: file,
-      model: parsed.data.model || null,
-      providers: parsed.data.providers || null,
-      mcpServers: parsed.data.mcpServers || null,
-      allowedAgents: parsed.data.allowedAgents || null,
-      tags: parsed.data.tags || null,
+      model: (parsed.data.model as string | null) || null,
+      providers: (parsed.data.providers as Record<string, unknown> | null) || null,
+      mcpServers: (parsed.data.mcpServers as Record<string, unknown> | null) || null,
+      allowedAgents: (parsed.data.allowedAgents as string[] | null) || null,
+      tags: (parsed.data.tags as string[] | null) || null,
       lastModifiedCommitHash: fileCommitHash
     });
   }

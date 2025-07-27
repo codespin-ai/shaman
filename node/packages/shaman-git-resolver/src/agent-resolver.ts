@@ -1,10 +1,9 @@
 import {
   saveAgentRepository,
-  getAgentRepositoryByUrl,
   getAgentRepositoryByUrlAndBranch,
   updateAgentRepository
 } from '@codespin/shaman-persistence';
-import { AgentRepository, GitAgent } from '@codespin/shaman-types';
+import type { AgentRepository, GitAgent } from '@codespin/shaman-types';
 import { updateGitAgents, discoverAgentsFromBranch } from './git-discovery.js';
 import * as fs from 'fs';
 import { homedir } from 'os';
@@ -58,7 +57,7 @@ export async function discoverAgents(repoUrl: string, branch: string = 'main'): 
   return discoverAgentsFromBranch(repoUrl, branch);
 }
 
-export async function ensureProjectsDirectory(): Promise<void> {
+export function ensureProjectsDirectory(): void {
   if (!fs.existsSync(projectsDir)) {
     fs.mkdirSync(projectsDir, { recursive: true });
   }

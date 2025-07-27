@@ -6,12 +6,38 @@ import type { Step, ExecutionState, StepType, AgentSource, Message } from '@code
 import { db } from './db.js';
 
 /**
+ * Database row type for step table
+ */
+type StepDbRow = {
+  id: string;
+  run_id: string;
+  parent_step_id: string | null;
+  type: string;
+  status: string;
+  agent_name: string | null;
+  agent_source: string | null;
+  input: string | null;
+  output: string | null;
+  error: string | null;
+  start_time: Date;
+  end_time: Date | null;
+  duration: number | null;
+  tool_name: string | null;
+  tool_call_id: string | null;
+  messages: string | null;
+  metadata: string | null;
+  prompt_tokens: number | null;
+  completion_tokens: number | null;
+  cost: number | null;
+};
+
+/**
  * Create a new step
  */
 export async function createStep(
   step: Omit<Step, 'id' | 'startTime'> & { id?: string }
 ): Promise<Step> {
-  const result = await db.one(
+  const result = await db.one<StepDbRow>(
     `INSERT INTO step 
      (id, run_id, parent_step_id, type, status, agent_name, agent_source, 
       input, start_time, tool_name, tool_call_id, messages, metadata)
@@ -43,7 +69,7 @@ export async function createStep(
  * Get a step by ID
  */
 export async function getStep(id: string): Promise<Step | null> {
-  const result = await db.oneOrNone(
+  const result = await db.oneOrNone<StepDbRow>(
     `SELECT * FROM step WHERE id = $(id)`,
     { id }
   );
@@ -111,7 +137,7 @@ export async function updateStep(
     params.metadata = JSON.stringify(updates.metadata);
   }
   
-  const result = await db.one(
+  const result = await db.one<StepDbRow>(
     `UPDATE step 
      SET ${sets.join(', ')}
      WHERE id = $(id)
@@ -126,7 +152,7 @@ export async function updateStep(
  * Get steps for a run
  */
 export async function getStepsByRun(runId: string): Promise<Step[]> {
-  const results = await db.manyOrNone(
+  const results = await db.manyOrNone<StepDbRow>(
     `SELECT * FROM step 
      WHERE run_id = $(runId)
      ORDER BY start_time ASC`,
@@ -140,7 +166,7 @@ export async function getStepsByRun(runId: string): Promise<Step[]> {
  * Get child steps
  */
 export async function getChildSteps(parentStepId: string): Promise<Step[]> {
-  const results = await db.manyOrNone(
+  const results = await db.manyOrNone<StepDbRow>(
     `SELECT * FROM step 
      WHERE parent_step_id = $(parentStepId)
      ORDER BY start_time ASC`,
@@ -154,7 +180,7 @@ export async function getChildSteps(parentStepId: string): Promise<Step[]> {
  * Get active steps in a run
  */
 export async function getActiveSteps(runId: string): Promise<Step[]> {
-  const results = await db.manyOrNone(
+  const results = await db.manyOrNone<StepDbRow>(
     `SELECT * FROM step 
      WHERE run_id = $(runId) 
      AND status IN ('WORKING', 'INPUT_REQUIRED')
@@ -172,7 +198,7 @@ export async function getStepsByAgent(
   runId: string,
   agentName: string
 ): Promise<Step[]> {
-  const results = await db.manyOrNone(
+  const results = await db.manyOrNone<StepDbRow>(
     `SELECT * FROM step 
      WHERE run_id = $(runId) 
      AND agent_name = $(agentName)
@@ -186,28 +212,7 @@ export async function getStepsByAgent(
 /**
  * Database row type for step table
  */
-type StepDbRow = {
-  id: string;
-  run_id: string;
-  parent_step_id: string | null;
-  type: string;
-  status: string;
-  agent_name: string | null;
-  agent_source: string | null;
-  input: string | null;
-  output: string | null;
-  error: string | null;
-  start_time: Date | null;
-  end_time: Date | null;
-  duration: number | null;
-  prompt_tokens: number | null;
-  completion_tokens: number | null;
-  cost: number | null;
-  tool_name: string | null;
-  tool_call_id: string | null;
-  messages: string | null;
-  metadata: string | null;
-};
+
 
 /**
  * Helper to map database row to Step type
@@ -220,11 +225,11 @@ function mapStepFromDb(row: StepDbRow): Step {
     type: row.type as StepType,
     status: row.status as ExecutionState,
     agentName: row.agent_name || undefined,
-    agentSource: row.agent_source as AgentSource || undefined,
+    agentSource: row.agent_source ? row.agent_source as AgentSource : undefined,
     input: row.input || undefined,
     output: row.output || undefined,
     error: row.error || undefined,
-    startTime: row.start_time || undefined,
+    startTime: row.start_time,
     endTime: row.end_time || undefined,
     duration: row.duration || undefined,
     promptTokens: row.prompt_tokens || undefined,
@@ -232,8 +237,8 @@ function mapStepFromDb(row: StepDbRow): Step {
     cost: row.cost || undefined,
     toolName: row.tool_name || undefined,
     toolCallId: row.tool_call_id || undefined,
-    messages: row.messages ? JSON.parse(row.messages) : undefined,
-    metadata: row.metadata ? JSON.parse(row.metadata) : undefined
+    messages: row.messages ? JSON.parse(row.messages) as Message[] : undefined,
+    metadata: row.metadata ? JSON.parse(row.metadata) as Record<string, unknown> : undefined
   };
 }
 

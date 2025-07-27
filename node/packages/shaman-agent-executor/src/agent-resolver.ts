@@ -7,11 +7,28 @@ import type { AgentDefinition } from './types.js';
 import matter from 'gray-matter';
 
 /**
+ * Agent frontmatter type
+ */
+type AgentFrontmatter = {
+  name?: unknown;
+  description?: unknown;
+  version?: unknown;
+  model?: unknown;
+  systemPrompt?: unknown;
+  mcpServers?: unknown;
+  allowedAgents?: unknown;
+  maxIterations?: unknown;
+  temperature?: unknown;
+  contextScope?: unknown;
+};
+
+/**
  * Parse agent markdown file to extract definition
  */
 export function parseAgentMarkdown(content: string): Result<AgentDefinition> {
   try {
-    const { data: frontmatter, content: body } = matter(content);
+    const { data, content: body } = matter(content);
+    const frontmatter = data as AgentFrontmatter;
     
     // Validate required fields
     if (!frontmatter.name || typeof frontmatter.name !== 'string') {
@@ -21,22 +38,24 @@ export function parseAgentMarkdown(content: string): Result<AgentDefinition> {
       };
     }
 
-    // Build agent definition
+    // Build agent definition with proper type checking
     const agent: AgentDefinition = {
       name: frontmatter.name,
-      description: frontmatter.description || '',
-      version: frontmatter.version,
-      model: frontmatter.model,
-      systemPrompt: body.trim() || frontmatter.systemPrompt,
-      mcpServers: frontmatter.mcpServers || {},
+      description: typeof frontmatter.description === 'string' ? frontmatter.description : '',
+      version: typeof frontmatter.version === 'string' ? frontmatter.version : undefined,
+      model: typeof frontmatter.model === 'string' ? frontmatter.model : undefined,
+      systemPrompt: body.trim() || (typeof frontmatter.systemPrompt === 'string' ? frontmatter.systemPrompt : undefined),
+      mcpServers: typeof frontmatter.mcpServers === 'object' && frontmatter.mcpServers !== null ? frontmatter.mcpServers as Record<string, string[] | '*' | null> : {},
       allowedAgents: Array.isArray(frontmatter.allowedAgents) 
-        ? frontmatter.allowedAgents 
-        : frontmatter.allowedAgents 
+        ? frontmatter.allowedAgents.filter((a): a is string => typeof a === 'string')
+        : typeof frontmatter.allowedAgents === 'string'
           ? [frontmatter.allowedAgents]
           : [],
-      maxIterations: frontmatter.maxIterations || 10,
-      temperature: frontmatter.temperature,
-      contextScope: frontmatter.contextScope || 'FULL'
+      maxIterations: typeof frontmatter.maxIterations === 'number' ? frontmatter.maxIterations : 10,
+      temperature: typeof frontmatter.temperature === 'number' ? frontmatter.temperature : undefined,
+      contextScope: frontmatter.contextScope === 'FULL' || frontmatter.contextScope === 'NONE' || frontmatter.contextScope === 'SPECIFIC' 
+        ? frontmatter.contextScope 
+        : 'FULL'
     };
 
     return { success: true, data: agent };

@@ -1,6 +1,7 @@
-import { Result, success, failure } from '@codespin/shaman-core/dist/types/result.js';
-import { ExternalAgent } from '@codespin/shaman-core/dist/types/agent.js';
-import { RegistryResponse, HealthStatus } from './types.js';
+import type { Result } from '@codespin/shaman-core/dist/types/result.js';
+import { success, failure } from '@codespin/shaman-core/dist/types/result.js';
+import type { ExternalAgent } from '@codespin/shaman-core/dist/types/agent.js';
+import type { RegistryResponse, HealthStatus } from './types.js';
 
 interface RegistryConfig {
   url: string;
@@ -20,7 +21,7 @@ export async function fetchAgentsFromRegistry(
       return failure(`HTTP ${response.status}: ${response.statusText}`);
     }
     
-    const data: RegistryResponse = await response.json();
+    const data = await response.json() as RegistryResponse;
     return success(data.agents);
   } catch (error) {
     return failure(`Registry fetch failed: ${error instanceof Error ? error.message : String(error)}`);
@@ -30,7 +31,6 @@ export async function fetchAgentsFromRegistry(
 export async function healthCheckRegistry(
   config: RegistryConfig
 ): Promise<Result<HealthStatus, string>> {
-  const startTime = Date.now();
   
   try {
     const response = await fetch(`${config.url}/health`, {

@@ -4,8 +4,8 @@
  * Functions to adapt GitAgent to A2A protocol format
  */
 
-import { GitAgent } from '@codespin/shaman-types';
-import { A2AAgentCard, A2AProviderConfig } from './types.js';
+import type { GitAgent } from '@codespin/shaman-types';
+import type { A2AAgentCard, A2AProviderConfig } from './types.js';
 
 /**
  * Convert a GitAgent to A2A Agent Card format

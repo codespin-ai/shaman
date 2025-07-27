@@ -7,6 +7,20 @@ import { db } from './db.js';
 import { v4 as uuidv4 } from 'uuid';
 
 /**
+ * Database row type for workflow_data table
+ */
+type WorkflowDataDbRow = {
+  id: string;
+  run_id: string;
+  key: string;
+  value: string;
+  created_by_step_id: string;
+  created_by_agent_name: string;
+  created_by_agent_source: string;
+  created_at: Date;
+};
+
+/**
  * Create a workflow data entry
  */
 export async function createWorkflowData(
@@ -15,7 +29,7 @@ export async function createWorkflowData(
   const id = uuidv4();
   const createdAt = new Date();
   
-  const result = await db.one(
+  const result = await db.one<WorkflowDataDbRow>(
     `INSERT INTO workflow_data 
      (id, run_id, key, value, created_by_step_id, created_by_agent_name, created_by_agent_source, created_at)
      VALUES ($(id), $(runId), $(key), $(value), $(createdByStepId), $(createdByAgentName), $(createdByAgentSource), $(createdAt))
@@ -36,10 +50,10 @@ export async function createWorkflowData(
     id: result.id,
     runId: result.run_id,
     key: result.key,
-    value: JSON.parse(result.value),
+    value: JSON.parse(result.value) as unknown,
     createdByStepId: result.created_by_step_id,
     createdByAgentName: result.created_by_agent_name,
-    createdByAgentSource: result.created_by_agent_source,
+    createdByAgentSource: result.created_by_agent_source as AgentSource,
     createdAt: result.created_at
   };
 }
@@ -51,7 +65,7 @@ export async function getWorkflowData(
   runId: string,
   key: string
 ): Promise<WorkflowData[]> {
-  const results = await db.manyOrNone(
+  const results = await db.manyOrNone<WorkflowDataDbRow>(
     `SELECT * FROM workflow_data 
      WHERE run_id = $(runId) AND key = $(key)
      ORDER BY created_at DESC`,
@@ -62,10 +76,10 @@ export async function getWorkflowData(
     id: row.id,
     runId: row.run_id,
     key: row.key,
-    value: JSON.parse(row.value),
+    value: JSON.parse(row.value) as unknown,
     createdByStepId: row.created_by_step_id,
     createdByAgentName: row.created_by_agent_name,
-    createdByAgentSource: row.created_by_agent_source,
+    createdByAgentSource: row.created_by_agent_source as AgentSource,
     createdAt: row.created_at
   }));
 }
@@ -90,7 +104,7 @@ export async function queryWorkflowData(
     ${limit ? 'LIMIT $(limit)' : ''}
   `;
   
-  const results = await db.manyOrNone(query, {
+  const results = await db.manyOrNone<WorkflowDataDbRow>(query, {
     runId,
     pattern: sqlPattern,
     limit
@@ -100,10 +114,10 @@ export async function queryWorkflowData(
     id: row.id,
     runId: row.run_id,
     key: row.key,
-    value: JSON.parse(row.value),
+    value: JSON.parse(row.value) as unknown,
     createdByStepId: row.created_by_step_id,
     createdByAgentName: row.created_by_agent_name,
-    createdByAgentSource: row.created_by_agent_source,
+    createdByAgentSource: row.created_by_agent_source as AgentSource,
     createdAt: row.created_at
   }));
 }
@@ -141,11 +155,11 @@ export async function listWorkflowDataKeys(
   
   query += ` GROUP BY key ORDER BY key`;
   
-  const results = await db.manyOrNone(query, params);
+  const results = await db.manyOrNone<{ key: string; count: string; agents: string[] }>(query, params);
   
   return results.map(row => ({
     key: row.key,
-    count: row.count,
+    count: parseInt(row.count, 10),
     agents: row.agents
   }));
 }
@@ -156,7 +170,7 @@ export async function listWorkflowDataKeys(
 export async function getAllWorkflowData(
   runId: string
 ): Promise<WorkflowData[]> {
-  const results = await db.manyOrNone(
+  const results = await db.manyOrNone<WorkflowDataDbRow>(
     `SELECT * FROM workflow_data 
      WHERE run_id = $(runId)
      ORDER BY created_at ASC`,
@@ -167,10 +181,10 @@ export async function getAllWorkflowData(
     id: row.id,
     runId: row.run_id,
     key: row.key,
-    value: JSON.parse(row.value),
+    value: JSON.parse(row.value) as unknown,
     createdByStepId: row.created_by_step_id,
     createdByAgentName: row.created_by_agent_name,
-    createdByAgentSource: row.created_by_agent_source,
+    createdByAgentSource: row.created_by_agent_source as AgentSource,
     createdAt: row.created_at
   }));
 }

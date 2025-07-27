@@ -1,8 +1,8 @@
-import { GitAgent } from '@codespin/shaman-types';
+import type { GitAgent } from '@codespin/shaman-types';
 import { db } from './db.js';
 
 export async function saveGitAgent(agent: Omit<GitAgent, 'id' | 'createdAt' | 'updatedAt'>): Promise<GitAgent> {
-  const result = await db.one(
+  const result = await db.one<GitAgent>(
     `INSERT INTO git_agent (agent_repository_id, name, description, version, file_path, model, providers, mcp_servers, allowed_agents, tags, last_modified_commit_hash) 
      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) 
      RETURNING id, agent_repository_id as "agentRepositoryId", name, description, version, file_path as "filePath", 
@@ -15,7 +15,7 @@ export async function saveGitAgent(agent: Omit<GitAgent, 'id' | 'createdAt' | 'u
 }
 
 export async function getGitAgent(id: number): Promise<GitAgent | null> {
-  const result = await db.oneOrNone(
+  const result = await db.oneOrNone<GitAgent>(
     `SELECT id, agent_repository_id as "agentRepositoryId", name, description, version, file_path as "filePath", 
             model, providers, mcp_servers as "mcpServers", allowed_agents as "allowedAgents", tags, 
             last_modified_commit_hash as "lastModifiedCommitHash", created_at as "createdAt", updated_at as "updatedAt"
@@ -37,7 +37,7 @@ export async function getGitAgentsByRepositoryId(agentRepositoryId: number): Pro
 }
 
 export async function updateGitAgent(agent: GitAgent): Promise<GitAgent> {
-  const result = await db.one(
+  const result = await db.one<GitAgent>(
     `UPDATE git_agent 
      SET agent_repository_id = $2, name = $3, description = $4, version = $5, file_path = $6, 
          model = $7, providers = $8, mcp_servers = $9, allowed_agents = $10, tags = $11, 

@@ -4,7 +4,7 @@
  * Step & Run data structures shared by adapters.
  */
 
-import type { Step, Run, ExecutionState, WorkflowContext } from '@codespin/shaman-types';
+import type { Step, ExecutionState, WorkflowContext } from '@codespin/shaman-types';
 
 /**
  * Step execution context passed to activities

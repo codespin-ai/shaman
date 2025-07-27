@@ -4,7 +4,8 @@
  * ExecutionEngine implementation backed by Temporal.
  */
 
-import { Connection, WorkflowClient, WorkflowHandle } from '@temporalio/client';
+
+import { Connection, WorkflowClient } from '@temporalio/client';
 import type {
   ExecutionEngine,
   WorkflowMetadata,
@@ -51,7 +52,7 @@ export function createTemporalEngine(config: TemporalConfig): ExecutionEngine {
         const runId = `run-${uuidv4()}`;
         
         // Start the workflow
-        const handle = await client.start(agentWorkflow, {
+        await client.start(agentWorkflow, {
           taskQueue: config.taskQueue,
           workflowId: runId,
           args: [request],
@@ -143,7 +144,7 @@ export function createTemporalEngine(config: TemporalConfig): ExecutionEngine {
       }
     },
 
-    async cancel(target, reason): Promise<Result<void>> {
+    async cancel(target, _reason): Promise<Result<void>> {
       try {
         const client = await ensureClient();
         
@@ -168,20 +169,20 @@ export function createTemporalEngine(config: TemporalConfig): ExecutionEngine {
       }
     },
 
-    async waitForCondition(condition): Promise<Result<string>> {
+    waitForCondition(_condition): Promise<Result<string>> {
       // This is implemented within the workflow using signals
       // The workflow handles the waiting logic
-      return { 
+      return Promise.resolve({ 
         success: false, 
         error: new Error('waitForCondition should be called from within workflow')
-      };
+      });
     },
 
-    async logEvent(stepId: string, event): Promise<Result<void>> {
+    logEvent(stepId: string, event): Promise<Result<void>> {
       // For now, just log to console
       // In production, this would write to an event store
-      console.log(`Event for step ${stepId}:`, event);
-      return { success: true, data: undefined };
+      console.error(`Event for step ${stepId}:`, event);
+      return Promise.resolve({ success: true, data: undefined });
     }
   };
 }
@@ -205,14 +206,14 @@ function mapTemporalStatus(code: number): ExecutionState {
 
 // Export factory function
 export const createExecutionEngine: (config: TemporalConfig) => Promise<Result<ExecutionEngine>> = 
-  async (config) => {
+  (config) => {
     try {
       const engine = createTemporalEngine(config);
-      return { success: true, data: engine };
+      return Promise.resolve({ success: true, data: engine });
     } catch (error) {
-      return { 
+      return Promise.resolve({ 
         success: false, 
         error: error instanceof Error ? error : new Error('Failed to create Temporal engine')
-      };
+      });
     }
   };

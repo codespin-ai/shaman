@@ -5,20 +5,20 @@
  */
 
 import pgPromise from "pg-promise";
-import { IMain } from "pg-promise";
+import type { IMain } from 'pg-promise';
 
 // Initialize pg-promise
 const pgp: IMain = pgPromise({});
 
 // Database connection configuration
 const cn = {
-  host: process.env.SHAMAN_DB_HOST || 'localhost',
-  port: process.env.SHAMAN_DB_PORT
-    ? parseInt(process.env.SHAMAN_DB_PORT, 10)
+  host: (process.env.SHAMAN_DB_HOST as string) || 'localhost',
+  port: (process.env.SHAMAN_DB_PORT as string)
+    ? parseInt((process.env.SHAMAN_DB_PORT as string), 10)
     : 5432,
-  database: process.env.SHAMAN_DB_NAME,
-  user: process.env.SHAMAN_DB_USER,
-  password: process.env.SHAMAN_DB_PASSWORD,
+  database: (process.env.SHAMAN_DB_NAME as string),
+  user: (process.env.SHAMAN_DB_USER as string),
+  password: (process.env.SHAMAN_DB_PASSWORD as string),
 };
 
 // Create the database instance

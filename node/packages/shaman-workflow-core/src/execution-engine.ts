@@ -4,7 +4,7 @@
  * ExecutionEngine interface - abstracts workflow engine implementations.
  */
 
-import type { ExecutionState, Run, Step, InputRequest, WorkflowContext } from '@codespin/shaman-types';
+import type { ExecutionState, Run, WorkflowContext } from '@codespin/shaman-types';
 import type { Result } from './result.js';
 
 /**
@@ -126,5 +126,5 @@ export interface ExecutionEngine {
  * Factory function type for creating engine instances
  */
 export type CreateExecutionEngine = (
-  config: Record<string, unknown>
+  _config: Record<string, unknown>
 ) => Promise<Result<ExecutionEngine>>;

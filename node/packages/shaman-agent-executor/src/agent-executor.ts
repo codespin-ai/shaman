@@ -11,7 +11,6 @@ import type {
   Message,
   ToolCall,
   ExecutionState,
-  Step,
   WorkflowContext
 } from '@codespin/shaman-types';
 import type {
@@ -223,7 +222,7 @@ async function getLLMCompletion(
         toolCalls: response.tool_calls?.map(tc => ({
           id: tc.id,
           toolName: tc.function.name,
-          input: JSON.parse(tc.function.arguments),
+          input: JSON.parse(tc.function.arguments) as unknown,
           isSystemTool: false,
           isAgentCall: tc.function.name.startsWith('agent:')
         })),

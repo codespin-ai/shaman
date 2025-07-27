@@ -6,7 +6,6 @@ import { generateText, streamText } from 'ai';
 import { openai } from '@ai-sdk/openai';
 import { anthropic } from '@ai-sdk/anthropic';
 import type { LLMProvider, LLMCompletionRequest, LLMCompletionResponse, LLMStreamChunk, LLMMessage } from '@codespin/shaman-llm-core';
-import type { Result } from '@codespin/shaman-core';
 import type { VercelLLMConfig, ModelConfig } from './types.js';
 
 /**
@@ -31,7 +30,7 @@ export function createVercelLLMProvider(config: VercelLLMConfig): LLMProvider {
   /**
    * Create model instance
    */
-  function createModel(modelName: string) {
+  function createModel(modelName: string): ReturnType<typeof openai> | ReturnType<typeof anthropic> {
     const modelConfig = getModelConfig(modelName);
     if (!modelConfig) {
       throw new Error(`Model '${modelName}' not found in configuration`);
@@ -62,8 +61,11 @@ export function createVercelLLMProvider(config: VercelLLMConfig): LLMProvider {
         throw new Error('Custom providers not yet implemented');
       }
       
-      default:
-        throw new Error(`Unknown provider type: ${modelConfig.provider}`);
+      default: {
+        // This should never happen due to TypeScript exhaustiveness checking
+        const _exhaustiveCheck: never = modelConfig.provider;
+        throw new Error(`Unknown provider type: ${_exhaustiveCheck as string}`);
+      }
     }
   }
 
@@ -94,7 +96,7 @@ export function createVercelLLMProvider(config: VercelLLMConfig): LLMProvider {
       
       if (msg.tool_calls) {
         return {
-          role: msg.role as 'system' | 'user' | 'assistant',
+          role: msg.role,
           content: msg.content,
           toolCalls: msg.tool_calls.map(tc => ({
             id: tc.id,
@@ -108,7 +110,7 @@ export function createVercelLLMProvider(config: VercelLLMConfig): LLMProvider {
       }
       
       return {
-        role: msg.role as 'system' | 'user' | 'assistant',
+        role: msg.role,
         content: msg.content,
       };
     });
@@ -260,8 +262,8 @@ export function createVercelLLMProvider(config: VercelLLMConfig): LLMProvider {
       }
     },
 
-    async listModels(): Promise<string[]> {
-      return Object.keys(config.models);
+    listModels(): Promise<string[]> {
+      return Promise.resolve(Object.keys(config.models));
     }
   };
 }

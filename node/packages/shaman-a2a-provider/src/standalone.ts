@@ -5,24 +5,24 @@
  */
 
 import { createA2AServer } from './a2a-server.js';
-import { A2AProviderConfig } from './types.js';
-import { AgentsConfig } from '@codespin/shaman-agents';
+import type { A2AProviderConfig } from './types.js';
+import type { AgentsConfig } from '@codespin/shaman-agents';
 
 /**
  * Start a standalone A2A provider server
  */
-export async function startA2AProvider(
+export function startA2AProvider(
   config: A2AProviderConfig,
   agentsConfig: AgentsConfig
-): Promise<void> {
+): void {
   const port = config.port || 3001;
   const app = createA2AServer(config, agentsConfig);
   
   app.listen(port, () => {
-    console.log(`Shaman A2A Provider started on port ${port}`);
-    console.log(`Base path: ${config.basePath || '/a2a/v1'}`);
-    console.log(`Health check: http://localhost:${port}${config.basePath || '/a2a/v1'}/health`);
-    console.log(`Agent discovery: http://localhost:${port}${config.basePath || '/a2a/v1'}/agents`);
+    console.error(`Shaman A2A Provider started on port ${port}`);
+    console.error(`Base path: ${config.basePath || '/a2a/v1'}`);
+    console.error(`Health check: http://localhost:${port}${config.basePath || '/a2a/v1'}/health`);
+    console.error(`Agent discovery: http://localhost:${port}${config.basePath || '/a2a/v1'}/agents`);
   });
 }
 

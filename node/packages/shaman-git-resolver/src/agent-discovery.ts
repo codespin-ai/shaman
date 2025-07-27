@@ -7,7 +7,6 @@
 import { glob } from 'glob';
 import matter from 'gray-matter';
 import fs from 'fs-extra';
-import path from 'path';
 
 export interface ParsedAgentFile {
   filePath: string;
