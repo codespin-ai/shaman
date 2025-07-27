@@ -27,6 +27,7 @@ PACKAGES=(
   "shaman-a2a-provider"
   "shaman-llm-vercel"
   "shaman-tool-router"
+  "shaman-agent-executor"
   "shaman-workflow-bullmq"
   "shaman-workflow-temporal"
   "shaman-server"

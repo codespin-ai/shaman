@@ -1,0 +1,33 @@
+{
+  "name": "@codespin/shaman-agent-executor",
+  "version": "0.0.1",
+  "description": "Agent execution engine for Shaman",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "sideEffects": false,
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc"
+  },
+  "license": "MIT",
+  "dependencies": {
+    "@codespin/shaman-core": "file:../shaman-core",
+    "@codespin/shaman-types": "file:../shaman-types",
+    "@codespin/shaman-workflow-core": "file:../shaman-workflow-core",
+    "@codespin/shaman-agents": "file:../shaman-agents",
+    "@codespin/shaman-tool-router": "file:../shaman-tool-router",
+    "@codespin/shaman-llm-core": "file:../shaman-llm-core",
+    "@codespin/shaman-persistence": "file:../shaman-persistence",
+    "js-yaml": "^4.1.0",
+    "gray-matter": "^4.0.3",
+    "uuid": "^9.0.1"
+  },
+  "devDependencies": {
+    "typescript": "^5.3.3",
+    "@types/js-yaml": "^4.0.9",
+    "@types/uuid": "^9.0.7"
+  }
+}
