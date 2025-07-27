@@ -11,9 +11,16 @@
   ],
   "license": "MIT",
   "scripts": {
-    "build": "tsc"
+    "build": "tsc",
+    "lint": "eslint src --ext .ts",
+    "lint:fix": "eslint src --ext .ts --fix"
   },
   "dependencies": {
     "@codespin/shaman-workflow-core": "file:../shaman-workflow-core"
+  },
+  "devDependencies": {
+    "eslint": "^9.32.0",
+    "@typescript-eslint/parser": "^8.38.0",
+    "@typescript-eslint/eslint-plugin": "^8.38.0"
   }
 }

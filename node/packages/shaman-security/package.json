@@ -10,12 +10,19 @@
     "dist"
   ],
   "scripts": {
-    "build": "tsc"
+    "build": "tsc",
+    "lint": "eslint src --ext .ts",
+    "lint:fix": "eslint src --ext .ts --fix"
   },
   "license": "MIT",
   "dependencies": {
     "@codespin/shaman-core": "file:../shaman-core",
     "@codespin/shaman-config": "file:../shaman-config",
     "@codespin/shaman-persistence": "file:../shaman-persistence"
+  },
+  "devDependencies": {
+    "eslint": "^9.32.0",
+    "@typescript-eslint/parser": "^8.38.0",
+    "@typescript-eslint/eslint-plugin": "^8.38.0"
   }
 }

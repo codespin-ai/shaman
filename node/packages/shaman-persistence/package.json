@@ -4,7 +4,9 @@
   "type": "module",
   "main": "dist/index.js",
   "scripts": {
-    "build": "tsc"
+    "build": "tsc",
+    "lint": "eslint src --ext .ts",
+    "lint:fix": "eslint src --ext .ts --fix"
   },
   "dependencies": {
     "@codespin/shaman-types": "file:../shaman-types",
@@ -13,6 +15,9 @@
   },
   "devDependencies": {
     "typescript": "^5.5.4",
-    "@types/uuid": "^9.0.7"
+    "@types/uuid": "^9.0.7",
+    "eslint": "^9.32.0",
+    "@typescript-eslint/parser": "^8.38.0",
+    "@typescript-eslint/eslint-plugin": "^8.38.0"
   }
 }

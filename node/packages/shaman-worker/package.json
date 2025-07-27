@@ -11,7 +11,9 @@
   ],
   "license": "MIT",
   "scripts": {
-    "build": "tsc"
+    "build": "tsc",
+    "lint": "eslint src --ext .ts",
+    "lint:fix": "eslint src --ext .ts --fix"
   },
   "dependencies": {
     "@codespin/shaman-config": "file:../shaman-config",
@@ -26,5 +28,10 @@
     "@codespin/shaman-llm-vercel": "file:../shaman-llm-vercel",
     "@codespin/shaman-workflow-bullmq": "file:../shaman-workflow-bullmq",
     "@codespin/shaman-workflow-temporal": "file:../shaman-workflow-temporal"
+  },
+  "devDependencies": {
+    "eslint": "^9.32.0",
+    "@typescript-eslint/parser": "^8.38.0",
+    "@typescript-eslint/eslint-plugin": "^8.38.0"
   }
 }
