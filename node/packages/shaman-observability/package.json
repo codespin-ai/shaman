@@ -17,11 +17,24 @@
   "license": "MIT",
   "dependencies": {
     "@codespin/shaman-core": "file:../shaman-core",
-    "@codespin/shaman-config": "file:../shaman-config"
+    "@codespin/shaman-config": "file:../shaman-config",
+    "@codespin/shaman-logger": "file:../shaman-logger",
+    "@opentelemetry/api": "^1.9.0",
+    "@opentelemetry/sdk-node": "^0.52.0",
+    "@opentelemetry/sdk-trace-base": "^1.25.0",
+    "@opentelemetry/sdk-trace-node": "^1.25.0",
+    "@opentelemetry/sdk-metrics": "^1.25.0",
+    "@opentelemetry/exporter-metrics-otlp-proto": "^0.52.0",
+    "@opentelemetry/exporter-trace-otlp-proto": "^0.52.0",
+    "@opentelemetry/resources": "^1.25.0",
+    "@opentelemetry/semantic-conventions": "^1.25.0",
+    "@opentelemetry/instrumentation-http": "^0.52.0",
+    "@opentelemetry/instrumentation-express": "^0.41.0"
   },
   "devDependencies": {
     "eslint": "^9.32.0",
     "@typescript-eslint/parser": "^8.38.0",
-    "@typescript-eslint/eslint-plugin": "^8.38.0"
+    "@typescript-eslint/eslint-plugin": "^8.38.0",
+    "@types/express": "^4.17.21"
   }
 }
