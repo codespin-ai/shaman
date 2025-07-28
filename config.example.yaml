@@ -1,0 +1,57 @@
+# Example Shaman configuration file
+# Copy this to config.yaml and update with your settings
+
+# Database configuration (required)
+database:
+  host: localhost
+  port: 5432
+  name: shaman
+  user: postgres
+  password: postgres
+  pool:
+    min: 2
+    max: 10
+
+# LLM provider configuration (optional)
+llm:
+  openai:
+    # API key can also be set via OPENAI_API_KEY or SHAMAN_OPENAI_API_KEY env var
+    apiKey: your-openai-api-key
+  anthropic:
+    # API key can also be set via ANTHROPIC_API_KEY or SHAMAN_ANTHROPIC_API_KEY env var
+    apiKey: your-anthropic-api-key
+
+# A2A provider configuration (optional)
+a2a:
+  port: 3001
+  basePath: /a2a/v1
+  authentication:
+    type: none  # Options: none, bearer, basic
+    # token: your-bearer-token  # For bearer auth
+    # username: user  # For basic auth
+    # password: pass  # For basic auth
+  rateLimiting:
+    enabled: false
+    maxRequests: 100
+    windowMs: 60000  # 1 minute
+  metadata:
+    organizationName: Shaman Development
+    documentation: https://github.com/codespin-ai/shaman
+
+# Agent repository configuration (optional)
+agents:
+  syncInterval: 300000  # 5 minutes in milliseconds
+  gitRepos:
+    - url: https://github.com/your-org/agents-main.git
+      branch: main
+      path: agents/
+      authentication:
+        type: token
+        token: your-github-token
+      namespace: main
+    - url: https://github.com/your-org/agents-experimental.git
+      branch: develop
+      path: experimental/
+      authentication:
+        type: none
+      namespace: experimental

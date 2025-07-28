@@ -1,0 +1,52 @@
+{
+  "database": {
+    "host": "localhost",
+    "port": 5432,
+    "name": "shaman",
+    "user": "postgres", 
+    "password": "postgres",
+    "pool": {
+      "min": 2,
+      "max": 10
+    }
+  },
+  "llm": {
+    "openai": {
+      "apiKey": "your-openai-api-key"
+    },
+    "anthropic": {
+      "apiKey": "your-anthropic-api-key"
+    }
+  },
+  "a2a": {
+    "port": 3001,
+    "basePath": "/a2a/v1",
+    "authentication": {
+      "type": "none"
+    },
+    "rateLimiting": {
+      "enabled": false,
+      "maxRequests": 100,
+      "windowMs": 60000
+    },
+    "metadata": {
+      "organizationName": "Shaman Development",
+      "documentation": "https://github.com/codespin-ai/shaman"
+    }
+  },
+  "agents": {
+    "syncInterval": 300000,
+    "gitRepos": [
+      {
+        "url": "https://github.com/your-org/agents-main.git",
+        "branch": "main",
+        "path": "agents/",
+        "authentication": {
+          "type": "token",
+          "token": "your-github-token"
+        },
+        "namespace": "main"
+      }
+    ]
+  }
+}
