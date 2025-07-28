@@ -266,6 +266,16 @@ import { executeAgent } from "./agent-runner";
 - Follow functional testing patterns from CODING-STANDARDS.md
 - Each package builds independently with `tsc`
 
+### Important Build & Lint Workflow
+
+**ALWAYS follow this sequence:**
+1. Run `./lint-all.sh` first
+2. Run `./build.sh`
+3. **If build fails and you make changes**: You MUST run `./lint-all.sh` again before building
+   - Your new changes haven't been linted yet
+   - Build errors often require code changes that may introduce lint issues
+   - Always: lint → build → (if changes) → lint → build
+
 ## Common Tasks
 
 ### Adding a New Package
