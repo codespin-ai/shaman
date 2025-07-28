@@ -88,8 +88,7 @@ export type A2AProviderConfig = {
     readonly maxRequests: number;
     readonly windowMs: number;
   };
-  readonly allowedAgents?: string[]; // Whitelist specific agents
-  readonly excludedAgents?: string[]; // Blacklist specific agents
+  readonly allowedAgents?: string[]; // Whitelist of agents to expose (required for any agents to be exposed)
   readonly metadata?: {
     readonly organizationName?: string;
     readonly contactEmail?: string;

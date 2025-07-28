@@ -27,18 +27,14 @@ export function convertToA2ACard(agent: GitAgent, baseUrl: string): A2AAgentCard
  * Check if an agent can be exposed via A2A based on configuration
  */
 export function canExposeAgent(agent: GitAgent, config: A2AProviderConfig): boolean {
-  // Check whitelist
-  if (config.allowedAgents && config.allowedAgents.length > 0) {
-    return config.allowedAgents.includes(agent.name);
+  // Whitelist approach: only expose explicitly allowed agents
+  if (!config.allowedAgents || config.allowedAgents.length === 0) {
+    // No agents are exposed if allowedAgents is not configured
+    return false;
   }
   
-  // Check blacklist
-  if (config.excludedAgents && config.excludedAgents.length > 0) {
-    return !config.excludedAgents.includes(agent.name);
-  }
-  
-  // By default, expose all agents
-  return true;
+  // Check if agent is in the allowed list
+  return config.allowedAgents.includes(agent.name);
 }
 
 /**

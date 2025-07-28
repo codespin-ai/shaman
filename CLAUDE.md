@@ -49,6 +49,9 @@ Shaman is a comprehensive backend framework for managing and coordinating AI age
 
 # Start the application
 ./start.sh
+
+# Lint entire project (from root)
+./lint-all.sh           # Run ESLint on all packages
 ```
 
 ### Database Commands
@@ -73,6 +76,14 @@ npm start
 
 # TypeScript compilation for individual packages
 cd node/packages/[package-name] && npm run build
+
+# Linting commands (from /node directory)
+cd node && npm run lint        # Run ESLint on all packages
+cd node && npm run lint:fix    # Run ESLint with auto-fix on all packages
+
+# Individual package linting
+cd node/packages/[package-name] && npm run lint
+cd node/packages/[package-name] && npm run lint:fix
 ```
 
 ## Critical Architecture Decisions

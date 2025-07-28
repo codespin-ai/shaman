@@ -42,6 +42,8 @@ export const defaultA2AConfig: A2AProviderConfig = {
     maxRequests: 100,
     windowMs: 60000 // 1 minute
   },
+  // No agents are exposed by default - must explicitly configure allowedAgents
+  allowedAgents: [],
   metadata: {
     organizationName: 'Shaman Development',
     documentation: 'https://github.com/codespin-ai/shaman'
