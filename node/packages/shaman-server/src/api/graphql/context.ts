@@ -12,10 +12,10 @@ const logger = createLogger('GraphQLContext');
 /**
  * Create GraphQL context from request
  */
-export function createContext(
+export async function createContext(
   req: Request,
   config: ShamanConfig
-): GraphQLContext {
+): Promise<GraphQLContext> {
   const authenticatedReq = req as AuthenticatedRequest;
   
   const context: GraphQLContext = {

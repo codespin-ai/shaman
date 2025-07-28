@@ -147,7 +147,7 @@ export async function startServer(config: ServerConfig): Promise<void> {
     });
 
     // Graceful shutdown
-    process.on('SIGTERM', async () => {
+    process.on('SIGTERM', () => {
       logger.info('SIGTERM received, shutting down gracefully...');
       
       server.close(() => {
@@ -159,11 +159,19 @@ export async function startServer(config: ServerConfig): Promise<void> {
 
       const observabilityManager = getObservabilityManager();
       if (observabilityManager) {
-        await observabilityManager.shutdown();
-        logger.info('Observability shutdown complete');
+        observabilityManager.shutdown()
+          .then(() => {
+            logger.info('Observability shutdown complete');
+          })
+          .catch((error: unknown) => {
+            logger.error('Error during observability shutdown', { error });
+          })
+          .finally(() => {
+            process.exit(0);
+          });
+      } else {
+        process.exit(0);
       }
-
-      process.exit(0);
     });
 
   } catch (error) {

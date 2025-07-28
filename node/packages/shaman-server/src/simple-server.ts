@@ -18,7 +18,7 @@ const logger = createLogger('SimpleServer');
 /**
  * Create and start a simple Express server
  */
-export function startSimpleServer(config: ServerConfig): void {
+export async function startSimpleServer(config: ServerConfig): Promise<void> {
   const app = express();
 
   // Trust proxy

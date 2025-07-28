@@ -54,7 +54,7 @@ async function main(): Promise<void> {
     };
 
     // Start the server
-    startSimpleServer(config);
+    await startSimpleServer(config);
 
   } catch (error) {
     logger.error('Failed to start server', { error });

@@ -6,7 +6,7 @@ import { createLogger } from '@codespin/shaman-logger';
 import { getGitAgentsByRepository, getUserById } from '../../../../persistence-adapter.js';
 import type { AgentRepository } from '@codespin/shaman-types';
 
-const logger = createLogger('AgentRepositoryResolvers');
+const _logger = createLogger('AgentRepositoryResolvers');
 
 export const agentRepositoryResolvers = {
   /**

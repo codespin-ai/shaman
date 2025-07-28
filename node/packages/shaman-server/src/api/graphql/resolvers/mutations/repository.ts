@@ -77,7 +77,7 @@ export const repositoryMutations = {
     }
 
     // Trigger initial sync
-    const syncResult = syncRepository(args.input.gitUrl, args.input.branch || 'main');
+    const syncResult = await syncRepository(args.input.gitUrl, args.input.branch || 'main');
     if (!syncResult.success) {
       logger.warn('Initial sync failed', { 
         error: syncResult.error,
@@ -151,7 +151,7 @@ export const repositoryMutations = {
 
     return {
       ...result.data,
-      lastSyncStatus: (result.data as AgentRepository).lastSyncStatus || 'NEVER_SYNCED',
+      lastSyncStatus: result.data.lastSyncStatus || 'NEVER_SYNCED',
       syncErrors: [],
       authType: args.input.authType || 'none',
       agentCount: 0,
@@ -200,7 +200,7 @@ export const repositoryMutations = {
   /**
    * Sync agent repository
    */
-  syncAgentRepository: (
+  syncAgentRepository: async (
     _parent: unknown,
     args: { name: string },
     context: GraphQLContext
@@ -225,7 +225,7 @@ export const repositoryMutations = {
   /**
    * Sync all repositories
    */
-  syncAllAgentRepositories: (
+  syncAllAgentRepositories: async (
     _parent: unknown,
     _args: unknown,
     context: GraphQLContext
@@ -293,7 +293,7 @@ export const repositoryMutations = {
     }
 
     // Trigger sync on new branch
-    const syncResult = syncRepository((result.data as AgentRepository).gitUrl, args.branch);
+    const syncResult = await syncRepository(result.data.gitUrl, args.branch);
     if (!syncResult.success) {
       logger.warn('Sync after branch switch failed', { 
         error: syncResult.error,

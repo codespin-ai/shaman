@@ -4,7 +4,6 @@
 
 import { 
   getAgentRepository,
-  getAgentRepositoryByUrl,
   getAllAgentRepositories as getRepos,
   saveAgentRepository,
   updateAgentRepository as updateRepo,
@@ -20,13 +19,13 @@ import {
 } from '@codespin/shaman-persistence';
 import type { Result } from '@codespin/shaman-core';
 import type { User } from './types.js';
-import type { AgentRepository, GitAgent, Run, Step } from '@codespin/shaman-types';
+import type { AgentRepository, GitAgent, Run, Step, ExecutionState } from '@codespin/shaman-types';
 
 // Re-export getAllAgentRepositories
 export const getAllAgentRepositories = getRepos;
 
 // User management (stubs for now)
-export async function getUserById(id: number): Promise<Result<User>> {
+export async function getUserById(_id: number): Promise<Result<User>> {
   // TODO: Implement user table in persistence
   return {
     success: false,
@@ -34,21 +33,21 @@ export async function getUserById(id: number): Promise<Result<User>> {
   };
 }
 
-export async function getAllUsers(limit: number, offset: number): Promise<Result<User[]>> {
+export async function getAllUsers(_limit: number, _offset: number): Promise<Result<User[]>> {
   return {
     success: true,
     data: [],
   };
 }
 
-export async function createUser(data: Partial<User>): Promise<Result<User>> {
+export async function createUser(_data: Partial<User>): Promise<Result<User>> {
   return {
     success: false,
     error: new Error('User management not implemented'),
   };
 }
 
-export async function updateUser(id: number, data: Partial<User>): Promise<Result<User>> {
+export async function updateUser(_id: number, _data: Partial<User>): Promise<Result<User>> {
   return {
     success: false,
     error: new Error('User management not implemented'),
@@ -191,7 +190,7 @@ export async function createRun(data: Partial<Run>): Promise<Result<Run>> {
 
 export async function updateRunStatus(runId: string, status: string): Promise<Result<void>> {
   try {
-    await updateRun(runId, { status: status as any });
+    await updateRun(runId, { status: status as ExecutionState });
     return { success: true, data: undefined };
   } catch (error) {
     return { success: false, error: error as Error };
@@ -199,7 +198,7 @@ export async function updateRunStatus(runId: string, status: string): Promise<Re
 }
 
 // Sync operations (stubs)
-export function syncRepository(_gitUrl: string, _branch: string): Result<void> {
+export async function syncRepository(_gitUrl: string, _branch: string): Promise<Result<void>> {
   // TODO: Trigger actual git sync
   return { success: true, data: undefined };
 }

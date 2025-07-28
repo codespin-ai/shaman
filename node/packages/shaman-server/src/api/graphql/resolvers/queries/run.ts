@@ -8,7 +8,6 @@ import {
   getRunById,
   getRunsByUser,
   getRunsNeedingInput,
-  getStepById 
 } from '../../../../persistence-adapter.js';
 import type { GraphQLContext } from '../../../../types.js';
 

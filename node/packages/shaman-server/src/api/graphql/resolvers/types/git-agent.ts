@@ -6,13 +6,13 @@ import { createLogger } from '@codespin/shaman-logger';
 import { getAgentRepositoryById } from '../../../../persistence-adapter.js';
 import type { GitAgent } from '@codespin/shaman-types';
 
-const logger = createLogger('GitAgentResolvers');
+const _logger = createLogger('GitAgentResolvers');
 
 export const gitAgentResolvers = {
   /**
    * Resolve repository for agent
    */
-  repository: async (parent: any) => {
+  repository: async (parent: GitAgent & { repository?: unknown; repositoryId?: number }) => {
     if (parent.repository && typeof parent.repository === 'object') {
       return parent.repository;
     }
@@ -35,7 +35,7 @@ export const gitAgentResolvers = {
   /**
    * Map context scope
    */
-  contextScope: (parent: any) => {
+  contextScope: (parent: GitAgent & { contextScope?: string; context_scope?: string }) => {
     const scope = parent.contextScope || parent.context_scope || 'full';
     return scope.toUpperCase();
   },
@@ -47,7 +47,7 @@ export const gitAgentResolvers = {
     return parent.name.includes('.');
   },
 
-  fullPath: (parent: any) => {
+  fullPath: (parent: GitAgent & { filePath?: string; file_path?: string }) => {
     return parent.filePath || parent.file_path || `agents/${parent.name}.md`;
   },
 

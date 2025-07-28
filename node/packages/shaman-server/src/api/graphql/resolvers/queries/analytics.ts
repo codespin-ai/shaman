@@ -12,7 +12,7 @@ export const analyticsQueries = {
   /**
    * Get agent analytics
    */
-  agentAnalytics: (
+  agentAnalytics: async (
     _parent: unknown,
     args: { agentName: string; timeRange?: string },
     context: GraphQLContext
@@ -52,7 +52,7 @@ export const analyticsQueries = {
   /**
    * Get system usage statistics
    */
-  systemUsageStats: (
+  systemUsageStats: async (
     _parent: unknown,
     args: { timeRange?: string },
     context: GraphQLContext
@@ -99,7 +99,7 @@ export const analyticsQueries = {
   /**
    * Get cost analytics
    */
-  costAnalytics: (
+  costAnalytics: async (
     _parent: unknown,
     args: { timeRange?: string },
     context: GraphQLContext
@@ -136,7 +136,7 @@ export const analyticsQueries = {
   /**
    * Get A2A agent card
    */
-  a2aAgentCard: (
+  a2aAgentCard: async (
     _parent: unknown,
     _args: unknown,
     context: GraphQLContext
@@ -163,7 +163,7 @@ export const analyticsQueries = {
   /**
    * Get A2A exposed agents
    */
-  a2aExposedAgents: (
+  a2aExposedAgents: async (
     _parent: unknown,
     _args: unknown,
     context: GraphQLContext

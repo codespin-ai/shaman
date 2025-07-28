@@ -92,7 +92,7 @@ export const executionMutations = {
   /**
    * Terminate a run
    */
-  terminateRun: (
+  terminateRun: async (
     _parent: unknown,
     args: { id: string },
     context: GraphQLContext
@@ -117,7 +117,7 @@ export const executionMutations = {
   /**
    * Pause a run
    */
-  pauseRun: (
+  pauseRun: async (
     _parent: unknown,
     args: { id: string },
     context: GraphQLContext
@@ -142,7 +142,7 @@ export const executionMutations = {
   /**
    * Resume a run
    */
-  resumeRun: (
+  resumeRun: async (
     _parent: unknown,
     args: { id: string; userInput?: string },
     context: GraphQLContext
@@ -168,7 +168,7 @@ export const executionMutations = {
   /**
    * Cancel a step
    */
-  cancelStep: (
+  cancelStep: async (
     _parent: unknown,
     args: { stepId: string; reason?: string },
     context: GraphQLContext
@@ -194,7 +194,7 @@ export const executionMutations = {
   /**
    * Cancel a subgraph
    */
-  cancelSubgraph: (
+  cancelSubgraph: async (
     _parent: unknown,
     args: { rootStepId: string; reason?: string },
     context: GraphQLContext
@@ -218,7 +218,7 @@ export const executionMutations = {
   /**
    * Provide input to a run
    */
-  provideInput: (
+  provideInput: async (
     _parent: unknown,
     args: {
       runId: string;
@@ -250,7 +250,7 @@ export const executionMutations = {
   /**
    * Skip input
    */
-  skipInput: (
+  skipInput: async (
     _parent: unknown,
     args: {
       runId: string;
@@ -279,47 +279,47 @@ export const executionMutations = {
   },
 
   // Placeholder mutations for external A2A and MCP servers
-  registerExternalA2AAgent: () => {
+  registerExternalA2AAgent: async () => {
     throw new GraphQLError('Not implemented', {
       extensions: { code: 'NOT_IMPLEMENTED' },
     });
   },
 
-  updateExternalA2AAgent: () => {
+  updateExternalA2AAgent: async () => {
     throw new GraphQLError('Not implemented', {
       extensions: { code: 'NOT_IMPLEMENTED' },
     });
   },
 
-  removeExternalA2AAgent: () => false,
+  removeExternalA2AAgent: async () => false,
 
-  refreshExternalA2AAgent: () => {
+  refreshExternalA2AAgent: async () => {
     throw new GraphQLError('Not implemented', {
       extensions: { code: 'NOT_IMPLEMENTED' },
     });
   },
 
-  testExternalA2AConnection: () => false,
+  testExternalA2AConnection: async () => false,
 
-  createMcpServer: () => {
+  createMcpServer: async () => {
     throw new GraphQLError('Not implemented', {
       extensions: { code: 'NOT_IMPLEMENTED' },
     });
   },
 
-  updateMcpServer: () => {
+  updateMcpServer: async () => {
     throw new GraphQLError('Not implemented', {
       extensions: { code: 'NOT_IMPLEMENTED' },
     });
   },
 
-  removeMcpServer: () => false,
+  removeMcpServer: async () => false,
 
-  refreshMcpServer: () => {
+  refreshMcpServer: async () => {
     throw new GraphQLError('Not implemented', {
       extensions: { code: 'NOT_IMPLEMENTED' },
     });
   },
 
-  testMcpServerConnection: () => false,
+  testMcpServerConnection: async () => false,
 };

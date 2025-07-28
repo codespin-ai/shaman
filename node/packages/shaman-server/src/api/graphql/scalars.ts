@@ -3,6 +3,7 @@
  */
 
 import { GraphQLScalarType, Kind } from 'graphql';
+import type { ValueNode, ObjectFieldNode } from 'graphql';
 import { GraphQLError } from 'graphql';
 
 /**
@@ -171,26 +172,33 @@ export const UploadScalar = new GraphQLScalarType({
 });
 
 // Helper function for recursive literal parsing
-function parseLiteral(ast: any): unknown {
+function parseLiteral(ast: ValueNode): unknown {
   switch (ast.kind) {
     case Kind.STRING:
-      return ast.value;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-member-access
+      return (ast as any).value;
     case Kind.BOOLEAN:
-      return ast.value;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-member-access
+      return (ast as any).value;
     case Kind.INT:
-      return parseInt(ast.value, 10);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-argument
+      return parseInt((ast as any).value, 10);
     case Kind.FLOAT:
-      return parseFloat(ast.value);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-argument
+      return parseFloat((ast as any).value);
     case Kind.OBJECT:
-      return ast.fields.reduce((acc: Record<string, unknown>, field: any) => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
+      return (ast as any).fields.reduce((acc: Record<string, unknown>, field: ObjectFieldNode) => {
         acc[field.name.value] = parseLiteral(field.value);
         return acc;
       }, {} as Record<string, unknown>);
     case Kind.LIST:
-      return ast.values.map(parseLiteral);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
+      return (ast as any).values.map(parseLiteral);
     case Kind.NULL:
       return null;
     default:
-      throw new GraphQLError(`Unexpected kind in parseLiteral: ${ast.kind}`);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-member-access
+      throw new GraphQLError(`Unexpected kind in parseLiteral: ${(ast as any).kind}`);
   }
 }

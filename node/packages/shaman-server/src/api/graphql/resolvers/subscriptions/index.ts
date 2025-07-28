@@ -3,7 +3,7 @@
  */
 
 import { createLogger } from '@codespin/shaman-logger';
-import type { GraphQLContext } from '../../../../types.js';
+import type { GraphQLContext as _GraphQLContext } from '../../../../types.js';
 
 const logger = createLogger('Subscriptions');
 

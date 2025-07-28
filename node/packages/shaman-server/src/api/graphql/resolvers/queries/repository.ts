@@ -7,7 +7,6 @@ import { createLogger } from '@codespin/shaman-logger';
 import { 
   getAgentRepositoryByName,
   getAllAgentRepositories,
-  getGitAgentsByRepository
 } from '../../../../persistence-adapter.js';
 import type { GraphQLContext } from '../../../../types.js';
 

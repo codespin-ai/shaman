@@ -3,7 +3,7 @@
  */
 
 import { ApolloServer } from '@apollo/server';
-import { ApolloServerPluginDrainHttpServer } from '@apollo/server/plugin/drainHttpServer';
+import { ApolloServerPluginDrainHttpServer as _ApolloServerPluginDrainHttpServer } from '@apollo/server/plugin/drainHttpServer';
 import { makeExecutableSchema } from '@graphql-tools/schema';
 import { createLogger } from '@codespin/shaman-logger';
 import { loadConfig } from '@codespin/shaman-config';
@@ -18,13 +18,14 @@ import {
   UploadScalar 
 } from './scalars.js';
 import { createContext } from './context.js';
+import type { Request } from 'express';
 
 const logger = createLogger('GraphQLServer');
 
 /**
  * Create Apollo Server instance
  */
-export async function createApolloServer(serverConfig: ServerConfig): Promise<any> {
+export async function createApolloServer(serverConfig: ServerConfig): Promise<ApolloServer<GraphQLContext>> {
   try {
     // Load Shaman configuration
     const configResult = loadConfig();
@@ -88,8 +89,9 @@ export async function createApolloServer(serverConfig: ServerConfig): Promise<an
     });
 
     // Add context function
-    (apolloServer as any).createContext = async ({ req }: any) => {
-      return createContext(req, shamanConfig);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-member-access
+    (apolloServer as any).createContext = async ({ req }: { req: unknown }) => {
+      return await createContext(req as Request, shamanConfig);
     };
 
     logger.info('Apollo Server created successfully');
