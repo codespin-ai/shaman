@@ -4,7 +4,7 @@
 
 import { GraphQLError } from 'graphql';
 import { createLogger } from '@codespin/shaman-logger';
-import { createRun, updateRunStatus, executeAgent } from '../../../../persistence-adapter.js';
+import { createRun, executeAgent } from '../../../../persistence-adapter.js';
 import type { GraphQLContext } from '../../../../types.js';
 
 const logger = createLogger('ExecutionMutations');
@@ -44,7 +44,7 @@ export const executionMutations = {
       const runResult = await createRun({
         initialInput: input.input,
         status: 'SUBMITTED',
-        createdBy: context.user.id,
+        createdBy: context.user.id.toString(),
       });
 
       if (!runResult.success) {
@@ -63,7 +63,7 @@ export const executionMutations = {
         input: input.input,
         runId: run.id,
         userId: context.user.id,
-        contextScope: input.contextScope?.toLowerCase() as any,
+        contextScope: input.contextScope?.toLowerCase(),
         maxCallDepth: input.maxCallDepth,
       });
 
@@ -86,13 +86,13 @@ export const executionMutations = {
       });
     }
 
-    return runs;
+    return runs as typeof runs;
   },
 
   /**
    * Terminate a run
    */
-  terminateRun: async (
+  terminateRun: (
     _parent: unknown,
     args: { id: string },
     context: GraphQLContext
@@ -117,7 +117,7 @@ export const executionMutations = {
   /**
    * Pause a run
    */
-  pauseRun: async (
+  pauseRun: (
     _parent: unknown,
     args: { id: string },
     context: GraphQLContext
@@ -142,7 +142,7 @@ export const executionMutations = {
   /**
    * Resume a run
    */
-  resumeRun: async (
+  resumeRun: (
     _parent: unknown,
     args: { id: string; userInput?: string },
     context: GraphQLContext
@@ -168,7 +168,7 @@ export const executionMutations = {
   /**
    * Cancel a step
    */
-  cancelStep: async (
+  cancelStep: (
     _parent: unknown,
     args: { stepId: string; reason?: string },
     context: GraphQLContext
@@ -194,7 +194,7 @@ export const executionMutations = {
   /**
    * Cancel a subgraph
    */
-  cancelSubgraph: async (
+  cancelSubgraph: (
     _parent: unknown,
     args: { rootStepId: string; reason?: string },
     context: GraphQLContext
@@ -218,13 +218,13 @@ export const executionMutations = {
   /**
    * Provide input to a run
    */
-  provideInput: async (
+  provideInput: (
     _parent: unknown,
     args: {
       runId: string;
       inputRequestId: string;
       response: string;
-      attachments?: any[];
+      attachments?: unknown[];
     },
     context: GraphQLContext
   ) => {
@@ -250,7 +250,7 @@ export const executionMutations = {
   /**
    * Skip input
    */
-  skipInput: async (
+  skipInput: (
     _parent: unknown,
     args: {
       runId: string;
@@ -279,47 +279,47 @@ export const executionMutations = {
   },
 
   // Placeholder mutations for external A2A and MCP servers
-  registerExternalA2AAgent: async () => {
+  registerExternalA2AAgent: () => {
     throw new GraphQLError('Not implemented', {
       extensions: { code: 'NOT_IMPLEMENTED' },
     });
   },
 
-  updateExternalA2AAgent: async () => {
+  updateExternalA2AAgent: () => {
     throw new GraphQLError('Not implemented', {
       extensions: { code: 'NOT_IMPLEMENTED' },
     });
   },
 
-  removeExternalA2AAgent: async () => false,
+  removeExternalA2AAgent: () => false,
 
-  refreshExternalA2AAgent: async () => {
+  refreshExternalA2AAgent: () => {
     throw new GraphQLError('Not implemented', {
       extensions: { code: 'NOT_IMPLEMENTED' },
     });
   },
 
-  testExternalA2AConnection: async () => false,
+  testExternalA2AConnection: () => false,
 
-  createMcpServer: async () => {
+  createMcpServer: () => {
     throw new GraphQLError('Not implemented', {
       extensions: { code: 'NOT_IMPLEMENTED' },
     });
   },
 
-  updateMcpServer: async () => {
+  updateMcpServer: () => {
     throw new GraphQLError('Not implemented', {
       extensions: { code: 'NOT_IMPLEMENTED' },
     });
   },
 
-  removeMcpServer: async () => false,
+  removeMcpServer: () => false,
 
-  refreshMcpServer: async () => {
+  refreshMcpServer: () => {
     throw new GraphQLError('Not implemented', {
       extensions: { code: 'NOT_IMPLEMENTED' },
     });
   },
 
-  testMcpServerConnection: async () => false,
+  testMcpServerConnection: () => false,
 };

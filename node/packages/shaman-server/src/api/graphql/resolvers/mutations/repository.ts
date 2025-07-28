@@ -11,6 +11,7 @@ import {
 } from '../../../../persistence-adapter.js';
 import { syncRepository } from '../../../../persistence-adapter.js';
 import type { GraphQLContext } from '../../../../types.js';
+import type { AgentRepository } from '@codespin/shaman-types';
 
 const logger = createLogger('RepositoryMutations');
 
@@ -60,8 +61,6 @@ export const repositoryMutations = {
       gitUrl: args.input.gitUrl,
       branch: args.input.branch || 'main',
       isRoot: args.input.isRoot || false,
-      isActive: true,
-      createdBy: context.user.id,
     });
 
     if (!result.success) {
@@ -78,7 +77,7 @@ export const repositoryMutations = {
     }
 
     // Trigger initial sync
-    const syncResult = await syncRepository(args.input.gitUrl, args.input.branch || 'main');
+    const syncResult = syncRepository(args.input.gitUrl, args.input.branch || 'main');
     if (!syncResult.success) {
       logger.warn('Initial sync failed', { 
         error: syncResult.error,
@@ -93,7 +92,7 @@ export const repositoryMutations = {
       authType: args.input.authType,
       agentCount: 0,
       discoveredAgents: [],
-    };
+    } as AgentRepository & { syncErrors: unknown[]; authType: string; agentCount: number; discoveredAgents: unknown[] };
   },
 
   /**
@@ -152,12 +151,12 @@ export const repositoryMutations = {
 
     return {
       ...result.data,
-      lastSyncStatus: result.data.lastSyncStatus || 'NEVER_SYNCED',
+      lastSyncStatus: (result.data as AgentRepository).lastSyncStatus || 'NEVER_SYNCED',
       syncErrors: [],
       authType: args.input.authType || 'none',
       agentCount: 0,
       discoveredAgents: [],
-    };
+    } as AgentRepository & { syncErrors: unknown[]; authType: string; agentCount: number; discoveredAgents: unknown[] };
   },
 
   /**
@@ -201,7 +200,7 @@ export const repositoryMutations = {
   /**
    * Sync agent repository
    */
-  syncAgentRepository: async (
+  syncAgentRepository: (
     _parent: unknown,
     args: { name: string },
     context: GraphQLContext
@@ -226,7 +225,7 @@ export const repositoryMutations = {
   /**
    * Sync all repositories
    */
-  syncAllAgentRepositories: async (
+  syncAllAgentRepositories: (
     _parent: unknown,
     _args: unknown,
     context: GraphQLContext
@@ -294,7 +293,7 @@ export const repositoryMutations = {
     }
 
     // Trigger sync on new branch
-    const syncResult = await syncRepository(result.data.gitUrl, args.branch);
+    const syncResult = syncRepository((result.data as AgentRepository).gitUrl, args.branch);
     if (!syncResult.success) {
       logger.warn('Sync after branch switch failed', { 
         error: syncResult.error,
@@ -309,6 +308,6 @@ export const repositoryMutations = {
       authType: 'none',
       agentCount: 0,
       discoveredAgents: [],
-    };
+    } as AgentRepository & { syncErrors: unknown[]; authType: string; agentCount: number; discoveredAgents: unknown[] };
   },
 };

@@ -11,7 +11,7 @@ import { createLogger } from '@codespin/shaman-logger';
 import { tracingMiddleware, metricsMiddleware } from '@codespin/shaman-observability';
 import { v4 as uuidv4 } from 'uuid';
 import { createHealthCheckRouter } from './api/health.js';
-import type { ServerConfig } from './types.js';
+import type { ServerConfig, AuthenticatedRequest } from './types.js';
 
 const logger = createLogger('SimpleServer');
 
@@ -44,8 +44,8 @@ export function startSimpleServer(config: ServerConfig): void {
   app.use(json({ limit: '10mb' }));
 
   // Request ID middleware
-  app.use((req: any, _res, next) => {
-    req.requestId = req.headers['x-request-id'] || uuidv4();
+  app.use((req: AuthenticatedRequest, _res, next) => {
+    req.requestId = (req.headers['x-request-id'] as string) || uuidv4();
     next();
   });
 
@@ -66,7 +66,7 @@ export function startSimpleServer(config: ServerConfig): void {
   });
 
   // Error handling
-  app.use((err: Error, req: any, res: express.Response, _next: express.NextFunction) => {
+  app.use((err: Error, req: AuthenticatedRequest, res: express.Response, _next: express.NextFunction) => {
     logger.error('Unhandled error', {
       error: err,
       requestId: req.requestId,
@@ -79,7 +79,7 @@ export function startSimpleServer(config: ServerConfig): void {
   });
 
   // 404 handler
-  app.use((req: any, res) => {
+  app.use((req: AuthenticatedRequest, res) => {
     res.status(404).json({
       error: 'Not found',
       path: req.path,

@@ -51,7 +51,7 @@ export const runQueries = {
     const run = result.data;
 
     // Check permissions - users can only see their own runs unless admin
-    if (run.createdBy.id !== context.user.id && 
+    if (run.createdBy !== context.user.id.toString() && 
         context.user.role !== 'ADMIN' && 
         context.user.role !== 'SUPER_ADMIN') {
       throw new GraphQLError('Insufficient permissions', {
@@ -62,7 +62,7 @@ export const runQueries = {
     // Add computed fields
     return {
       ...run,
-      stepCount: run.steps?.length || 0,
+      stepCount: 0, // TODO: Get step count from persistence
       dagStatus: {
         interactableSteps: [],
         blockedSteps: [],
@@ -143,7 +143,7 @@ export const runQueries = {
     // Map and add computed fields
     return result.data.map(run => ({
       ...run,
-      stepCount: run.steps?.length || 0,
+      stepCount: 0, // TODO: Get step count from persistence
       dagStatus: {
         interactableSteps: [],
         blockedSteps: [],
@@ -203,7 +203,7 @@ export const runQueries = {
     // Map and add computed fields
     return result.data.map(run => ({
       ...run,
-      stepCount: run.steps?.length || 0,
+      stepCount: 0, // TODO: Get step count from persistence
       dagStatus: {
         interactableSteps: [],
         blockedSteps: [],

@@ -55,9 +55,7 @@ export type GraphQLContext = {
   readonly user?: User;
   readonly config: ShamanConfig;
   readonly requestId: string;
-  readonly dataSources: {
-    // Add data sources as needed
-  };
+  readonly dataSources: Record<string, unknown>;
 };
 
 /**

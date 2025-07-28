@@ -85,7 +85,7 @@ export const repositoryQueries = {
     const repos = await getAllAgentRepositories();
 
     // Map to GraphQL types
-    return repos.map((repo: any) => ({
+    return repos.map((repo) => ({
       ...repo,
       lastSyncStatus: repo.lastSyncStatus || 'NEVER_SYNCED',
       syncErrors: [],

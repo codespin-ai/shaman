@@ -48,7 +48,7 @@ async function main(): Promise<void> {
         } : undefined,
       },
       logging: {
-        level: (process.env.LOG_LEVEL as any) || 'info',
+        level: (process.env.LOG_LEVEL as 'debug' | 'info' | 'warn' | 'error') || 'info',
         format: process.env.NODE_ENV === 'production' ? 'json' : 'pretty',
       },
     };

@@ -28,11 +28,11 @@ export const agentRepositoryResolvers = {
   /**
    * Resolve created by user
    */
-  createdBy: async (parent: any) => {
+  createdBy: async (parent: AgentRepository & { createdBy?: number | object }) => {
     if (parent.createdBy && typeof parent.createdBy === 'object') {
       return parent.createdBy;
     }
-    if (parent.createdBy) {
+    if (parent.createdBy && typeof parent.createdBy === 'number') {
       const result = await getUserById(parent.createdBy);
       return result.success ? result.data : null;
     }
@@ -42,7 +42,7 @@ export const agentRepositoryResolvers = {
   /**
    * Map sync status
    */
-  lastSyncStatus: (parent: any) => {
+  lastSyncStatus: (parent: AgentRepository) => {
     return parent.lastSyncStatus || 'NEVER_SYNCED';
   },
 

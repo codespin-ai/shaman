@@ -3,7 +3,7 @@
  */
 
 export const streamChunkResolvers = {
-  __resolveType(obj: any) {
+  __resolveType(obj: Record<string, unknown>) {
     // Determine the concrete type based on object properties
     if ('content' in obj && 'timestamp' in obj && !('toolCallId' in obj)) {
       return 'TokenChunk';
