@@ -117,7 +117,7 @@ export async function startServer(config: ServerConfig): Promise<void> {
     // Apply Apollo Server middleware
     app.use(
       config.graphql.path,
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-call
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-argument
       expressMiddleware(apolloServer as any, {
         context: async ({ req }: { req: unknown }) => {
           // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-call

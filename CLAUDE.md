@@ -36,6 +36,14 @@ Shaman is a comprehensive backend framework for managing and coordinating AI age
 
 ## Essential Commands
 
+### Git Workflow Rules
+
+**IMPORTANT**: NEVER commit or push changes without explicit user instruction
+- Only run `git add`, `git commit`, or `git push` when the user explicitly asks
+- Common explicit instructions include: "commit", "push", "commit and push", "save to git"
+- If unsure, ask the user if they want to commit the changes
+- Always wait for user approval before making any git operations
+
 ### Build Commands
 ```bash
 # Build entire project (from root)
