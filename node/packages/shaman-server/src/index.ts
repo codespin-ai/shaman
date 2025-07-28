@@ -1,7 +1,14 @@
 /**
- * packages/shaman-server/src/index.ts
- *
- * createServer factory export.
- *
- * NOTE: Scaffold stub – replace with real implementation.
+ * Shaman GraphQL Server
  */
+
+export { startSimpleServer } from './simple-server.js';
+export { createHealthCheckRouter } from './api/health.js';
+export type { 
+  ServerConfig, 
+  GraphQLContext, 
+  AuthenticatedRequest,
+  WebSocketContext,
+  SubscriptionEvent,
+  User
+} from './types.js';

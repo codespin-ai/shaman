@@ -1,0 +1,10 @@
+{
+  "extends": "./tsconfig.json",
+  "include": [
+    "src/simple-server.ts",
+    "src/api/health.ts",
+    "src/start.ts",
+    "src/types.ts",
+    "src/index.ts"
+  ]
+}
