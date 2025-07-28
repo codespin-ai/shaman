@@ -138,7 +138,7 @@ export function addRequestSpanAttributes(req: Request, attributes: Record<string
       if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
         safeAttributes[key] = value;
       } else if (value !== null && value !== undefined) {
-        safeAttributes[key] = String(value);
+        safeAttributes[key] = JSON.stringify(value);
       }
     }
     span.setAttributes(safeAttributes);

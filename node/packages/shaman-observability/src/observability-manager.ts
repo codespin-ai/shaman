@@ -118,7 +118,7 @@ class ObservabilityManagerImpl implements ObservabilityManager {
       if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
         safeAttributes[key] = value;
       } else if (value !== null && value !== undefined) {
-        safeAttributes[key] = String(value);
+        safeAttributes[key] = JSON.stringify(value);
       }
     }
 

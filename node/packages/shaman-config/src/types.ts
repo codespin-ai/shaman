@@ -3,13 +3,6 @@
  */
 
 /**
- * Helper type to make all properties mutable
- */
-type Mutable<T> = {
-  -readonly [P in keyof T]: T[P];
-};
-
-/**
  * Database configuration
  */
 export type DatabaseConfig = {
