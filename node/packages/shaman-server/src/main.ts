@@ -15,7 +15,8 @@ import {
 } from '@codespin/shaman-observability';
 import { v4 as uuidv4 } from 'uuid';
 import type { ServerConfig, AuthenticatedRequest } from './types.js';
-// import { createApolloServer } from './api/graphql/server.js';
+import { createApolloServer } from './api/graphql/server.js';
+import { expressMiddleware } from '@apollo/server/express4';
 import { createHealthCheckRouter } from './api/health.js';
 
 const logger = createLogger('Server');
@@ -109,9 +110,21 @@ export async function startServer(config: ServerConfig): Promise<void> {
     // Create Express app
     const app = await createExpressApp(config);
 
-    // TODO: Create and apply Apollo Server
-    // const apolloServer = await createApolloServer(config);
-    // await apolloServer.start();
+    // Create and start Apollo Server
+    const apolloServer = await createApolloServer(config);
+    await apolloServer.start();
+    
+    // Apply Apollo Server middleware
+    app.use(
+      config.graphql.path,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-call
+      expressMiddleware(apolloServer as any, {
+        context: async ({ req }: { req: unknown }) => {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-call
+          return await (apolloServer as any).createContext({ req });
+        },
+      }) as unknown as express.RequestHandler
+    );
 
     // Error handling middleware
     app.use((err: Error, req: AuthenticatedRequest, res: express.Response, _next: express.NextFunction) => {
@@ -152,26 +165,31 @@ export async function startServer(config: ServerConfig): Promise<void> {
       
       server.close(() => {
         logger.info('HTTP server closed');
-      });
-
-      // await apolloServer.stop();
-      // logger.info('Apollo server stopped');
-
-      const observabilityManager = getObservabilityManager();
-      if (observabilityManager) {
-        observabilityManager.shutdown()
+        
+        // Stop Apollo server
+        apolloServer.stop()
           .then(() => {
-            logger.info('Observability shutdown complete');
+            logger.info('Apollo server stopped');
+            
+            const observabilityManager = getObservabilityManager();
+            if (observabilityManager) {
+              return observabilityManager.shutdown()
+                .then(() => {
+                  logger.info('Observability shutdown complete');
+                })
+                .catch((error: unknown) => {
+                  logger.error('Error during observability shutdown', { error });
+                });
+            }
+          })
+          .then(() => {
+            process.exit(0);
           })
           .catch((error: unknown) => {
-            logger.error('Error during observability shutdown', { error });
-          })
-          .finally(() => {
-            process.exit(0);
+            logger.error('Error during shutdown', { error });
+            process.exit(1);
           });
-      } else {
-        process.exit(0);
-      }
+      });
     });
 
   } catch (error) {

@@ -18,7 +18,7 @@
   },
   "license": "MIT",
   "dependencies": {
-    "@apollo/server": "^5.0.0",
+    "@apollo/server": "^4.12.2",
     "@codespin/shaman-agent-executor": "file:../shaman-agent-executor",
     "@codespin/shaman-agents": "file:../shaman-agents",
     "@codespin/shaman-config": "file:../shaman-config",

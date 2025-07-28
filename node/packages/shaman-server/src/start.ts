@@ -5,7 +5,7 @@
 import { createLogger } from '@codespin/shaman-logger';
 import { initializeFromConfig } from '@codespin/shaman-observability';
 // import { initDb } from '@codespin/shaman-persistence';
-import { startSimpleServer } from './simple-server.js';
+import { startServer } from './main.js';
 import type { ServerConfig } from './types.js';
 
 const logger = createLogger('ServerStartup');
@@ -53,8 +53,8 @@ async function main(): Promise<void> {
       },
     };
 
-    // Start the server
-    await startSimpleServer(config);
+    // Start the server with Apollo GraphQL
+    await startServer(config);
 
   } catch (error) {
     logger.error('Failed to start server', { error });
