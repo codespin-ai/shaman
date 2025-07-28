@@ -8,6 +8,7 @@ import type { GitAgent } from '@codespin/shaman-types';
 import type { ExternalAgent } from '@codespin/shaman-core/dist/types/agent.js';
 import type { Result } from '@codespin/shaman-core/dist/types/result.js';
 import { success, failure } from '@codespin/shaman-core/dist/types/result.js';
+import { createLogger } from '@codespin/shaman-logger';
 
 import { fetchAgentsFromRegistry } from '@codespin/shaman-external-registry';
 import { getAllGitAgents } from '@codespin/shaman-persistence';
@@ -258,7 +259,8 @@ async function resolveFromGit(
       };
     }
   } catch (error) {
-    console.error(`Error resolving git agent ${agentName}:`, error);
+    const logger = createLogger('AgentManager');
+    logger.error(`Error resolving git agent ${agentName}:`, error);
   }
   
   return null;
@@ -293,7 +295,8 @@ async function resolveFromExternal(
         }
       }
     } catch (error) {
-      console.error(`Error checking registry ${registry.url}:`, error);
+      const logger = createLogger('AgentManager');
+      logger.error(`Error checking registry ${registry.url}:`, error);
     }
   }
 

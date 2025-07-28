@@ -91,25 +91,26 @@ cd node/packages/[package-name] && npm run build
 Located in `/node/packages/`, build order matters:
 
 1. **@codespin/shaman-types** - Shared TypeScript interfaces (start here for new features)
-2. **@codespin/shaman-core** - Core types and utilities
-3. **@codespin/shaman-config** - Configuration management
-4. **@codespin/shaman-llm-core** - LLM provider abstraction
-5. **@codespin/shaman-workflow-core** - Workflow engine abstraction
-6. **@codespin/shaman-persistence** - Database access layer
-7. **@codespin/shaman-observability** - Metrics and tracing
-8. **@codespin/shaman-security** - Auth, RBAC, rate limiting
-9. **@codespin/shaman-external-registry** - External agent registry
-10. **@codespin/shaman-git-resolver** - Git-based agent discovery (with caching)
-11. **@codespin/shaman-agents** - Unified agent resolution from all sources
-12. **@codespin/shaman-a2a-provider** - Expose Git agents via A2A protocol
-13. **@codespin/shaman-llm-vercel** - Vercel AI SDK provider
-14. **@codespin/shaman-tool-router** - Tool execution routing
-15. **@codespin/shaman-agent-executor** - Core agent execution engine
-16. **@codespin/shaman-workflow-bullmq** - BullMQ workflow adapter
-17. **@codespin/shaman-workflow-temporal** - Temporal workflow adapter
-18. **@codespin/shaman-server** - Main GraphQL server
-19. **@codespin/shaman-worker** - Background worker
-20. **@codespin/shaman-cli** - CLI tool
+2. **@codespin/shaman-logger** - Centralized logging for all packages
+3. **@codespin/shaman-core** - Core types and utilities
+4. **@codespin/shaman-config** - Configuration management
+5. **@codespin/shaman-llm-core** - LLM provider abstraction
+6. **@codespin/shaman-workflow-core** - Workflow engine abstraction
+7. **@codespin/shaman-persistence** - Database access layer
+8. **@codespin/shaman-observability** - Metrics and tracing
+9. **@codespin/shaman-security** - Auth, RBAC, rate limiting
+10. **@codespin/shaman-external-registry** - External agent registry
+11. **@codespin/shaman-git-resolver** - Git-based agent discovery (with caching)
+12. **@codespin/shaman-agents** - Unified agent resolution from all sources
+13. **@codespin/shaman-a2a-provider** - Expose Git agents via A2A protocol
+14. **@codespin/shaman-llm-vercel** - Vercel AI SDK provider
+15. **@codespin/shaman-tool-router** - Tool execution routing
+16. **@codespin/shaman-agent-executor** - Core agent execution engine
+17. **@codespin/shaman-workflow-bullmq** - BullMQ workflow adapter
+18. **@codespin/shaman-workflow-temporal** - Temporal workflow adapter
+19. **@codespin/shaman-server** - Main GraphQL server
+20. **@codespin/shaman-worker** - Background worker
+21. **@codespin/shaman-cli** - CLI tool
 
 ## Development Workflow
 
@@ -196,14 +197,17 @@ export class AgentRunner { /* ... */ }
 
 ### Result Type Pattern
 ```typescript
+import { createLogger } from '@codespin/shaman-logger';
+
 export type Result<T, E = Error> =
   | { readonly success: true; readonly data: T }
   | { readonly success: false; readonly error: E };
 
 // Usage
+const logger = createLogger('AgentValidator');
 const result = await validateAgent(agent);
 if (!result.success) {
-  console.error("Validation failed:", result.error);
+  logger.error("Validation failed:", result.error);
   return;
 }
 const validAgent = result.data; // Type-safe

@@ -57,12 +57,7 @@ export default [
       '@typescript-eslint/no-misused-promises': 'error',
       'prefer-const': 'error',
       'no-var': 'error',
-      'no-console': [
-        'warn',
-        {
-          allow: ['warn', 'error']
-        }
-      ],
+      'no-console': 'error',
       'eqeqeq': ['error', 'always'],
       'no-throw-literal': 'error'
     }

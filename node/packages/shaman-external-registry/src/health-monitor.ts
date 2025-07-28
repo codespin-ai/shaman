@@ -4,6 +4,7 @@
 
 import { healthCheckRegistry } from './external-registry.js';
 import type { RegistryConfig } from './types.js';
+import { createLogger } from '@codespin/shaman-logger';
 
 export class HealthMonitor {
   private intervalId?: ReturnType<typeof setInterval>;
@@ -51,10 +52,12 @@ export class HealthMonitor {
         if (result.success) {
           // Health check passed for ${config.url}
         } else {
-          console.error(`Health check failed for ${config.url}: ${result.error}`);
+          const logger = createLogger('HealthMonitor');
+          logger.error(`Health check failed for ${config.url}: ${result.error}`);
         }
       } catch (error) {
-        console.error(`Health check error for ${config.url}:`, error);
+        const logger = createLogger('HealthMonitor');
+        logger.error(`Health check error for ${config.url}:`, error);
       }
     }
   }

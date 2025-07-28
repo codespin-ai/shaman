@@ -61,7 +61,7 @@ const response = await provider.complete({
   temperature: 0.7
 });
 
-console.log(response.content); // "The capital of France is Paris."
+// Output: "The capital of France is Paris."
 ```
 
 ### Tool Calling
@@ -95,8 +95,8 @@ const response = await provider.complete({
 // Handle tool calls
 if (response.tool_calls) {
   for (const toolCall of response.tool_calls) {
-    console.log(`Tool: ${toolCall.function.name}`);
-    console.log(`Args: ${toolCall.function.arguments}`);
+    // Tool: get_weather
+    // Args: {"location":"London"}
   }
 }
 ```
@@ -276,7 +276,7 @@ try {
 3. **Token Management**: Monitor token usage to control costs
    ```typescript
    const response = await provider.complete({ ... });
-   console.log(`Tokens used: ${response.usage?.total_tokens}`);
+   // Tokens used: 150
    ```
 
 4. **Error Handling**: Always handle API errors gracefully

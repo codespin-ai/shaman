@@ -117,6 +117,10 @@ export async function processAgentCall(
 
 ```typescript
 // ✅ Good - Explicit Result types
+import { createLogger } from '@codespin/shaman-logger';
+
+const logger = createLogger('Validation');
+
 export type Result<T, E = Error> =
   | {
       readonly success: true;
@@ -146,7 +150,7 @@ export async function validateAgentDefinition(
 // Usage
 const result = await validateAgentDefinition(data);
 if (!result.success) {
-  console.error("Validation failed:", result.error);
+  logger.error("Validation failed:", result.error);
   return;
 }
 const agentDef = result.data; // Type-safe access
@@ -491,8 +495,11 @@ export async function* streamLLMResponse(
 }
 
 // Usage
+import { createLogger } from '@codespin/shaman-logger';
+const logger = createLogger('LLMStream');
+
 for await (const chunk of streamLLMResponse(request, provider)) {
-  console.log("Received chunk:", chunk);
+  logger.debug("Received chunk:", { chunk });
 }
 ```
 
@@ -636,8 +643,11 @@ describe("Agent Execution Integration", () => {
  *   { llmProvider, toolRouter }
  * );
  *
+ * import { createLogger } from '@codespin/shaman-logger';
+ * const logger = createLogger('AgentDemo');
+ * 
  * if (result.success) {
- *   console.log('Agent response:', result.data.output);
+ *   logger.info('Agent response:', { output: result.data.output });
  * }
  * ```
  */

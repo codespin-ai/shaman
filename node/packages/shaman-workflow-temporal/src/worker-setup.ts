@@ -4,6 +4,7 @@
 
 import { Worker } from '@temporalio/worker';
 import type { NativeConnection } from '@temporalio/worker';
+import { createLogger } from '@codespin/shaman-logger';
 import * as activities from './activities/index.js';
 
 
@@ -35,7 +36,8 @@ export async function createWorker(config: WorkerConfig): Promise<Worker> {
 export async function runWorker(config: WorkerConfig): Promise<void> {
   const worker = await createWorker(config);
   
-  console.error(`Starting Temporal worker on task queue: ${config.taskQueue}`);
+  const logger = createLogger('TemporalWorker');
+  logger.info(`Starting Temporal worker on task queue: ${config.taskQueue}`);
   
   // Handle shutdown gracefully
   process.on('SIGINT', () => worker.shutdown());

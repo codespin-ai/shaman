@@ -6,6 +6,7 @@
 
 import type { Request, Response, NextFunction } from 'express';
 import express from 'express';
+import { createLogger } from '@codespin/shaman-logger';
 
 import { getAllAgents, getAgent } from '@codespin/shaman-agents';
 import type { AgentsConfig } from '@codespin/shaman-agents';
@@ -84,7 +85,8 @@ export function createA2AServer(
       
       res.json(response);
     } catch (error) {
-      console.error('Error in agent discovery:', error);
+      const logger = createLogger('A2AServer');
+      logger.error('Error in agent discovery:', error);
       res.status(500).json({
         error: {
           code: 'INTERNAL_ERROR',
@@ -140,7 +142,8 @@ export function createA2AServer(
       
       res.json(agentCard);
     } catch (error) {
-      console.error('Error fetching agent:', error);
+      const logger = createLogger('A2AServer');
+      logger.error('Error fetching agent:', error);
       res.status(500).json({
         error: {
           code: 'INTERNAL_ERROR',
@@ -200,7 +203,8 @@ export function createA2AServer(
       const response: A2AExecutionResponse = executionResult;
       res.json(response);
     } catch (error) {
-      console.error('Error executing agent:', error);
+      const logger = createLogger('A2AServer');
+      logger.error('Error executing agent:', error);
       res.status(500).json({
         error: {
           code: 'EXECUTION_ERROR',
@@ -235,7 +239,8 @@ export function createA2AServer(
       
       res.json(response);
     } catch (error) {
-      console.error('Error in health check:', error);
+      const logger = createLogger('A2AServer');
+      logger.error('Error in health check:', error);
       res.status(503).json({
         status: 'unhealthy',
         version: '1.0.0',

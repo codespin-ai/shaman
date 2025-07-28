@@ -8,6 +8,7 @@ import fs from 'fs-extra';
 import path from 'path';
 import { exec } from 'child_process';
 import { promisify } from 'util';
+import { createLogger } from '@codespin/shaman-logger';
 
 const execAsync = promisify(exec);
 const REPO_ROOT = path.resolve(process.cwd(), '.repos');
@@ -40,7 +41,8 @@ export async function cloneOrPull(gitUrl: string, branch: string, repoName: stri
       }
     }
   } catch (error) {
-    console.error(`Git operation failed: ${error instanceof Error ? error.message : String(error)}`);
+    const logger = createLogger('GitManager');
+    logger.error(`Git operation failed: ${error instanceof Error ? error.message : String(error)}`);
     throw error;
   }
   
@@ -52,7 +54,8 @@ export async function getLatestCommitHash(repoPath: string, branch: string = 'ma
     const { stdout } = await execAsync(`git rev-parse ${branch}`, { cwd: repoPath });
     return stdout.trim();
   } catch (error) {
-    console.error(`Failed to get commit hash for branch ${branch}:`, error instanceof Error ? error.message : String(error));
+    const logger = createLogger('GitManager');
+    logger.error(`Failed to get commit hash for branch ${branch}:`, error instanceof Error ? error : undefined);
     throw error;
   }
 }
@@ -69,7 +72,8 @@ export async function getFileCommitHash(repoPath: string, filePath: string, bran
     const commitHash = stdout.trim();
     return commitHash || null;
   } catch (error) {
-    console.error(`Error getting commit hash for file ${filePath}:`, error);
+    const logger = createLogger('GitManager');
+    logger.error(`Error getting commit hash for file ${filePath}:`, error);
     return null;
   }
 }

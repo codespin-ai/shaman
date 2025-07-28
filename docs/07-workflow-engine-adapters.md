@@ -950,18 +950,18 @@ const monitorWorkflowEngine = async (adapter: WorkflowEngineAdapter) => {
   
   // Health monitoring
   const health = await adapter.getEngineHealth();
-  console.log(`Engine status: ${health.status}`);
-  console.log(`Active runs: ${health.activeRuns}`);
+  logger.debug(`Engine status: ${health.status}`);
+  logger.debug(`Active runs: ${health.activeRuns}`);
   
   // Performance metrics
   const metrics = await adapter.getRunMetrics('run-123');
-  console.log(`Duration: ${metrics.totalDuration}ms`);
-  console.log(`Steps: ${metrics.stepCount}`);
-  console.log(`LLM calls: ${metrics.llmCallCount}`);
+  logger.debug(`Duration: ${metrics.totalDuration}ms`);
+  logger.debug(`Steps: ${metrics.stepCount}`);
+  logger.debug(`LLM calls: ${metrics.llmCallCount}`);
   
   // Real-time monitoring
   for await (const event of adapter.streamRunEvents('run-123')) {
-    console.log(`Event: ${event.type} at ${event.timestamp}`);
+    logger.debug(`Event: ${event.type} at ${event.timestamp}`);
     
     // Send to monitoring system
     await sendToMonitoring({

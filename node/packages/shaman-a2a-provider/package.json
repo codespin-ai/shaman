@@ -18,6 +18,7 @@
   "dependencies": {
     "@codespin/shaman-core": "file:../shaman-core",
     "@codespin/shaman-types": "file:../shaman-types",
+    "@codespin/shaman-logger": "file:../shaman-logger",
     "@codespin/shaman-agents": "file:../shaman-agents",
     "@codespin/shaman-security": "file:../shaman-security",
     "@codespin/shaman-workflow-core": "file:../shaman-workflow-core",

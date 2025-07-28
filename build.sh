@@ -14,6 +14,7 @@ echo "=== Building Codespin Shaman ==="
 # Define the build order
 PACKAGES=(
   "shaman-types"
+  "shaman-logger"
   "shaman-core"
   "shaman-config"
   "shaman-llm-core"

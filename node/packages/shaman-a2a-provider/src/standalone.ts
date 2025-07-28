@@ -5,6 +5,7 @@
  */
 
 import { createA2AServer } from './a2a-server.js';
+import { createLogger } from '@codespin/shaman-logger';
 import type { A2AProviderConfig } from './types.js';
 import type { AgentsConfig } from '@codespin/shaman-agents';
 
@@ -19,10 +20,11 @@ export function startA2AProvider(
   const app = createA2AServer(config, agentsConfig);
   
   app.listen(port, () => {
-    console.error(`Shaman A2A Provider started on port ${port}`);
-    console.error(`Base path: ${config.basePath || '/a2a/v1'}`);
-    console.error(`Health check: http://localhost:${port}${config.basePath || '/a2a/v1'}/health`);
-    console.error(`Agent discovery: http://localhost:${port}${config.basePath || '/a2a/v1'}/agents`);
+    const logger = createLogger('A2AProvider');
+    logger.info(`Shaman A2A Provider started on port ${port}`);
+    logger.info(`Base path: ${config.basePath || '/a2a/v1'}`);
+    logger.info(`Health check: http://localhost:${port}${config.basePath || '/a2a/v1'}/health`);
+    logger.info(`Agent discovery: http://localhost:${port}${config.basePath || '/a2a/v1'}/agents`);
   });
 }
 

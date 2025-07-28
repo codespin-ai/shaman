@@ -203,10 +203,10 @@ All functions return `Result<T, Error>` types for explicit error handling:
 ```typescript
 const result = await executeAgent(request, dependencies);
 if (!result.success) {
-  console.error('Execution failed:', result.error);
+  logger.error('Execution failed:', result.error);
   return;
 }
-console.log('Agent output:', result.data.output);
+logger.info('Agent output:', { output: result.data.output });
 ```
 
 ## Best Practices

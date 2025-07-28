@@ -4,6 +4,7 @@
 
 import type { AgentExecutionRequest, AgentExecutionResult } from '@codespin/shaman-workflow-core';
 import type { Step, ExecutionState } from '@codespin/shaman-types';
+import { createLogger } from '@codespin/shaman-logger';
 
 // These will be injected by the worker
 let agentExecutor: ((request: AgentExecutionRequest) => Promise<AgentExecutionResult>) | undefined;
@@ -106,5 +107,6 @@ export function logEvent(event: {
 }): void {
   // For now, we'll just log to console
   // Later this will write to a proper event store
-  console.error('Workflow event:', event);
+  const logger = createLogger('AgentActivities');
+  logger.debug('Workflow event:', { event });
 }

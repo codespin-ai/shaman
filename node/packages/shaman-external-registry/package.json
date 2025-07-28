@@ -11,7 +11,8 @@
   ],
   "license": "MIT",
   "dependencies": {
-    "@codespin/shaman-core": "file:../shaman-core"
+    "@codespin/shaman-core": "file:../shaman-core",
+    "@codespin/shaman-logger": "file:../shaman-logger"
   },
   "scripts": {
     "build": "tsc",

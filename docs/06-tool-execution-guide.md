@@ -448,9 +448,9 @@ const exampleConfigs = {
 Object.entries(exampleConfigs).forEach(([key, config]) => {
   try {
     const validated = validateMcpServers(config);
-    console.log(`✅ ${key}:`, validated);
+    logger.info(`✅ ${key}:`, { validated });
   } catch (error) {
-    console.log(`❌ ${key}:`, error.message);
+    logger.error(`❌ ${key}:`, error);
   }
 });
 ```
@@ -458,6 +458,9 @@ Object.entries(exampleConfigs).forEach(([key, config]) => {
 ### Tool Registry with Enhanced Type Safety
 
 ```typescript
+import { createLogger } from '@codespin/shaman-logger';
+
+const logger = createLogger('ToolRegistry');
 // Central tool registry with runtime validation
 export const toolRegistry = {
   // Sync tools
@@ -490,7 +493,7 @@ export const toolRegistry = {
     try {
       validatedMcpServers = validateMcpServers(agent.mcpServers);
     } catch (error) {
-      console.error(`Invalid mcpServers for agent ${agentId}:`, error.message);
+      logger.error(`Invalid mcpServers for agent ${agentId}:`, error);
       return []; // Return empty array for invalid configuration
     }
     
@@ -509,7 +512,7 @@ export const toolRegistry = {
     for (const [serverName, toolsSpec] of Object.entries(mcpServersConfig)) {
       const mcpServer = mcpServerRegistry.get(serverName);
       if (!mcpServer) {
-        console.warn(`MCP Server '${serverName}' not found in registry`);
+        logger.warn(`MCP Server '${serverName}' not found in registry`);
         continue;
       }
       
@@ -524,7 +527,7 @@ export const toolRegistry = {
         // Grant access to ALL tools from this server
         const allServerTools = mcpServer.tools.map(tool => tool.name);
         resolvedTools.push(...allServerTools);
-        console.debug(`Granted full access to ${serverName}: ${allServerTools.length} tools`);
+        logger.debug(`Granted full access to ${serverName}: ${allServerTools.length} tools`);
       } else if (Array.isArray(toolsSpec)) {
         // Grant access to specific tools only
         const availableTools = mcpServer.tools.map(tool => tool.name);
@@ -533,18 +536,18 @@ export const toolRegistry = {
         // Warn about invalid tools
         const invalidTools = toolsSpec.filter(tool => !availableTools.includes(tool));
         if (invalidTools.length > 0) {
-          console.warn(`Invalid tools for server '${serverName}': ${invalidTools.join(', ')}`);
-          console.warn(`Available tools: ${availableTools.join(', ')}`);
+          logger.warn(`Invalid tools for server '${serverName}': ${invalidTools.join(', ')}`);
+          logger.warn(`Available tools: ${availableTools.join(', ')}`);
         }
         
         resolvedTools.push(...validTools);
-        console.debug(`Granted specific access to ${serverName}: ${validTools.join(', ')}`);
+        logger.debug(`Granted specific access to ${serverName}: ${validTools.join(', ')}`);
       }
     }
     
     // Remove duplicates and return
     const uniqueTools = [...new Set(resolvedTools)];
-    console.debug(`Total resolved tools: ${uniqueTools.length}`);
+    logger.debug(`Total resolved tools: ${uniqueTools.length}`);
     return uniqueTools;
   },
   
@@ -629,12 +632,12 @@ const loadToolsFromConfig = (toolConfigs: ToolConfig[]) => {
       toolRegistry.register(config, implementation);
       
       loadResults.push({ name: config.name, success: true });
-      console.log(`✅ Loaded tool: ${config.name}`);
+      logger.info(`✅ Loaded tool: ${config.name}`);
       
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       loadResults.push({ name: config.name, success: false, error: errorMessage });
-      console.error(`❌ Failed to load tool ${config.name}:`, errorMessage);
+      logger.error(`❌ Failed to load tool ${config.name}:`, new Error(errorMessage));
     }
   }
   
@@ -642,10 +645,10 @@ const loadToolsFromConfig = (toolConfigs: ToolConfig[]) => {
   const successful = loadResults.filter(r => r.success).length;
   const failed = loadResults.filter(r => !r.success).length;
   
-  console.log(`Tool loading complete: ${successful} successful, ${failed} failed`);
+  logger.info(`Tool loading complete: ${successful} successful, ${failed} failed`);
   
   if (failed > 0) {
-    console.log('Failed tools:', loadResults.filter(r => !r.success));
+    logger.info('Failed tools:', { failed: loadResults.filter(r => !r.success) });
   }
   
   return loadResults;
@@ -667,16 +670,16 @@ const validateToolImplementation = (config: ToolConfig, implementation: ToolFunc
   // Validate parameters match config schema
   if (config.parameters && config.parameters.properties) {
     const configParams = Object.keys(config.parameters.properties);
-    console.debug(`Tool ${config.name} expects parameters:`, configParams);
+    logger.debug(`Tool ${config.name} expects parameters:`, { parameters: configParams });
   }
   
   // Check if it's async (recommended for most tools)
   const isAsync = implementation.constructor.name === 'AsyncFunction';
   if (!isAsync && config.executionType === 'async') {
-    console.warn(`Tool ${config.name} is configured as async but implementation is not async`);
+    logger.warn(`Tool ${config.name} is configured as async but implementation is not async`);
   }
   
-  console.debug(`✅ Tool ${config.name} implementation validated`);
+  logger.debug(`✅ Tool ${config.name} implementation validated`);
 };
 ```
 

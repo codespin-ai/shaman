@@ -6,6 +6,7 @@
 
 
 import { Connection, WorkflowClient } from '@temporalio/client';
+import { createLogger } from '@codespin/shaman-logger';
 import type {
   ExecutionEngine,
   WorkflowMetadata,
@@ -181,7 +182,8 @@ export function createTemporalEngine(config: TemporalConfig): ExecutionEngine {
     logEvent(stepId: string, event): Promise<Result<void>> {
       // For now, just log to console
       // In production, this would write to an event store
-      console.error(`Event for step ${stepId}:`, event);
+      const logger = createLogger('TemporalAdapter');
+      logger.debug(`Event for step ${stepId}:`, { event });
       return Promise.resolve({ success: true, data: undefined });
     }
   };
