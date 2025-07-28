@@ -2,6 +2,22 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## IMPORTANT: First Steps When Starting a Session
+
+When you begin working on this project, you MUST:
+
+1. **Read this entire CLAUDE.md file** to understand the project structure and conventions
+2. **Read the key documentation files** in this order:
+   - `/README.md` - Project overview and quick start
+   - `/node/CODING-STANDARDS.md` - Mandatory coding patterns and conventions
+   - `/agents/agent.md` - Agent development guide
+   - `/docs/01-overview-and-concepts.md` - Core concepts
+   - `/docs/02-use-cases-and-agent-model.md` - Agent patterns
+   - `/docs/03-system-architecture.md` - Architecture details
+   - Any other relevant docs based on the task at hand
+
+Only after reading these documents should you proceed with any implementation or analysis tasks.
+
 ## Overview
 
 Shaman is a comprehensive backend framework for managing and coordinating AI agents through a federated ecosystem. It's a NodeJS/TypeScript monorepo that deliberately avoids npm workspaces in favor of a custom build system.
