@@ -10,7 +10,8 @@
     "dist"
   ],
   "scripts": {
-    "build": "tsc",
+    "codegen": "graphql-codegen --config codegen.yml",
+    "build": "npm run codegen && tsc",
     "start": "node dist/start.js",
     "dev": "tsx watch src/start.ts",
     "lint": "eslint src --ext .ts",
@@ -51,6 +52,9 @@
     "ws": "^8.18.3"
   },
   "devDependencies": {
+    "@graphql-codegen/cli": "^5.0.0",
+    "@graphql-codegen/typescript": "^4.0.1",
+    "@graphql-codegen/typescript-resolvers": "^4.0.1",
     "@types/body-parser": "^1.19.6",
     "@types/compression": "^1.8.1",
     "@types/cors": "^2.8.19",

@@ -4,1117 +4,440 @@
 
 # GraphQL API Specification
 
-## Complete GraphQL Schema Definition Language (SDL)
+## Overview
+
+The Shaman GraphQL API provides a strongly-typed interface for managing AI agents, executing workflows, and monitoring system operations. This API is designed primarily for internal management tools and UIs that need comprehensive access to system capabilities.
+
+## Design Principles
+
+1. **Strong Typing**: All fields use proper GraphQL types - no JSON escape hatches
+2. **Consistent Patterns**: Relay-style connections for all paginated queries
+3. **Clear Discrimination**: Agent sources and types are clearly distinguished
+4. **Rich Error Types**: Detailed error information for debugging
+5. **Comprehensive Coverage**: Full system visibility for management UIs
+
+## Schema Location
+
+The complete GraphQL schema is defined in: [`/node/packages/shaman-server/src/schema.graphql`](../node/packages/shaman-server/src/schema.graphql)
+
+## Key Concepts
+
+### Agent Model
+
+The agent system distinguishes between Git-based agents and external A2A agents through a unified `Agent` type:
 
 ```graphql
-# =============================================================================
-#  SCALARS
-# =============================================================================
-
-scalar DateTime
-scalar ToolCallID
-scalar JSON
-scalar EmailAddress
-
-# =============================================================================
-#  ENUMS
-# =============================================================================
-
-enum ExecutionState {
-  SUBMITTED
-  WORKING
-  INPUT_REQUIRED
-  BLOCKED_ON_INPUT
-  BLOCKED_ON_DEPENDENCY
-  COMPLETED
-  CANCELED
-  FAILED
-  REJECTED
-}
-
-enum AgentSource {
-  GIT
-  A2A_EXTERNAL
-}
-
-enum ContextScope {
-  FULL
-  NONE
-  SPECIFIC
-}
-
-enum McpServerType {
-  HTTP
-  STDIO
-  A2A
-}
-
-enum McpServerSource {
-  CONFIG
-  API
-}
-
-enum MessageRole {
-  SYSTEM
-  USER
-  ASSISTANT
-  TOOL
-}
-
-enum UserRole {
-  USER
-  ADMIN
-  SUPER_ADMIN
-}
-
-enum SortDirection {
-  ASC
-  DESC
-}
-
-enum AgentSortField {
-  NAME
-  CREATED_AT
-  UPDATED_AT
-  USAGE_COUNT
-  SUCCESS_RATE
-  RELEVANCE
-  LAST_MODIFIED
-}
-
-enum CompletionStatus {
-  SUCCESS
-  PARTIAL
-  FAILED
-}
-
-enum InputType {
-  TEXT
-  CHOICE
-  FILE
-  APPROVAL
-  STRUCTURED_DATA
-}
-
-enum SyncStatus {
-  SUCCESS
-  IN_PROGRESS
-  FAILED
-  NEVER_SYNCED
-}
-
-# =============================================================================
-#  INTERFACES
-# =============================================================================
-
-interface Timestamped {
-  createdAt: DateTime!
-  updatedAt: DateTime!
-}
-
-interface Owned {
-  createdBy: User!
-}
-
-interface Message {
-  id: ID!
-  role: MessageRole!
-  content: String!
-  sequenceNumber: Int!
-  createdAt: DateTime!
-}
-
-# =============================================================================
-#  CORE TYPES
-# =============================================================================
-
-type User {
-  id: ID!
-  email: EmailAddress!
-  name: String!
-  role: UserRole!
-  isActive: Boolean!
-  createdAt: DateTime!
-  lastLoginAt: DateTime
-}
-
-type AgentRepository implements Timestamped & Owned {
-  id: ID!
-  name: String!
-  gitUrl: String!
-  branch: String!
-  isRoot: Boolean!
-  isActive: Boolean!
-  readOnly: Boolean!
-  syncInterval: String!
-  lastSyncCommit: String
-  lastSyncAt: DateTime
-  lastSyncStatus: SyncStatus!
-  agentCount: Int!
-  discoveredAgents: [GitAgent!]!
-  syncErrors: [SyncError!]!
-  authType: String!
-  createdAt: DateTime!
-  updatedAt: DateTime!
-  createdBy: User!
-}
-
-type SyncError {
-  message: String!
-  filePath: String
-  timestamp: DateTime!
-  errorType: String!
-}
-
-type GitCommit {
-  hash: String!
-  message: String!
-  author: String!
-  timestamp: DateTime!
-  changedFiles: [String!]!
-}
-
-type GitAgent {
-  name: String!
-  description: String!
-  version: String!
-  tags: [String!]!
-  model: String
-  providers: [String!]!
-  mcpServers: JSON!
-  allowedAgents: [String!]!
-  examples: [String!]!
-  contextScope: ContextScope!
-
-  # Git metadata
-  repository: AgentRepository!
-  filePath: String!
-  gitCommit: String!
-  lastModified: DateTime!
-
-  # Computed properties
-  isNamespaced: Boolean!
-  fullPath: String!
-
-  # Analytics
-  usageCount: Int!
-  lastUsed: DateTime
-  averageExecutionTime: Float
-  successRate: Float
-}
-
-type ExternalA2AAgent implements Timestamped & Owned {
-  id: ID!
-  name: String!
-  description: String!
-  endpoint: String!
-  agentCard: JSON!
-  authConfig: JSON!
-  isActive: Boolean!
-  lastHealthCheck: DateTime
-  healthStatus: String!
-  skills: [ExternalA2ASkill!]!
-  usageCount: Int!
-  averageResponseTime: Float
-  errorRate: Float
-  createdAt: DateTime!
-  updatedAt: DateTime!
-  createdBy: User!
-}
-
-type ExternalA2ASkill {
-  id: String!
-  name: String!
-  description: String!
-  tags: [String!]!
-  examples: [String!]!
-  inputModes: [String!]!
-  outputModes: [String!]!
-}
-
-type McpServer implements Timestamped & Owned {
-  id: ID!
-  name: String!
-  description: String
-  type: McpServerType!
-  source: McpServerSource!
-  endpoint: String!
-  isActive: Boolean!
-  agentCard: JSON
-  healthStatus: String
-  lastHealthCheckAt: DateTime
-  tools: [Tool!]!
-  toolCount: Int!
-  supportsExplicitCompletion: Boolean!
-  createdAt: DateTime!
-  updatedAt: DateTime!
-  createdBy: User!
-}
-
-type Tool {
-  id: ID!
-  name: String!
-  description: String!
-  schema: JSON!
-  mcpServer: McpServer!
-  usageCount: Int!
-  lastUsedAt: DateTime
-  averageExecutionTime: Float
-  successRate: Float
-  isSystemTool: Boolean!
-  createdAt: DateTime!
-  updatedAt: DateTime!
-}
-
 type Agent {
   name: String!
   description: String!
-  version: String!
-  source: AgentSource!
-
-  # Git agent fields
-  gitAgent: GitAgent
-
-  # External A2A agent fields
-  externalA2AAgent: ExternalA2AAgent
-
-  # Common computed fields
+  source: AgentSource!  # GIT or A2A_EXTERNAL
   tags: [String!]!
+  
+  # Source-specific details
+  gitDetails: GitAgentDetails      # Populated for Git agents
+  externalDetails: ExternalAgentDetails  # Populated for A2A agents
+  
+  # Analytics (common to all agents)
   usageCount: Int!
   lastUsed: DateTime
   averageExecutionTime: Float
   successRate: Float
-  analytics: AgentAnalytics!
 }
+```
 
-type AgentAnalytics {
-  totalRuns: Int!
-  successRate: Float!
-  averageExecutionTime: Float!
-  averageCost: Float!
-  userRating: Float
-  usageGrowth: Float!
-  peakUsageHours: [Int!]!
-  commonFailureReasons: [String!]!
-  costTrend: [CostDataPoint!]!
-  performanceTrend: [PerformanceDataPoint!]!
-  completionReliability: Float!
-  averageChildAgents: Float!
-  inputRequestFrequency: Float!
-  agentCallFrequency: Float!
-  circularCallAttempts: Int!
+### MCP Server Access
+
+Instead of using JSON, MCP server configurations are strongly typed:
+
+```graphql
+type McpServerAccess {
+  serverName: String!
+  accessType: McpAccessType!  # ALL_TOOLS, SPECIFIC_TOOLS, NO_ACCESS
+  allowedTools: [String!]     # Only populated when accessType is SPECIFIC_TOOLS
 }
+```
 
-type CostDataPoint {
-  date: DateTime!
-  totalCost: Float!
-  averageCost: Float!
-  runCount: Int!
-}
+### Execution Hierarchy
 
-type PerformanceDataPoint {
-  date: DateTime!
-  averageExecutionTime: Float!
-  successRate: Float!
-  runCount: Int!
-}
+The execution model consists of Runs containing Steps:
 
-# =============================================================================
-#  MESSAGE TYPES
-# =============================================================================
-
-type SystemMessage implements Message {
+```graphql
+type Run {
   id: ID!
-  role: MessageRole!
-  content: String!
-  sequenceNumber: Int!
-  createdAt: DateTime!
+  status: ExecutionState!
+  steps(first: Int, after: String, filter: StepFilter): StepConnection!
+  dagStatus: DagStatus!  # Provides DAG analysis
 }
 
-type UserMessage implements Message {
+type Step {
   id: ID!
-  role: MessageRole!
-  content: String!
-  sequenceNumber: Int!
-  createdAt: DateTime!
+  type: StepType!  # AGENT_EXECUTION, LLM_CALL, TOOL_CALL, AGENT_CALL
+  parentStep: Step
+  childSteps: [Step!]!
+  messages: [Message!]!
+  completion: AgentCompletion
 }
+```
 
-type AssistantMessage implements Message {
+### Streaming Events
+
+Real-time updates use a structured event model:
+
+```graphql
+type StreamEvent {
   id: ID!
-  role: MessageRole!
-  content: String!
-  sequenceNumber: Int!
-  toolCalls: [ToolCall!]!
-  createdAt: DateTime!
-}
-
-type ToolResponseMessage implements Message {
-  id: ID!
-  role: MessageRole!
-  content: String!
-  sequenceNumber: Int!
-  toolCallId: ToolCallID!
-  createdAt: DateTime!
-}
-
-# =============================================================================
-#  EXECUTION TYPES
-# =============================================================================
-
-type InputRequest {
-  id: ID!
-  runId: ID!
+  type: StreamEventType!
+  timestamp: DateTime!
   stepId: ID!
-  prompt: String!
-  inputType: InputType!
-  choices: [String!]
-  required: Boolean!
-  requestedAt: DateTime!
-  timeoutAt: DateTime
-  metadata: JSON
+  
+  # Type-specific data (only one populated based on type)
+  tokenData: TokenData
+  toolCallStartData: ToolCallStartData
+  completionData: CompletionData
+  # ... etc
+}
+```
+
+### Error Handling
+
+Comprehensive error types for debugging:
+
+```graphql
+type Error {
+  code: ErrorCode!
+  message: String!
+  timestamp: DateTime!
+  context: ErrorContext
 }
 
-type CompletedInputRequest {
-  id: ID!
-  prompt: String!
-  userResponse: String!
-  responseAt: DateTime!
-  respondedBy: User!
+type ErrorContext {
+  gitCommit: String
+  agentName: String
+  repositoryName: String
+  filePath: String
+  lineNumber: Int
+  validationErrors: [ValidationError!]
+}
+```
+
+## Query Patterns
+
+### Pagination
+
+All list queries use Relay-style connections:
+
+```graphql
+query ListAgents {
+  agents(first: 10, after: "cursor123", filter: { source: GIT }) {
+    edges {
+      node {
+        name
+        description
+      }
+      cursor
+    }
+    pageInfo {
+      hasNextPage
+      endCursor
+    }
+    totalCount
+  }
+}
+```
+
+### Agent Discovery
+
+Find agents by various criteria:
+
+```graphql
+query SearchAgents {
+  agents(
+    search: "billing"
+    filter: { 
+      tags: ["customer-support"], 
+      source: GIT 
+    }
+  ) {
+    edges {
+      node {
+        name
+        description
+        gitDetails {
+          repository {
+            name
+          }
+          version
+        }
+      }
+    }
+  }
+}
+```
+
+### Execution Monitoring
+
+Track run progress with detailed information:
+
+```graphql
+query MonitorRun {
+  run(id: "run-123") {
+    status
+    totalCost
+    dagStatus {
+      activeSteps {
+        id
+        agentName
+        status
+      }
+      blockedSteps {
+        id
+        error {
+          code
+          message
+        }
+      }
+    }
+    pendingInputRequests {
+      id
+      prompt
+      inputType
+    }
+  }
+}
+```
+
+## Mutation Patterns
+
+### Agent Execution
+
+```graphql
+mutation ExecuteAgent {
+  executeAgent(input: {
+    agentName: "CustomerSupport"
+    input: "Help me with order #12345"
+    source: GIT
+    contextScope: FULL
+  }) {
+    id
+    status
+    steps {
+      edges {
+        node {
+          id
+          type
+        }
+      }
+    }
+  }
+}
+```
+
+### Repository Management
+
+```graphql
+mutation SyncRepository {
+  syncRepository(name: "main-agents") {
+    name
+    lastSyncStatus
+    lastSyncErrors {
+      code
+      message
+      context {
+        filePath
+        validationErrors {
+          field
+          message
+        }
+      }
+    }
+  }
+}
+```
+
+## Subscription Patterns
+
+### Real-time Execution Updates
+
+```graphql
+subscription WatchExecution {
+  stepStream(stepId: "step-456") {
+    type
+    timestamp
+    tokenData {
+      content
+    }
+    completionData {
+      completion {
+        result
+        status
+      }
+    }
+  }
+}
+```
+
+### Input Request Notifications
+
+```graphql
+subscription WatchInputRequests {
+  inputRequested {
+    id
+    runId
+    stepId
+    prompt
+    inputType
+    choices
+  }
+}
+```
+
+## Type Safety Patterns
+
+### Discriminated Unions
+
+The schema uses proper discrimination for polymorphic data:
+
+```graphql
+# Agent details based on source
+type Agent {
+  source: AgentSource!
+  gitDetails: GitAgentDetails      # Check source == GIT
+  externalDetails: ExternalAgentDetails  # Check source == A2A_EXTERNAL
+}
+
+# Stream events with typed data
+type StreamEvent {
+  type: StreamEventType!
+  tokenData: TokenData              # Check type == TOKEN
+  toolCallStartData: ToolCallStartData  # Check type == TOOL_CALL_START
+}
+```
+
+### Structured Metadata
+
+Instead of arbitrary JSON, metadata is structured:
+
+```graphql
+type MetadataField {
+  key: String!
+  value: String!
 }
 
 type AgentCompletion {
   result: String!
   status: CompletionStatus!
-  confidence: Float!
-  requiresFollowup: Boolean!
-  metadata: JSON
+  metadata: [MetadataField!]  # Structured, not JSON
 }
-
-type AgentCallInfo {
-  callerAgentName: String!
-  targetAgentName: String!
-  targetAgentSource: AgentSource!
-  input: String!
-  contextScope: ContextScope!
-  callDepth: Int!
-  callStack: [String!]!
-
-  # Git-specific info
-  gitRepository: String
-  gitCommit: String
-
-  # A2A-specific info
-  a2aEndpoint: String
-  a2aTaskId: String
-}
-
-type Step {
-  id: ID!
-  status: ExecutionState!
-  input: String
-  output: String
-  error: String
-  startTime: DateTime
-  endTime: DateTime
-  duration: Float
-  messages: [Message!]!
-  promptTokens: Int
-  completionTokens: Int
-  cost: Float
-
-  # Relationships
-  run: Run!
-  agentName: String!
-  agentSource: AgentSource!
-  parentSteps: [Step!]!
-  childSteps: [Step!]!
-
-  # Input handling
-  inputRequest: InputRequest
-  inputHistory: [CompletedInputRequest!]!
-
-  # Completion
-  completion: AgentCompletion
-
-  # Agent calling information
-  agentCallInfo: AgentCallInfo
-
-  # Blocking relationships
-  blockingDependencies: [Step!]!
-
-  # Tool usage
-  toolCalls: [ToolCall!]!
-  agentCalls: [Step!]!
-
-  # Git versioning (for git-based agents)
-  gitRepository: String
-  gitCommit: String
-  gitFilePath: String
-
-  # Tracing
-  spanId: String
-}
-
-type DAGStatus {
-  interactableSteps: [Step!]!
-  blockedSteps: [Step!]!
-  activeSteps: [Step!]!
-  cancellableSubgraphs: [[Step!]!]!
-  agentCallGraph: [[Step!]!]!
-}
-
-type Run {
-  id: ID!
-  status: ExecutionState!
-  initialInput: String!
-  totalCost: Float!
-  startTime: DateTime!
-  endTime: DateTime
-  duration: Float
-  steps: [Step!]!
-  stepCount: Int!
-
-  # DAG-specific status
-  dagStatus: DAGStatus!
-
-  # Current pending input request across the run
-  pendingInputRequest: InputRequest
-
-  # Agent call statistics
-  totalAgentCalls: Int!
-  maxCallDepth: Int!
-  uniqueAgentsInvolved: Int!
-  gitAgentsUsed: [String!]!
-  externalAgentsUsed: [String!]!
-
-  # Tracing
-  traceId: String
-
-  # Ownership
-  createdBy: User!
-}
-
-# =============================================================================
-#  STREAMING TYPES
-# =============================================================================
-
-type TokenChunk {
-  content: String!
-  timestamp: DateTime!
-}
-
-type LogChunk {
-  message: String!
-  level: String!
-  timestamp: DateTime!
-}
-
-type ToolCall {
-  id: ToolCallID!
-  toolName: String!
-  input: JSON!
-  isSystemTool: Boolean!
-  isAgentCall: Boolean!
-}
-
-type ToolCallStartChunk {
-  toolCallId: ToolCallID!
-  toolName: String!
-  input: JSON!
-  isSystemTool: Boolean!
-  isAgentCall: Boolean!
-  timestamp: DateTime!
-}
-
-type ToolStreamChunk {
-  toolCallId: ToolCallID!
-  payload: StreamChunk!
-  timestamp: DateTime!
-}
-
-type ToolResultChunk {
-  toolCallId: ToolCallID!
-  output: JSON!
-  success: Boolean!
-  timestamp: DateTime!
-}
-
-type CompletionChunk {
-  stepId: ID!
-  completion: AgentCompletion!
-  timestamp: DateTime!
-}
-
-type InputRequestChunk {
-  inputRequest: InputRequest!
-  timestamp: DateTime!
-}
-
-type AgentCallStartChunk {
-  parentStepId: ID!
-  childStepId: ID!
-  agentName: String!
-  agentSource: AgentSource!
-  input: String!
-  callDepth: Int!
-  timestamp: DateTime!
-}
-
-type AgentCallCompleteChunk {
-  parentStepId: ID!
-  childStepId: ID!
-  agentName: String!
-  agentSource: AgentSource!
-  completion: AgentCompletion!
-  timestamp: DateTime!
-}
-
-union StreamChunk =
-    TokenChunk
-  | LogChunk
-  | ToolCallStartChunk
-  | ToolStreamChunk
-  | ToolResultChunk
-  | CompletionChunk
-  | InputRequestChunk
-  | AgentCallStartChunk
-  | AgentCallCompleteChunk
-
-# =============================================================================
-#  SEARCH & DISCOVERY TYPES
-# =============================================================================
-
-type AgentSearchResult {
-  agents: [AgentSearchMatch!]!
-  totalCount: Int!
-  suggestedTags: [String!]!
-  facets: SearchFacets!
-}
-
-type AgentSearchMatch {
-  agent: Agent!
-  relevanceScore: Float!
-  matchedFields: [String!]!
-  matchedTags: [String!]!
-  snippet: String
-}
-
-type SearchFacets {
-  sources: [SourceFacet!]!
-  repositories: [RepositoryFacet!]!
-  tags: [TagFacet!]!
-  providers: [ProviderFacet!]!
-  versions: [VersionFacet!]!
-}
-
-type SourceFacet {
-  source: AgentSource!
-  count: Int!
-}
-
-type RepositoryFacet {
-  repository: AgentRepository!
-  count: Int!
-}
-
-type TagFacet {
-  tag: String!
-  count: Int!
-}
-
-type ProviderFacet {
-  providerName: String!
-  count: Int!
-}
-
-type VersionFacet {
-  version: String!
-  count: Int!
-}
-
-# =============================================================================
-#  ANALYTICS TYPES
-# =============================================================================
-
-type SystemUsageStats {
-  totalRuns: Int!
-  totalAgents: Int!
-  totalGitAgents: Int!
-  totalExternalAgents: Int!
-  totalUsers: Int!
-  totalCost: Float!
-  averageRunDuration: Float!
-  topAgents: [Agent!]!
-  topUsers: [User!]!
-  pendingInputRequests: Int!
-  averageCompletionTime: Float!
-  totalAgentCalls: Int!
-  averageCallDepth: Float!
-  circularCallAttempts: Int!
-  gitRepositoriesActive: Int!
-  externalAgentsHealthy: Int!
-}
-
-type CostAnalytics {
-  totalCost: Float!
-  costByModel: [ModelCostBreakdown!]!
-  costByAgent: [AgentCostBreakdown!]!
-  costBySource: [SourceCostBreakdown!]!
-  costTrend: [CostDataPoint!]!
-  projectedMonthlyCost: Float!
-}
-
-type ModelCostBreakdown {
-  model: String!
-  totalCost: Float!
-  percentage: Float!
-  tokenCount: Int!
-}
-
-type AgentCostBreakdown {
-  agentName: String!
-  totalCost: Float!
-  percentage: Float!
-  runCount: Int!
-}
-
-type SourceCostBreakdown {
-  source: AgentSource!
-  totalCost: Float!
-  percentage: Float!
-  runCount: Int!
-}
-
-type SystemAlert {
-  id: ID!
-  type: String!
-  message: String!
-  severity: String!
-  timestamp: DateTime!
-  metadata: JSON
-}
-
-# =============================================================================
-#  INPUT TYPES
-# =============================================================================
-
-input CreateUserInput {
-  email: EmailAddress!
-  name: String!
-  role: UserRole = USER
-}
-
-input UpdateUserInput {
-  name: String
-  role: UserRole
-  isActive: Boolean
-}
-
-input AddAgentRepositoryInput {
-  name: String!
-  gitUrl: String!
-  branch: String = "main"
-  isRoot: Boolean = false
-  syncInterval: String = "5m"
-  authType: String!
-  sshKeyPath: String
-  authToken: String
-  webhookSecret: String
-  readOnly: Boolean = false
-}
-
-input UpdateAgentRepositoryInput {
-  gitUrl: String
-  branch: String
-  isRoot: Boolean
-  syncInterval: String
-  authType: String
-  sshKeyPath: String
-  authToken: String
-  webhookSecret: String
-  readOnly: Boolean
-  isActive: Boolean
-}
-
-input CreateMcpServerInput {
-  name: String!
-  description: String
-  type: McpServerType!
-  endpoint: String!
-  apiKey: String
-}
-
-input UpdateMcpServerInput {
-  name: String
-  description: String
-  endpoint: String
-  apiKey: String
-}
-
-input RegisterExternalA2AAgentInput {
-  name: String!
-  description: String
-  endpoint: String!
-  authConfig: ExternalA2AAuthInput!
-  autoDiscover: Boolean = true
-  healthCheckInterval: String = "5m"
-}
-
-input UpdateExternalA2AAgentInput {
-  description: String
-  authConfig: ExternalA2AAuthInput
-  healthCheckInterval: String
-  isActive: Boolean
-}
-
-input ExternalA2AAuthInput {
-  type: String!
-  apiKey: String
-  oauthClientId: String
-  oauthClientSecret: String
-  oauthTokenUrl: String
-  basicUsername: String
-  basicPassword: String
-}
-
-input AgentSearchInput {
-  query: String
-  source: AgentSource
-  repositoryName: String
-  tags: [String!]
-  providers: [String!]
-  minVersion: String
-  isActive: Boolean
-  hasExternalAccess: Boolean
-  createdBy: ID
-}
-
-input GitAgentFilters {
-  repositoryName: String
-  tags: [String!]
-  hasAllowedAgents: Boolean
-  lastModifiedAfter: DateTime
-  lastModifiedBefore: DateTime
-}
-
-input AgentSortInput {
-  field: AgentSortField!
-  direction: SortDirection!
-}
-
-input RunAgentInput {
-  agentName: String!
-  input: String!
-  contextScope: ContextScope
-  maxCallDepth: Int
-  gitCommit: String
-}
-
-input FilterMemoriesInput {
-  runId: ID
-  agentName: String
-  key: String
-  createdAfter: DateTime
-  createdBefore: DateTime
-}
-
-input FilterRunsInput {
-  status: ExecutionState
-  agentName: String
-  agentSource: AgentSource
-  createdBy: ID
-  createdAfter: DateTime
-  createdBefore: DateTime
-  hasInputRequests: Boolean
-  hasAgentCalls: Boolean
-  hasExternalCalls: Boolean
-  minCallDepth: Int
-  maxCallDepth: Int
-  gitRepository: String
-  gitCommit: String
-}
-
-# =============================================================================
-#  QUERY TYPE
-# =============================================================================
-
-type Query {
-  # --- User Management ---
-  me: User
-  user(id: ID!): User
-  users(limit: Int = 20, offset: Int = 0): [User!]!
-
-  # --- Git Repository Management ---
-  agentRepository(name: String!): AgentRepository
-  agentRepositories: [AgentRepository!]!
-  gitBranches(repositoryName: String!): [String!]!
-  gitTags(repositoryName: String!): [String!]!
-
-  # --- Agent Discovery ---
-  agent(name: String!): Agent
-  gitAgent(name: String!): GitAgent
-  gitAgents(
-    filters: GitAgentFilters
-    limit: Int = 50
-    offset: Int = 0
-  ): [GitAgent!]!
-  agentGitHistory(agentName: String!, limit: Int = 10): [GitCommit!]!
-
-  # --- External A2A Management ---
-  externalA2AAgent(id: ID): ExternalA2AAgent
-  externalA2AAgents(limit: Int = 50, offset: Int = 0): [ExternalA2AAgent!]!
-
-  # --- Agent Search & Discovery ---
-  searchAgents(
-    filters: AgentSearchInput!
-    sort: AgentSortInput
-    limit: Int = 20
-    offset: Int = 0
-  ): AgentSearchResult!
-
-  recommendAgents(basedOnAgent: String, forUser: ID, limit: Int = 10): [Agent!]!
-
-  # --- MCP Servers ---
-  mcpServer(id: ID!): McpServer
-  mcpServers(source: McpServerSource, type: McpServerType): [McpServer!]!
-
-  tool(id: ID!): Tool
-  tools(mcpServerId: ID, limit: Int = 100, offset: Int = 0): [Tool!]!
-  systemTools: [Tool!]!
-
-  # --- Execution & Monitoring ---
-  run(id: ID!): Run
-  runs(filters: FilterRunsInput, limit: Int = 20, offset: Int = 0): [Run!]!
-
-  # Find all runs needing input across the system
-  runsNeedingInput(limit: Int = 50): [Run!]!
-
-  # Agent call analysis
-  agentCallGraph(runId: ID!): JSON!
-  circularCallAttempts(agentName: String, timeRange: String = "24h"): [JSON!]!
-
-  # --- Analytics & Reporting ---
-  agentAnalytics(agentName: String!, timeRange: String = "30d"): AgentAnalytics!
-  systemUsageStats(timeRange: String = "30d"): SystemUsageStats!
-  costAnalytics(timeRange: String = "30d"): CostAnalytics!
-
-  # --- A2A Integration ---
-  a2aAgentCard: JSON!
-  a2aExposedAgents: [String!]!
-}
-
-# =============================================================================
-#  MUTATION TYPE
-# =============================================================================
-
-type Mutation {
-  # --- User Management ---
-  createUser(input: CreateUserInput!): User!
-  updateUser(id: ID!, input: UpdateUserInput!): User!
-  deactivateUser(id: ID!): Boolean!
-
-  # --- Git Repository Management ---
-  addAgentRepository(input: AddAgentRepositoryInput!): AgentRepository!
-  updateAgentRepository(
-    name: String!
-    input: UpdateAgentRepositoryInput!
-  ): AgentRepository!
-  removeAgentRepository(name: String!): Boolean!
-  syncAgentRepository(name: String!): AgentRepository!
-  syncAllAgentRepositories: [AgentRepository!]!
-  switchRepositoryBranch(name: String!, branch: String!): AgentRepository!
-
-  # --- External A2A Management ---
-  registerExternalA2AAgent(
-    input: RegisterExternalA2AAgentInput!
-  ): ExternalA2AAgent!
-  updateExternalA2AAgent(
-    id: ID!
-    input: UpdateExternalA2AAgentInput!
-  ): ExternalA2AAgent!
-  removeExternalA2AAgent(id: ID!): Boolean!
-  refreshExternalA2AAgent(id: ID!): ExternalA2AAgent!
-  testExternalA2AConnection(id: ID!): Boolean!
-
-  # --- MCP Server Management ---
-  createMcpServer(input: CreateMcpServerInput!): McpServer!
-  updateMcpServer(id: ID!, input: UpdateMcpServerInput!): McpServer!
-  removeMcpServer(id: ID!): Boolean!
-  refreshMcpServer(id: ID!): McpServer!
-  testMcpServerConnection(id: ID!): Boolean!
-
-  # --- Execution Control ---
-  runAgents(inputs: [RunAgentInput!]!): [Run!]!
-  terminateRun(id: ID!): Run!
-  pauseRun(id: ID!): Run!
-  resumeRun(id: ID!, userInput: String): Run!
-
-  # --- Step-level Control ---
-  cancelStep(stepId: ID!, reason: String): Step!
-  cancelSubgraph(rootStepId: ID!, reason: String): [Step!]!
-
-  # --- Input Response ---
-  provideInput(
-    runId: ID!
-    inputRequestId: ID!
-    response: String!
-    attachments: [Upload!]
-  ): Run!
-
-  skipInput(runId: ID!, inputRequestId: ID!, useDefault: String): Run!
-
-# =============================================================================
-#  SUBSCRIPTION TYPE
-# =============================================================================
-
-type Subscription {
-  # --- Real-time Execution ---
-  runUpdated(runId: ID!): Run!
-  stepStream(stepId: ID!): StreamChunk!
-
-  # --- Input Requests ---
-  inputRequested: InputRequest!
-  inputRequestResolved(runId: ID!): CompletedInputRequest!
-
-  # --- Agent Calls ---
-  agentCallStarted(runId: ID): AgentCallStartChunk!
-  agentCallCompleted(runId: ID): AgentCallCompleteChunk!
-
-  # --- Git Repository Events ---
-  repositorySynced: AgentRepository!
-  agentDiscovered: GitAgent!
-  agentUpdated: GitAgent!
-
-  # --- External A2A Events ---
-  externalAgentHealthChanged: ExternalA2AAgent!
-
-  # --- System Events ---
-  systemAlert: SystemAlert!
-  agentCompleted(runId: ID): Step!
-}
-
-# =============================================================================
-#  ADDITIONAL SCALARS
-# =============================================================================
-
-scalar Upload
 ```
 
-## GraphQL Schema Usage Notes
+### Tool Schemas
 
-### Scalar Types
+Tool inputs and outputs are fully typed:
 
-**DateTime**: ISO 8601 formatted date-time strings with timezone information
-**ToolCallID**: Unique identifier for tool calls, typically UUIDs  
-**JSON**: Arbitrary JSON data, validated at runtime
-**EmailAddress**: Valid email address format validation
-**Upload**: File upload scalar for handling multipart form data
+```graphql
+type Tool {
+  schema: ToolSchema!
+}
 
-### Runtime Type Validation
+type ToolSchema {
+  inputSchema: InputSchema!
+  outputSchema: OutputSchema
+}
 
-The `mcpServers` field uses the `JSON` scalar for flexibility, but includes **strict runtime validation** to ensure type safety:
+type InputSchema {
+  type: String!
+  properties: [PropertySchema!]!
+  required: [String!]!
+}
+```
 
-```typescript
-import { z } from 'zod';
+## Analytics Queries
 
-// Runtime validation schema for mcpServers
-const McpServersSchema = z.record(
-  z.string(), // server name (dynamic key)
-  z.union([
-    z.array(z.string()),     // ["tool1", "tool2"] - specific tools
-    z.literal("*"),          // "*" - wildcard access
-    z.literal(""),           // "" - empty string access
-    z.null(),                // null - explicit null access
-    z.array(z.never()).length(0) // [] - empty array access
-  ])
-);
+### System Overview
 
-// Validation in resolvers
-const validateMcpServers = (mcpServers: unknown): McpServersConfig => {
-  try {
-    return McpServersSchema.parse(mcpServers);
-  } catch (error) {
-    throw new GraphQLError('Invalid mcpServers configuration', {
-      extensions: {
-        code: 'INVALID_MCP_SERVERS',
-        details: error.errors
-      }
-    });
+```graphql
+query SystemDashboard {
+  systemStats(timeRange: { start: "2024-01-01", end: "2024-01-31" }) {
+    totalRuns
+    activeRuns
+    totalAgents
+    averageRunDuration
+    successRate
   }
-};
-```
-
-### Type Safety Benefits
-
-This approach provides:
-- ✅ **Runtime validation**: Strict type checking at execution time
-- ✅ **Flexible schema**: Can evolve without breaking changes
-- ✅ **Clear error messages**: Detailed validation errors for debugging
-- ✅ **Client simplicity**: Clients work with simple JSON objects
-- ✅ **Full TypeScript support**: Complete type safety in the backend
-
-### MCP Server Configuration Examples
-
-**Valid configurations:**
-```json
-{
-  "github-api": ["get_pr_diff", "add_comment"],
-  "internal-tools": "*",
-  "dev-tools": null,
-  "staging-tools": [],
-  "optional-tools": ""
+  
+  costAnalytics(timeRange: { start: "2024-01-01", end: "2024-01-31" }) {
+    totalCost
+    costByAgent {
+      agentName
+      totalCost
+      percentage
+    }
+    projectedMonthlyCost
+  }
 }
 ```
 
-**Invalid configurations (caught by validation):**
-```json
-{
-  "github-api": "invalid-string",     // ❌ Not an array or access token
-  "other-tools": ["tool1", 123],     // ❌ Array contains non-string
-  "bad-tools": "not-wildcard"        // ❌ String that isn't "*" or ""
+### Agent Performance
+
+```graphql
+query AgentPerformance {
+  agentAnalytics(
+    agentName: "CustomerSupport"
+    timeRange: { start: "2024-01-01", end: "2024-01-31" }
+  ) {
+    totalRuns
+    successRate
+    averageExecutionTime
+    commonErrors {
+      error {
+        code
+        message
+      }
+      count
+      percentage
+    }
+  }
 }
 ```
 
-### Key Interfaces
+## Error Handling
 
-**Timestamped**: Provides `createdAt` and `updatedAt` fields for audit trails
-**Owned**: Provides `createdBy` field linking to the creating user
-**Message**: Base interface for conversation messages with role-based typing
+All mutations return typed results with detailed error information:
 
-### Union Types
+```graphql
+mutation CreateRepository {
+  createRepository(input: {
+    name: "new-agents"
+    gitUrl: "https://github.com/org/agents.git"
+    branch: "main"
+    isRoot: false
+    authType: "TOKEN"
+  }) {
+    id
+    name
+    lastSyncErrors {  # Validation errors from initial sync
+      code
+      message
+      context {
+        filePath
+        lineNumber
+        validationErrors {
+          field
+          message
+        }
+      }
+    }
+  }
+}
+```
 
-**StreamChunk**: Real-time events that can be streamed to clients, supporting different event types like tokens, tool calls, completions, and agent calls
+## Client Implementation Notes
 
-### Important Relationships
-
-**Agent Resolution**: The `Agent` type can represent either git-based agents (`gitAgent` field) or external A2A agents (`externalA2AAgent` field) with a discriminating `source` field
-
-**Execution Hierarchy**: `Run` contains multiple `Step` instances, which form a DAG through parent-child relationships. Each step can have tool calls, agent calls, and completion information.
-
-**Git Versioning**: Git-based agents maintain full versioning information through `gitCommit`, `gitRepository`, and `lastModified` fields for complete traceability.
-
-**MCP Server Tool Configuration**: The `mcpServers` field in `GitAgent` uses JSON with runtime validation to support both fine-grained tool access (specifying tool arrays) and full server access (using null, "*", or empty arrays).
-
-### Subscription Guidelines
-
-Subscriptions provide real-time updates for:
-
-- Step execution progress (`stepStream`)
-- Run status changes (`runUpdated`)
-- Input requests (`inputRequested`, `inputRequestResolved`)
-- Agent call events (`agentCallStarted`, `agentCallCompleted`)
-- Repository synchronization (`repositorySynced`, `agentDiscovered`)
-- System health (`systemAlert`, `externalAgentHealthChanged`)
-
-### Filtering and Pagination
-
-Most list queries support filtering through dedicated input types and standard pagination with `limit` and `offset` parameters. Search operations include relevance scoring and faceted results for advanced discovery.
-
-### Error Handling
-
-GraphQL errors follow standard conventions with field-level errors for validation issues and top-level errors for system failures. All mutations return the affected objects or boolean success indicators.
-
-Runtime validation errors for `mcpServers` include detailed context and suggested fixes.
+1. **Type Generation**: Use GraphQL code generation tools to generate TypeScript types from the schema
+2. **Error Handling**: Check error codes and context for detailed debugging information
+3. **Pagination**: Always use cursor-based pagination for reliable results
+4. **Subscriptions**: Implement reconnection logic for long-running subscriptions
+5. **Field Selection**: Request only needed fields to minimize payload size
 
 ---
 

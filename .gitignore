@@ -140,3 +140,7 @@ dist
 # devenv data
 devenv/pgdata
 devenv/redisdata
+
+# Generated GraphQL types
+**/generated/
+*.generated.ts
