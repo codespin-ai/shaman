@@ -289,9 +289,9 @@ export type ExecutionState =
 
 ## 🗄️ Database Access Patterns
 
-### 1. **DbRow Pattern**
+### 1. **DbRow Pattern with Domain Structure**
 
-All database access must use the DbRow pattern for type safety and clear separation between database schema and domain types.
+All database access must use the DbRow pattern for type safety and clear separation between database schema and domain types. The codebase follows a domain-driven architecture with modular organization.
 
 ```typescript
 // ✅ Good - DbRow type mirrors exact database schema
@@ -355,6 +355,45 @@ export async function getRun(id: string): Promise<Run | null> {
 - All queries must specify the DbRow type: `db.one<XxxDbRow>(...)`
 - Mapper functions handle all conversions including null/undefined mapping
 - Use `Partial<XxxDbRow>` for insert/update operations
+
+### Domain Structure Organization
+
+All database-related functions are organized in domain directories with:
+- `types.ts` - DbRow type definitions only
+- `mappers/` - Individual mapper functions (one per file, e.g., `map-run-from-db.ts`, `map-run-to-db.ts`)
+- Individual function files for business logic (e.g., `create-run.ts`, `get-run.ts`, `update-run.ts`)
+- Utility functions in separate files (e.g., `generate-run-id.ts`)
+- `index.ts` - Clean exports for the entire domain
+
+```typescript
+// Example domain structure: src/domain/run/
+// types.ts - Only type definitions
+export type RunDbRow = {
+  id: string;
+  status: string;
+  // ... other fields
+};
+
+// mappers/map-run-from-db.ts - Single mapper function
+export function mapRunFromDb(row: RunDbRow): Run {
+  return {
+    id: row.id,
+    status: row.status as ExecutionState,
+    // ... field conversions
+  };
+}
+
+// create-run.ts - Single business function  
+export async function createRun(db: Database, run: CreateRunInput): Promise<Run> {
+  // Implementation using mapRunToDb and mapRunFromDb
+}
+
+// index.ts - Clean exports
+export { createRun } from './create-run.js';
+export { getRun } from './get-run.js';
+export { mapRunFromDb } from './mappers/map-run-from-db.js';
+export type { RunDbRow } from './types.js';
+```
 
 ### 2. **Named Parameters in SQL**
 

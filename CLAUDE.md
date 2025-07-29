@@ -33,6 +33,7 @@ Shaman is a comprehensive backend framework for managing and coordinating AI age
 - **LLM Provider**: Vercel AI SDK provider implemented with OpenAI and Anthropic support
 - **Agent Executor**: Complete agent execution engine with tool calling and conversation management
 - **Workflow Foundation**: Temporal adapter, tool router, and platform tools implemented
+- **Domain-Driven Architecture**: Refactored persistence layer to domain structure with one-function-per-file pattern and dedicated mapper directories
 
 ## Essential Commands
 
@@ -203,7 +204,7 @@ Located in `/node/packages/`, build order matters:
 2. **Update Dependencies**: Add `file:` references to package.json files
 3. **Update Build Script**: Add new packages to `./build.sh` if created
 4. **Create Migration**: Use `npm run migrate:make` for schema changes
-5. **Implement Persistence**: Add persistence functions in the appropriate package (e.g., in `src/persistence/` directory of the package that uses the data)
+5. **Implement Domain Functions**: Add domain functions in the appropriate package (e.g., in `src/domain/` directory of the package that uses the data)
 6. **Implement Logic**: Add business logic in appropriate package
 7. **Build**: Run `./build.sh` from root
 8. **Migrate**: Run `npm run migrate:latest`
@@ -228,10 +229,12 @@ For additional databases, use the same pattern:
 
 ## Code Patterns
 
-### Database Row Pattern (DbRow)
+### Database Row Pattern (DbRow) - Domain Structure
 ```typescript
-// ✅ Good - DbRow type mirrors exact database schema
-type AgentRepositoryDbRow = {
+// ✅ Good - Modular domain structure with individual files
+
+// In src/domain/agent-repository/types.ts - DbRow type mirrors exact database schema
+export type AgentRepositoryDbRow = {
   id: number;
   name: string;
   git_url: string;  // snake_case matching DB column
@@ -245,8 +248,8 @@ type AgentRepositoryDbRow = {
   updated_at: Date;
 };
 
-// ✅ Good - Mapper functions for DB ↔ Domain conversions
-function mapAgentRepositoryFromDb(row: AgentRepositoryDbRow): AgentRepository {
+// In src/domain/agent-repository/mappers/map-agent-repository-from-db.ts
+export function mapAgentRepositoryFromDb(row: AgentRepositoryDbRow): AgentRepository {
   return {
     id: row.id,
     name: row.name,
@@ -262,12 +265,22 @@ function mapAgentRepositoryFromDb(row: AgentRepositoryDbRow): AgentRepository {
   };
 }
 
-// ✅ Good - Type-safe queries with explicit type parameters and named parameters
-const result = await db.one<AgentRepositoryDbRow>(
-  `SELECT * FROM agent_repository WHERE id = $(id)`,
-  { id }
-);
-return mapAgentRepositoryFromDb(result);
+// In src/domain/agent-repository/get-agent-repository.ts
+export async function getAgentRepository(
+  db: Database, 
+  id: number
+): Promise<AgentRepository | null> {
+  const result = await db.oneOrNone<AgentRepositoryDbRow>(
+    `SELECT * FROM agent_repository WHERE id = $(id)`,
+    { id }
+  );
+  return result ? mapAgentRepositoryFromDb(result) : null;
+}
+
+// In src/domain/agent-repository/index.ts - Clean exports
+export { getAgentRepository } from './get-agent-repository.js';
+export { mapAgentRepositoryFromDb } from './mappers/map-agent-repository-from-db.js';
+export type { AgentRepositoryDbRow } from './types.js';
 ```
 
 ### Function Export Pattern
@@ -375,7 +388,7 @@ import { executeAgent } from "./agent-runner";
 2. Edit migration file in `/database/[dbname]/migrations/`
 3. Run migration: `npm run migrate:[dbname]:latest`
 4. Update types in `@codespin/shaman-types`
-5. Update persistence functions in the relevant package's `src/persistence/` directory
+5. Update domain functions in the relevant package's `src/domain/` directory
 
 ## Git Agent Caching
 
