@@ -63,18 +63,26 @@ Shaman is a comprehensive backend framework for managing and coordinating AI age
 ```
 
 ### Database Commands
+
+**IMPORTANT**: The project uses a multi-database pattern. There is NO default database - all commands must be explicit.
+
 ```bash
-# Run migrations
-npm run migrate:latest
+# Run migrations for all databases
+npm run migrate:all
 
-# Create new migration
-npm run migrate:make migration_name
+# Database-specific commands (replace 'shaman' with your database name)
+npm run migrate:shaman:latest    # Run latest migrations
+npm run migrate:shaman:make migration_name  # Create new migration
+npm run migrate:shaman:rollback  # Rollback migrations
+npm run migrate:shaman:status    # Check migration status
+npm run seed:shaman:make seed_name  # Create seed file
+npm run seed:shaman:run          # Run seeds
 
-# Create seed file
-npm run seed:make seed_name
-
-# Run seeds
-npm run seed:run
+# Run commands on all databases
+npm run migrate:all          # Run latest migrations on all databases
+npm run migrate:all:rollback # Rollback all databases
+npm run migrate:all:status   # Check status of all databases
+npm run seed:all             # Run seeds on all databases
 ```
 
 ### Development Commands
@@ -161,12 +169,21 @@ Located in `/node/packages/`, build order matters:
 
 ## Environment Variables
 
-Required PostgreSQL connection variables:
+**IMPORTANT**: Each database uses its own set of environment variables with the pattern `[DBNAME]_DB_*`.
+
+Required PostgreSQL connection variables for the 'shaman' database:
 - `SHAMAN_DB_HOST`
 - `SHAMAN_DB_PORT`
 - `SHAMAN_DB_NAME`
 - `SHAMAN_DB_USER`
 - `SHAMAN_DB_PASSWORD`
+
+For additional databases, use the same pattern:
+- `[DBNAME]_DB_HOST`
+- `[DBNAME]_DB_PORT`
+- `[DBNAME]_DB_NAME`
+- `[DBNAME]_DB_USER`
+- `[DBNAME]_DB_PASSWORD`
 
 ## Code Patterns
 
@@ -299,9 +316,23 @@ import { executeAgent } from "./agent-runner";
 - See `/docs/02-use-cases-and-agent-model.md` for patterns
 
 ### Database Changes
-1. Create migration: `npm run migrate:make your_migration_name`
-2. Edit migration file in `/database/migrations/`
-3. Run migration: `npm run migrate:latest`
+
+**Database Structure**: The project follows a multi-database pattern:
+```
+/
+├── knexfile.js             # Base configuration only (no default export)
+├── scripts/
+│   └── db-all.sh          # Script to run commands on all databases
+└── database/
+    └── [dbname]/          # One directory per database
+        ├── knexfile.js    # Database-specific config
+        ├── migrations/    # Migrations for this database
+        └── seeds/        # Seeds for this database
+```
+
+1. Create migration: `npm run migrate:[dbname]:make your_migration_name`
+2. Edit migration file in `/database/[dbname]/migrations/`
+3. Run migration: `npm run migrate:[dbname]:latest`
 4. Update types in `@codespin/shaman-types`
 5. Update persistence layer in `@codespin/shaman-persistence`
 
