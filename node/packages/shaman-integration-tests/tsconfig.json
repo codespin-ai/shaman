@@ -1,0 +1,13 @@
+{
+  "extends": "../../../tsconfig.base.json",
+  "compilerOptions": {
+    "rootDir": "./src",
+    "outDir": "./dist",
+    "lib": ["ES2023"],
+    "types": ["node", "mocha", "chai"]
+  },
+  "include": ["src/**/*"],
+  "ts-node": {
+    "esm": true
+  }
+}
