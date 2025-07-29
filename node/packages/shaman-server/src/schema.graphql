@@ -63,10 +63,9 @@ enum StepType {
   AGENT_CALL
 }
 
-enum UserRole {
+enum SystemRole {
   USER
-  ADMIN
-  SUPER_ADMIN
+  SYSTEM_ADMIN # Can access all orgs for support
 }
 
 enum McpServerType {
@@ -138,17 +137,101 @@ type Error {
 }
 
 # =============================================================================
-# USER & AUTH TYPES
+# ORGANIZATION & USER TYPES
 # =============================================================================
+
+type Organization {
+  id: ID!
+  name: String!
+  slug: String! # URL-friendly identifier
+  description: String
+  
+  # Settings
+  settings: OrganizationSettings!
+  
+  # Relationships
+  users(first: Int, after: String, filter: UserFilter): UserConnection!
+  repositories(first: Int, after: String): RepositoryConnection!
+  mcpServers(first: Int, after: String): McpServerConnection!
+  runs(first: Int, after: String, filter: RunFilter): RunConnection!
+  
+  # Usage & Billing
+  usage: OrganizationUsage!
+  subscription: Subscription
+  
+  # Metadata
+  createdAt: DateTime!
+  updatedAt: DateTime!
+  createdBy: User!
+}
+
+type OrganizationSettings {
+  # Agent execution settings
+  defaultModel: String
+  defaultProviders: [String!]!
+  maxConcurrentRuns: Int!
+  maxRunDuration: Int! # in seconds
+  
+  # Security settings
+  allowExternalAgents: Boolean!
+  requireApprovalForNewAgents: Boolean!
+  allowedExternalDomains: [String!]
+  
+  # Feature flags
+  features: [String!]!
+}
+
+type OrganizationUsage {
+  currentPeriodStart: DateTime!
+  currentPeriodEnd: DateTime!
+  totalRuns: Int!
+  totalCost: Float!
+  totalTokens: Int!
+  runsByStatus: [UsageByStatus!]!
+}
+
+type UsageByStatus {
+  status: ExecutionState!
+  count: Int!
+}
+
+type Subscription {
+  id: ID!
+  plan: String!
+  status: String!
+  currentPeriodStart: DateTime!
+  currentPeriodEnd: DateTime!
+  cancelAtPeriodEnd: Boolean!
+}
 
 type User {
   id: ID!
   email: EmailAddress!
   name: String!
-  role: UserRole!
   isActive: Boolean!
+  
+  # Organization relationships
+  organizations(first: Int, after: String): OrganizationMembershipConnection!
+  currentOrganization: Organization
+  
+  # Metadata
   createdAt: DateTime!
   lastLoginAt: DateTime
+}
+
+type OrganizationMembership {
+  organization: Organization!
+  user: User!
+  role: OrganizationRole!
+  permissions: [String!]!
+  joinedAt: DateTime!
+}
+
+enum OrganizationRole {
+  OWNER
+  ADMIN
+  DEVELOPER
+  VIEWER
 }
 
 # =============================================================================
@@ -157,6 +240,7 @@ type User {
 
 type AgentRepository {
   id: ID!
+  organization: Organization!
   name: String!
   gitUrl: String!
   branch: String!
@@ -254,6 +338,7 @@ type ExternalAgentSkill {
 
 type McpServer {
   id: ID!
+  organization: Organization!
   name: String!
   description: String
   type: McpServerType!
@@ -261,6 +346,10 @@ type McpServer {
   isActive: Boolean!
   healthStatus: String
   lastHealthCheckAt: DateTime
+  
+  # Access control
+  allowedUsers: [User!]!
+  allowedRoles: [OrganizationRole!]!
   
   # Relationships
   tools(first: Int, after: String): ToolConnection!
@@ -321,6 +410,7 @@ type PropertySchema {
 
 type Run {
   id: ID!
+  organization: Organization!
   status: ExecutionState!
   initialInput: String!
   totalCost: Float!
@@ -545,7 +635,7 @@ type AgentCallCompleteData {
 # ANALYTICS TYPES
 # =============================================================================
 
-type SystemStats {
+type OrganizationStats {
   totalRuns: Int!
   activeRuns: Int!
   totalAgents: Int!
@@ -672,6 +762,12 @@ input StepFilter {
   agentName: String
 }
 
+input UserFilter {
+  role: OrganizationRole
+  isActive: Boolean
+  search: String
+}
+
 input AgentFilter {
   source: AgentSource
   tags: [String!]
@@ -687,19 +783,63 @@ input RunFilter {
   hasInputRequests: Boolean
 }
 
-input CreateUserInput {
+# =============================================================================
+# VIEWER TYPE
+# =============================================================================
+
+type Viewer {
+  user: User!
+  currentOrganization: Organization!
+  organizations: [OrganizationMembership!]!
+  permissions: [String!]!
+}
+
+# =============================================================================
+# INPUT TYPES - ORGANIZATION
+# =============================================================================
+
+input CreateOrganizationInput {
+  name: String!
+  slug: String!
+  description: String
+}
+
+input UpdateOrganizationInput {
+  name: String
+  description: String
+  settings: UpdateOrganizationSettingsInput
+}
+
+input UpdateOrganizationSettingsInput {
+  defaultModel: String
+  defaultProviders: [String!]
+  maxConcurrentRuns: Int
+  maxRunDuration: Int
+  allowExternalAgents: Boolean
+  requireApprovalForNewAgents: Boolean
+  allowedExternalDomains: [String!]
+}
+
+input InviteUserInput {
   email: EmailAddress!
   name: String!
-  role: UserRole!
+  role: OrganizationRole!
+  permissions: [String!]
+}
+
+input UpdateUserRoleInput {
+  userId: ID!
+  role: OrganizationRole!
+  permissions: [String!]
 }
 
 input UpdateUserInput {
   name: String
-  role: UserRole
   isActive: Boolean
 }
 
 input CreateRepositoryInput {
+  orgId: ID! # Explicit org context
   name: String!
   gitUrl: String!
   branch: String!
@@ -718,6 +858,7 @@ input UpdateRepositoryInput {
 }
 
 input RegisterExternalAgentInput {
+  orgId: ID!
   name: String!
   description: String!
   endpoint: String!
@@ -735,12 +876,14 @@ input AuthCredentialsInput {
 }
 
 input CreateMcpServerInput {
+  orgId: ID!
   name: String!
   description: String
   type: McpServerType!
   endpoint: String!
   authType: String
   authCredentials: AuthCredentialsInput
+  allowedRoles: [OrganizationRole!]
 }
 
 input ExecuteAgentInput {
@@ -761,18 +904,23 @@ input ProvideInputInput {
 # =============================================================================
 
 type Query {
-  # Current user
-  viewer: User
+  # Current context
+  viewer: Viewer!
   
-  # Users
-  user(id: ID!): User
-  users(first: Int, after: String): UserConnection!
+  # Organizations (only accessible by system admins)
+  organizations(first: Int, after: String): OrganizationConnection!
+  organization(id: ID, slug: String): Organization
   
-  # Repositories
+  # Current organization context
+  currentOrganization: Organization!
+  
+  # All resources are scoped to current organization
+  
+  # Repositories (org-scoped)
   repository(name: String!): AgentRepository
   repositories(first: Int, after: String): RepositoryConnection!
   
-  # Agents
+  # Agents (org-scoped)
   agent(name: String!, source: AgentSource): Agent
   agents(
     first: Int
@@ -781,15 +929,15 @@ type Query {
     search: String
   ): AgentConnection!
   
-  # MCP Servers
+  # MCP Servers (org-scoped)
   mcpServer(id: ID!): McpServer
   mcpServers(first: Int, after: String, type: McpServerType): McpServerConnection!
   
-  # Tools
+  # Tools (org-scoped)
   tool(id: ID!): Tool
-  systemTools: [Tool!]!
+  availableTools: [Tool!]!
   
-  # Runs & Execution
+  # Runs & Execution (org-scoped)
   run(id: ID!): Run
   runs(
     first: Int
@@ -797,8 +945,11 @@ type Query {
     filter: RunFilter
   ): RunConnection!
   
-  # Analytics
-  systemStats(timeRange: TimeRange!): SystemStats!
+  # Organization members
+  organizationMembers(first: Int, after: String, filter: UserFilter): UserConnection!
+  
+  # Analytics (org-scoped)
+  organizationStats(timeRange: TimeRange!): OrganizationStats!
   agentAnalytics(agentName: String!, timeRange: TimeRange!): AgentAnalytics!
   costAnalytics(timeRange: TimeRange!): CostAnalytics!
 }
@@ -808,10 +959,18 @@ type Query {
 # =============================================================================
 
 type Mutation {
-  # Users
-  createUser(input: CreateUserInput!): User!
-  updateUser(id: ID!, input: UpdateUserInput!): User!
-  deleteUser(id: ID!): Boolean!
+  # Organizations
+  createOrganization(input: CreateOrganizationInput!): Organization!
+  updateOrganization(id: ID!, input: UpdateOrganizationInput!): Organization!
+  switchOrganization(orgId: ID!): Viewer!
+  
+  # Organization members
+  inviteUser(input: InviteUserInput!): OrganizationMembership!
+  updateUserRole(input: UpdateUserRoleInput!): OrganizationMembership!
+  removeUserFromOrganization(userId: ID!): Boolean!
+  
+  # Current user
+  updateProfile(input: UpdateUserInput!): User!
   
   # Repositories
   createRepository(input: CreateRepositoryInput!): AgentRepository!
@@ -835,8 +994,11 @@ type Mutation {
   cancelRun(id: ID!): Run!
   provideInput(runId: ID!, input: ProvideInputInput!): Run!
   
-  # System
-  clearCache: Boolean!
+  # Organization admin
+  clearOrganizationCache: Boolean!
+  
+  # System admin only
+  clearSystemCache: Boolean!
 }
 
 # =============================================================================
@@ -861,6 +1023,28 @@ type Subscription {
 # =============================================================================
 # ADDITIONAL TYPES
 # =============================================================================
+
+type OrganizationConnection {
+  edges: [OrganizationEdge!]!
+  pageInfo: PageInfo!
+  totalCount: Int!
+}
+
+type OrganizationEdge {
+  node: Organization!
+  cursor: String!
+}
+
+type OrganizationMembershipConnection {
+  edges: [OrganizationMembershipEdge!]!
+  pageInfo: PageInfo!
+  totalCount: Int!
+}
+
+type OrganizationMembershipEdge {
+  node: OrganizationMembership!
+  cursor: String!
+}
 
 type UserConnection {
   edges: [UserEdge!]!
@@ -902,6 +1086,7 @@ input TimeRange {
 
 type SystemAlert {
   id: ID!
+  orgId: ID # Null for system-wide alerts
   type: String!
   severity: String!
   message: String!

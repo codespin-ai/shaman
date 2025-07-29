@@ -5,10 +5,12 @@
 import { ApolloServer } from '@apollo/server';
 import { ApolloServerPluginDrainHttpServer as _ApolloServerPluginDrainHttpServer } from '@apollo/server/plugin/drainHttpServer';
 import { makeExecutableSchema } from '@graphql-tools/schema';
+import { readFileSync } from 'fs';
+import { join, dirname } from 'path';
+import { fileURLToPath } from 'url';
 import { createLogger } from '@codespin/shaman-logger';
 import { loadConfig } from '@codespin/shaman-config';
 import type { ServerConfig, GraphQLContext } from '../../types.js';
-import { typeDefs } from './schema.js';
 import { resolvers } from './resolvers/index.js';
 import { 
   DateTimeScalar, 
@@ -21,6 +23,12 @@ import { createContext } from './context.js';
 import type { Request } from 'express';
 
 const logger = createLogger('GraphQLServer');
+
+// Load GraphQL schema
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+const schemaPath = join(__dirname, '../../schema.graphql');
+const typeDefs = readFileSync(schemaPath, 'utf-8');
 
 /**
  * Create Apollo Server instance

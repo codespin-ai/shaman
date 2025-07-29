@@ -41,7 +41,14 @@ export const executionMutations = {
 
     for (const input of args.inputs) {
       // Create run record
+      if (!context.user.currentOrgId) {
+        throw new GraphQLError('No organization selected', {
+          extensions: { code: 'NO_ORGANIZATION' },
+        });
+      }
+      const orgId = context.user.currentOrgId;
       const runResult = await createRun({
+        orgId,
         initialInput: input.input,
         status: 'SUBMITTED',
         createdBy: context.user.id.toString(),

@@ -50,17 +50,25 @@ export const repositoryMutations = {
     }
 
     // Only admins can add repositories
-    if (context.user.role !== 'ADMIN' && context.user.role !== 'SUPER_ADMIN') {
+    if (context.user.systemRole !== 'SYSTEM_ADMIN') {
       throw new GraphQLError('Insufficient permissions', {
         extensions: { code: 'FORBIDDEN' },
       });
     }
 
+    if (!context.user.currentOrgId) {
+      throw new GraphQLError('No organization selected', {
+        extensions: { code: 'NO_ORGANIZATION' },
+      });
+    }
+    const orgId = context.user.currentOrgId;
     const result = await createAgentRepository({
+      orgId,
       name: args.input.name,
       gitUrl: args.input.gitUrl,
       branch: args.input.branch || 'main',
       isRoot: args.input.isRoot || false,
+      createdBy: context.user.id.toString(),
     });
 
     if (!result.success) {
@@ -129,13 +137,19 @@ export const repositoryMutations = {
     }
 
     // Only admins can update repositories
-    if (context.user.role !== 'ADMIN' && context.user.role !== 'SUPER_ADMIN') {
+    if (context.user.systemRole !== 'SYSTEM_ADMIN') {
       throw new GraphQLError('Insufficient permissions', {
         extensions: { code: 'FORBIDDEN' },
       });
     }
 
-    const result = await updateAgentRepository(args.name, args.input);
+    if (!context.user.currentOrgId) {
+      throw new GraphQLError('No organization selected', {
+        extensions: { code: 'NO_ORGANIZATION' },
+      });
+    }
+    const orgId = context.user.currentOrgId;
+    const result = await updateAgentRepository(args.name, orgId, args.input);
     if (!result.success) {
       logger.error('Failed to update repository', { 
         error: result.error,
@@ -179,13 +193,19 @@ export const repositoryMutations = {
     }
 
     // Only admins can remove repositories
-    if (context.user.role !== 'ADMIN' && context.user.role !== 'SUPER_ADMIN') {
+    if (context.user.systemRole !== 'SYSTEM_ADMIN') {
       throw new GraphQLError('Insufficient permissions', {
         extensions: { code: 'FORBIDDEN' },
       });
     }
 
-    const result = await deleteAgentRepository(args.name);
+    if (!context.user.currentOrgId) {
+      throw new GraphQLError('No organization selected', {
+        extensions: { code: 'NO_ORGANIZATION' },
+      });
+    }
+    const orgId = context.user.currentOrgId;
+    const result = await deleteAgentRepository(args.name, orgId);
     if (!result.success) {
       logger.error('Failed to remove repository', { 
         error: result.error,
@@ -241,7 +261,7 @@ export const repositoryMutations = {
     }
 
     // Only admins can sync all repositories
-    if (context.user.role !== 'ADMIN' && context.user.role !== 'SUPER_ADMIN') {
+    if (context.user.systemRole !== 'SYSTEM_ADMIN') {
       throw new GraphQLError('Insufficient permissions', {
         extensions: { code: 'FORBIDDEN' },
       });
@@ -272,13 +292,19 @@ export const repositoryMutations = {
     }
 
     // Only admins can switch branches
-    if (context.user.role !== 'ADMIN' && context.user.role !== 'SUPER_ADMIN') {
+    if (context.user.systemRole !== 'SYSTEM_ADMIN') {
       throw new GraphQLError('Insufficient permissions', {
         extensions: { code: 'FORBIDDEN' },
       });
     }
 
-    const result = await updateAgentRepository(args.name, { branch: args.branch });
+    if (!context.user.currentOrgId) {
+      throw new GraphQLError('No organization selected', {
+        extensions: { code: 'NO_ORGANIZATION' },
+      });
+    }
+    const orgId = context.user.currentOrgId;
+    const result = await updateAgentRepository(args.name, orgId, { branch: args.branch });
     if (!result.success) {
       logger.error('Failed to switch branch', { 
         error: result.error,

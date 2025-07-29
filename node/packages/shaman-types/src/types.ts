@@ -10,10 +10,78 @@
  */
 
 /**
+ * Organization - the top-level tenant entity
+ */
+export interface Organization {
+  id: string;
+  name: string;
+  slug: string; // URL-friendly identifier
+  description: string | null;
+  settings: OrganizationSettings;
+  subscriptionInfo: SubscriptionInfo | null;
+  createdBy: string; // User ID
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface OrganizationSettings {
+  // Agent execution settings
+  defaultModel?: string;
+  defaultProviders?: string[];
+  maxConcurrentRuns?: number;
+  maxRunDuration?: number; // in seconds
+  
+  // Security settings
+  allowExternalAgents?: boolean;
+  requireApprovalForNewAgents?: boolean;
+  allowedExternalDomains?: string[];
+  
+  // Feature flags
+  features?: string[];
+}
+
+export interface SubscriptionInfo {
+  plan: string;
+  status: string;
+  currentPeriodStart: Date;
+  currentPeriodEnd: Date;
+  cancelAtPeriodEnd: boolean;
+}
+
+/**
+ * User entity
+ */
+export interface User {
+  id: string;
+  email: string;
+  name: string;
+  isActive: boolean;
+  systemRole: 'USER' | 'SYSTEM_ADMIN';
+  currentOrgId: string | null;
+  lastLoginAt: Date | null;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+/**
+ * Organization-User relationship
+ */
+export interface OrganizationUser {
+  orgId: string;
+  userId: string;
+  role: OrganizationRole;
+  permissions: string[];
+  joinedAt: Date;
+}
+
+export type OrganizationRole = 'OWNER' | 'ADMIN' | 'DEVELOPER' | 'VIEWER';
+
+/**
  * Represents a record in the 'agent_repository' table.
  */
 export interface AgentRepository {
   id: number;
+  orgId: string;
   name: string;
   gitUrl: string;
   branch: string;
@@ -22,6 +90,7 @@ export interface AgentRepository {
   lastSyncAt: Date | null;
   lastSyncStatus: 'NEVER_SYNCED' | 'SUCCESS' | 'IN_PROGRESS' | 'FAILED';
   lastSyncErrors: Record<string, unknown> | null;
+  createdBy: string; // User ID
   createdAt: Date;
   updatedAt: Date;
 }
@@ -75,6 +144,7 @@ export type ContextScope = "FULL" | "NONE" | "SPECIFIC";
  */
 export type Run = {
   readonly id: string;
+  readonly orgId: string;
   readonly status: ExecutionState;
   readonly initialInput: string;
   readonly totalCost: number;
@@ -204,6 +274,75 @@ export type CompletedInputRequest = {
   readonly responseAt: Date;
   readonly respondedBy: string; // User ID
 };
+
+/**
+ * MCP Server configuration
+ */
+export interface McpServer {
+  id: string;
+  orgId: string;
+  name: string;
+  description: string | null;
+  type: 'HTTP' | 'STDIO' | 'A2A';
+  endpoint: string;
+  isActive: boolean;
+  authConfig: Record<string, unknown> | null;
+  allowedRoles: OrganizationRole[];
+  allowedUsers: string[]; // User IDs
+  healthStatus: string | null;
+  lastHealthCheckAt: Date | null;
+  createdBy: string; // User ID
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+/**
+ * External A2A Agent
+ */
+export interface ExternalAgent {
+  id: string;
+  orgId: string;
+  name: string;
+  description: string | null;
+  endpoint: string;
+  authType: string;
+  authCredentials: Record<string, unknown> | null; // Encrypted
+  isActive: boolean;
+  agentCard: Record<string, unknown> | null;
+  skills: ExternalAgentSkill[] | null;
+  healthStatus: string | null;
+  lastHealthCheckAt: Date | null;
+  averageResponseTime: number | null;
+  errorRate: number | null;
+  createdBy: string; // User ID
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface ExternalAgentSkill {
+  id: string;
+  name: string;
+  description: string;
+  tags: string[];
+  examples: string[];
+  inputModes: string[];
+  outputModes: string[];
+}
+
+/**
+ * Organization usage tracking
+ */
+export interface OrganizationUsage {
+  id: string;
+  orgId: string;
+  periodStart: Date;
+  periodEnd: Date;
+  totalRuns: number;
+  totalCost: number;
+  totalTokens: number;
+  runsByStatus: Record<ExecutionState, number>;
+  usageDetails: Record<string, unknown>;
+}
 
 /**
  * Agent completion status

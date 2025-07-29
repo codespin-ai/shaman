@@ -61,6 +61,7 @@ export function createTemporalEngine(config: TemporalConfig): ExecutionEngine {
 
         const run: Run = {
           id: runId,
+          orgId: request.orgId,
           status: 'WORKING',
           initialInput: request.input,
           totalCost: 0,

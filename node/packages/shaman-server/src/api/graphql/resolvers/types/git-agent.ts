@@ -12,12 +12,12 @@ export const gitAgentResolvers = {
   /**
    * Resolve repository for agent
    */
-  repository: async (parent: GitAgent & { repository?: unknown; repositoryId?: number }) => {
+  repository: async (parent: GitAgent & { repository?: unknown; repositoryId?: number }, _args: unknown, context: { user?: { currentOrgId?: string } }) => {
     if (parent.repository && typeof parent.repository === 'object') {
       return parent.repository;
     }
-    if (parent.repositoryId) {
-      const result = await getAgentRepositoryById(parent.repositoryId);
+    if (parent.repositoryId && context.user?.currentOrgId) {
+      const result = await getAgentRepositoryById(parent.repositoryId, context.user.currentOrgId);
       if (result.success) {
         return {
           ...result.data,

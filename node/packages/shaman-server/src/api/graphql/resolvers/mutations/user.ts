@@ -19,7 +19,7 @@ export const userMutations = {
       input: {
         email: string;
         name: string;
-        role?: 'USER' | 'ADMIN' | 'SUPER_ADMIN';
+        systemRole?: 'USER' | 'SYSTEM_ADMIN';
       };
     },
     context: GraphQLContext
@@ -30,7 +30,7 @@ export const userMutations = {
     });
 
     // Check permissions - only admins can create users
-    if (!context.user || (context.user.role !== 'ADMIN' && context.user.role !== 'SUPER_ADMIN')) {
+    if (!context.user || (context.user.systemRole !== 'SYSTEM_ADMIN')) {
       throw new GraphQLError('Insufficient permissions', {
         extensions: { code: 'FORBIDDEN' },
       });
@@ -39,7 +39,7 @@ export const userMutations = {
     const result = await createUser({
       email: args.input.email,
       name: args.input.name,
-      role: args.input.role || 'USER',
+      systemRole: args.input.systemRole || 'USER',
       isActive: true,
     });
 
@@ -68,7 +68,7 @@ export const userMutations = {
       id: string;
       input: {
         name?: string;
-        role?: 'USER' | 'ADMIN' | 'SUPER_ADMIN';
+        systemRole?: 'USER' | 'SYSTEM_ADMIN';
         isActive?: boolean;
       };
     },
@@ -87,8 +87,8 @@ export const userMutations = {
 
     // Users can update their own profile (name only)
     // Admins can update any user
-    const isOwnProfile = context.user.id === parseInt(args.id);
-    const isAdmin = context.user.role === 'ADMIN' || context.user.role === 'SUPER_ADMIN';
+    const isOwnProfile = context.user.id.toString() === args.id;
+    const isAdmin = context.user.systemRole === 'SYSTEM_ADMIN';
 
     if (!isOwnProfile && !isAdmin) {
       throw new GraphQLError('Insufficient permissions', {
@@ -97,13 +97,13 @@ export const userMutations = {
     }
 
     // Non-admins can only update their name
-    if (!isAdmin && (args.input.role !== undefined || args.input.isActive !== undefined)) {
+    if (!isAdmin && (args.input.systemRole !== undefined || args.input.isActive !== undefined)) {
       throw new GraphQLError('Cannot update role or status', {
         extensions: { code: 'FORBIDDEN' },
       });
     }
 
-    const result = await updateUser(parseInt(args.id), args.input);
+    const result = await updateUser(args.id, args.input);
     if (!result.success) {
       logger.error('Failed to update user', { 
         error: result.error,
@@ -134,20 +134,20 @@ export const userMutations = {
     });
 
     // Check permissions - only admins can deactivate users
-    if (!context.user || (context.user.role !== 'ADMIN' && context.user.role !== 'SUPER_ADMIN')) {
+    if (!context.user || (context.user.systemRole !== 'SYSTEM_ADMIN')) {
       throw new GraphQLError('Insufficient permissions', {
         extensions: { code: 'FORBIDDEN' },
       });
     }
 
     // Prevent self-deactivation
-    if (context.user.id === parseInt(args.id)) {
+    if (context.user.id.toString() === args.id) {
       throw new GraphQLError('Cannot deactivate yourself', {
         extensions: { code: 'BAD_USER_INPUT' },
       });
     }
 
-    const result = await updateUser(parseInt(args.id), { isActive: false });
+    const result = await updateUser(args.id, { isActive: false });
     if (!result.success) {
       logger.error('Failed to deactivate user', { 
         error: result.error,

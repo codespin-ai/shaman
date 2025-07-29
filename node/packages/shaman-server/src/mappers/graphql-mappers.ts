@@ -39,7 +39,8 @@ export function mapAgentRepositoryToGraphQL(
     // Metadata
     createdAt: repo.createdAt,
     updatedAt: repo.updatedAt,
-    createdBy: undefined as unknown as GQL.User // Will be populated by resolver
+    organization: null as unknown as GQL.Organization, // Will be populated by resolver
+    createdBy: null as unknown as GQL.User // Will be populated by resolver
   };
 }
 
@@ -111,7 +112,8 @@ export function mapRunToGraphQL(run: Domain.Run): GQL.Run {
     
     // Metadata
     traceId: run.traceId || null,
-    createdBy: undefined as unknown as GQL.User // Will be populated by resolver
+    organization: null as unknown as GQL.Organization, // Will be populated by resolver
+    createdBy: null as unknown as GQL.User // Will be populated by resolver
   };
 }
 
@@ -135,7 +137,7 @@ export function mapStepToGraphQL(step: Domain.Step): GQL.Step {
     duration: step.duration || null,
     
     // These will be populated by resolvers
-    run: undefined as unknown as GQL.Run,
+    run: null as unknown as GQL.Run,
     parentStep: null,
     childSteps: [],
     messages: [],

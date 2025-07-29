@@ -60,6 +60,7 @@ export interface ExecutionEngine {
       readonly agentName: string;
       readonly input: string;
       readonly userId: string;
+      readonly orgId: string;
       readonly metadata?: Record<string, unknown>;
     }
   ): Promise<Result<Run>>;

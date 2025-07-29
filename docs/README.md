@@ -9,8 +9,9 @@ Shaman is a comprehensive backend framework for managing and coordinating AI age
 3. [**System Architecture**](./03-system-architecture.md) - ⭐ **Updated** - Pluggable components, sync/async tools, and data flows
 4. [**API Configuration and Deployment**](./04-api-config-and-deployment.md) - ⭐ **Updated** - Type-safe configuration, environment setup, and deployment options
 5. [**GraphQL API Specification**](./05-graphql-api-spec.md) - Complete API reference and schema
-6. [**Tool Execution Guide**](./06-tool-execution-guide.md) - ⭐ **New** - Comprehensive guide to sync/async tool execution with context retention
-7. [**Workflow Engine Adapters**](./07-workflow-engine-adapters.md) - ⭐ **New** - Engine-agnostic adapters for Temporal, BullMQ, and custom engines
+6. [**Multi-Tenancy Architecture**](./06-multi-tenancy.md) - ⭐ **New** - Organization-based isolation and multi-tenant features
+7. [**Tool Execution Guide**](./06-tool-execution-guide.md) - Comprehensive guide to sync/async tool execution with context retention
+8. [**Workflow Engine Adapters**](./07-workflow-engine-adapters.md) - Engine-agnostic adapters for Temporal, BullMQ, and custom engines
 
 ## What's New in This Architecture
 

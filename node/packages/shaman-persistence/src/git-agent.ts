@@ -116,9 +116,15 @@ export async function deleteGitAgent(id: number): Promise<boolean> {
   return result.rowCount > 0;
 }
 
-export async function getAllGitAgents(): Promise<GitAgent[]> {
-  const result = await db.any<GitAgentDbRow>(
-    `SELECT * FROM git_agent`
-  );
+export async function getAllGitAgents(orgId?: string): Promise<GitAgent[]> {
+  let query = `SELECT ga.* FROM git_agent ga`;
+  const params: Record<string, unknown> = {};
+  
+  if (orgId) {
+    query += ` JOIN agent_repository ar ON ga.agent_repository_id = ar.id WHERE ar.org_id = $(orgId)`;
+    params.orgId = orgId;
+  }
+  
+  const result = await db.any<GitAgentDbRow>(query, params);
   return result.map(mapGitAgentFromDb);
 }

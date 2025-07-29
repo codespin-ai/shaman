@@ -2,13 +2,34 @@
  * Server configuration and types
  */
 
+// Organization type definition
+export type Organization = {
+  readonly id: string;
+  readonly name: string;
+  readonly slug: string;
+  readonly description?: string;
+  readonly settings: {
+    defaultModel?: string;
+    defaultProviders?: string[];
+    maxConcurrentRuns?: number;
+    maxRunDuration?: number;
+    allowExternalAgents?: boolean;
+    requireApprovalForNewAgents?: boolean;
+    allowedExternalDomains?: string[];
+    features?: string[];
+  };
+  readonly createdAt: Date;
+  readonly updatedAt: Date;
+};
+
 // User type definition
 export type User = {
-  readonly id: number;
+  readonly id: string;
   readonly email: string;
   readonly name: string;
-  readonly role: 'USER' | 'ADMIN' | 'SUPER_ADMIN';
+  readonly systemRole: 'USER' | 'SYSTEM_ADMIN';
   readonly isActive: boolean;
+  readonly currentOrgId?: string;
   readonly createdAt: Date;
   readonly lastLoginAt?: Date;
 };
@@ -49,10 +70,13 @@ export type ServerConfig = {
 };
 
 /**
- * GraphQL context type
+ * GraphQL context type (duplicated in graphql-context.ts - use that one)
+ * @deprecated Use GraphQLContext from './graphql-context.js' instead
  */
 export type GraphQLContext = {
   readonly user?: User;
+  readonly organization?: Organization;
+  readonly orgId?: string;
   readonly config: ShamanConfig;
   readonly requestId: string;
   readonly dataSources: Record<string, unknown>;

@@ -32,7 +32,13 @@ export const repositoryQueries = {
       });
     }
 
-    const result = await getAgentRepositoryByName(args.name);
+    if (!context.user.currentOrgId) {
+      throw new GraphQLError('No organization selected', {
+        extensions: { code: 'NO_ORGANIZATION' },
+      });
+    }
+    const orgId = context.user.currentOrgId;
+    const result = await getAgentRepositoryByName(args.name, orgId);
     if (!result.success) {
       if (result.error.message.includes('not found')) {
         return null;
@@ -81,7 +87,13 @@ export const repositoryQueries = {
       });
     }
 
-    const repos = await getAllAgentRepositories();
+    if (!context.user.currentOrgId) {
+      throw new GraphQLError('No organization selected', {
+        extensions: { code: 'NO_ORGANIZATION' },
+      });
+    }
+    const orgId = context.user.currentOrgId;
+    const repos = await getAllAgentRepositories(orgId);
 
     // Map to GraphQL types
     return repos.map((repo) => ({

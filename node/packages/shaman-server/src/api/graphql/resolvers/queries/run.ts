@@ -29,7 +29,13 @@ export const runQueries = {
       });
     }
 
-    const result = await getRunById(parseInt(args.id));
+    if (!context.user.currentOrgId) {
+      throw new GraphQLError('No organization selected', {
+        extensions: { code: 'NO_ORGANIZATION' },
+      });
+    }
+    const orgId = context.user.currentOrgId;
+    const result = await getRunById(args.id, orgId);
     if (!result.success) {
       if (result.error.message.includes('not found')) {
         return null;
@@ -51,8 +57,8 @@ export const runQueries = {
 
     // Check permissions - users can only see their own runs unless admin
     if (run.createdBy !== context.user.id.toString() && 
-        context.user.role !== 'ADMIN' && 
-        context.user.role !== 'SUPER_ADMIN') {
+         
+        context.user.systemRole !== 'SYSTEM_ADMIN') {
       throw new GraphQLError('Insufficient permissions', {
         extensions: { code: 'FORBIDDEN' },
       });
@@ -121,11 +127,17 @@ export const runQueries = {
     const offset = args.offset || 0;
 
     // Regular users can only see their own runs
-    const userId = context.user.role === 'ADMIN' || context.user.role === 'SUPER_ADMIN'
+    const userId = context.user.systemRole === 'SYSTEM_ADMIN'
       ? args.filters?.createdBy ? parseInt(args.filters.createdBy) : undefined
       : context.user.id;
 
-    const result = await getRunsByUser(userId, limit, offset);
+    if (!context.user.currentOrgId) {
+      throw new GraphQLError('No organization selected', {
+        extensions: { code: 'NO_ORGANIZATION' },
+      });
+    }
+    const orgId = context.user.currentOrgId;
+    const result = await getRunsByUser(orgId, userId?.toString(), limit, offset);
     if (!result.success) {
       logger.error('Failed to fetch runs', { 
         error: result.error,
@@ -181,11 +193,17 @@ export const runQueries = {
     const limit = args.limit || 50;
 
     // For regular users, only show their own runs
-    const userId = context.user.role === 'ADMIN' || context.user.role === 'SUPER_ADMIN'
+    const userId = context.user.systemRole === 'SYSTEM_ADMIN'
       ? undefined
       : context.user.id;
 
-    const result = await getRunsNeedingInput(userId, limit);
+    if (!context.user.currentOrgId) {
+      throw new GraphQLError('No organization selected', {
+        extensions: { code: 'NO_ORGANIZATION' },
+      });
+    }
+    const orgId = context.user.currentOrgId;
+    const result = await getRunsNeedingInput(orgId, userId?.toString(), limit);
     if (!result.success) {
       logger.error('Failed to fetch runs needing input', { 
         error: result.error,

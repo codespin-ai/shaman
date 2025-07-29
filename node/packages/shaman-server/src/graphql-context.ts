@@ -1,4 +1,4 @@
-import type { User } from './types.js';
+import type { User, Organization } from './types.js';
 import type { ShamanConfig } from '@codespin/shaman-config';
 import type { IDatabase } from 'pg-promise';
 import type { LLMProvider } from '@codespin/shaman-llm-core';
@@ -11,6 +11,8 @@ export type GraphQLContext = {
   // Request context
   readonly requestId: string;
   readonly user?: User;
+  readonly organization?: Organization;
+  readonly orgId?: string; // Convenience field for easy access
   
   // Core dependencies
   readonly config: ShamanConfig;

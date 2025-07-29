@@ -43,13 +43,13 @@ export const userQueries = {
     }
 
     // Only admins can fetch other users
-    if (context.user.id !== parseInt(args.id) && context.user.role !== 'ADMIN' && context.user.role !== 'SUPER_ADMIN') {
+    if (context.user.id !== args.id && context.user.systemRole !== 'SYSTEM_ADMIN') {
       throw new GraphQLError('Insufficient permissions', {
         extensions: { code: 'FORBIDDEN' },
       });
     }
 
-    const result = await getUserById(parseInt(args.id));
+    const result = await getUserById(args.id);
     if (!result.success) {
       logger.error('Failed to fetch user', { 
         userId: args.id, 
@@ -82,7 +82,7 @@ export const userQueries = {
     });
 
     // Check permissions - only admins can list users
-    if (!context.user || (context.user.role !== 'ADMIN' && context.user.role !== 'SUPER_ADMIN')) {
+    if (!context.user || (context.user.systemRole !== 'SYSTEM_ADMIN')) {
       throw new GraphQLError('Insufficient permissions', {
         extensions: { code: 'FORBIDDEN' },
       });

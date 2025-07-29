@@ -14,11 +14,12 @@ export async function createRun(
   const dbData = mapRunToDb(run);
   const result = await db.one<RunDbRow>(
     `INSERT INTO run 
-     (id, status, initial_input, total_cost, start_time, created_by, trace_id, metadata)
-     VALUES ($(id), $(status), $(initial_input), $(total_cost), $(start_time), $(created_by), $(trace_id), $(metadata))
+     (id, org_id, status, initial_input, total_cost, start_time, created_by, trace_id, metadata)
+     VALUES ($(id), $(org_id), $(status), $(initial_input), $(total_cost), $(start_time), $(created_by), $(trace_id), $(metadata))
      RETURNING *`,
     {
       id: dbData.id || generateRunId(),
+      org_id: dbData.org_id,
       status: dbData.status,
       initial_input: dbData.initial_input,
       total_cost: dbData.total_cost,
@@ -35,10 +36,10 @@ export async function createRun(
 /**
  * Get a run by ID
  */
-export async function getRun(id: string): Promise<Run | null> {
+export async function getRun(id: string, orgId: string): Promise<Run | null> {
   const result = await db.oneOrNone<RunDbRow>(
-    `SELECT * FROM run WHERE id = $(id)`,
-    { id }
+    `SELECT * FROM run WHERE id = $(id) AND org_id = $(orgId)`,
+    { id, orgId }
   );
   
   return result ? mapRunFromDb(result) : null;
@@ -93,7 +94,7 @@ export async function updateRun(
 /**
  * List runs with filters
  */
-export async function listRuns(filters: {
+export async function listRuns(orgId: string, filters: {
   status?: ExecutionState;
   createdBy?: string;
   createdAfter?: Date;
@@ -101,8 +102,8 @@ export async function listRuns(filters: {
   limit?: number;
   offset?: number;
 }): Promise<Run[]> {
-  let query = 'SELECT * FROM run WHERE 1=1';
-  const params: Record<string, unknown> = {};
+  let query = 'SELECT * FROM run WHERE org_id = $(orgId)';
+  const params: Record<string, unknown> = { orgId };
   
   if (filters.status) {
     query += ' AND status = $(status)';
@@ -143,15 +144,15 @@ export async function listRuns(filters: {
 /**
  * Get runs needing input
  */
-export async function getRunsNeedingInput(limit?: number): Promise<Run[]> {
+export async function getRunsNeedingInput(orgId: string, limit?: number): Promise<Run[]> {
   const query = `
     SELECT * FROM run 
-    WHERE status IN ('INPUT_REQUIRED', 'BLOCKED_ON_INPUT')
+    WHERE org_id = $(orgId) AND status IN ('INPUT_REQUIRED', 'BLOCKED_ON_INPUT')
     ORDER BY start_time DESC
     ${limit ? 'LIMIT $(limit)' : ''}
   `;
   
-  const results = await db.manyOrNone<RunDbRow>(query, { limit });
+  const results = await db.manyOrNone<RunDbRow>(query, { orgId, limit });
   return results.map(mapRunFromDb);
 }
 
@@ -161,6 +162,7 @@ export async function getRunsNeedingInput(limit?: number): Promise<Run[]> {
  */
 type RunDbRow = {
   id: string;
+  org_id: string;
   status: string;
   initial_input: string;
   total_cost: number;
@@ -178,6 +180,7 @@ type RunDbRow = {
 function mapRunFromDb(row: RunDbRow): Run {
   return {
     id: row.id,
+    orgId: row.org_id,
     status: row.status as ExecutionState,
     initialInput: row.initial_input,
     totalCost: row.total_cost,
@@ -196,6 +199,7 @@ function mapRunFromDb(row: RunDbRow): Run {
 function mapRunToDb(run: Omit<Run, 'id' | 'startTime'> & { id?: string }): Partial<RunDbRow> {
   return {
     id: run.id,
+    org_id: run.orgId,
     status: run.status,
     initial_input: run.initialInput,
     total_cost: run.totalCost,
@@ -211,5 +215,5 @@ function mapRunToDb(run: Omit<Run, 'id' | 'startTime'> & { id?: string }): Parti
  * Generate a run ID
  */
 function generateRunId(): string {
-  return `run-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+  return `run-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`;
 }

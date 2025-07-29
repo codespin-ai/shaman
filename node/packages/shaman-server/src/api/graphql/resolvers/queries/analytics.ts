@@ -69,7 +69,7 @@ export const analyticsQueries = {
     }
 
     // Only admins can view system stats
-    if (context.user.role !== 'ADMIN' && context.user.role !== 'SUPER_ADMIN') {
+    if (context.user.systemRole !== 'SYSTEM_ADMIN') {
       throw new GraphQLError('Insufficient permissions', {
         extensions: { code: 'FORBIDDEN' },
       });
@@ -116,7 +116,7 @@ export const analyticsQueries = {
     }
 
     // Only admins can view cost analytics
-    if (context.user.role !== 'ADMIN' && context.user.role !== 'SUPER_ADMIN') {
+    if (context.user.systemRole !== 'SYSTEM_ADMIN') {
       throw new GraphQLError('Insufficient permissions', {
         extensions: { code: 'FORBIDDEN' },
       });

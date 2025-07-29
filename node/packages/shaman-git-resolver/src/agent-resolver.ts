@@ -11,14 +11,15 @@ import { resolve } from 'path';
 
 const projectsDir = resolve(homedir(), 'projects/shaman');
 
-export async function resolveAgents(repoUrl: string, branch: string = 'main'): Promise<GitAgent[]> {
-  let repository = await getAgentRepositoryByUrlAndBranch(repoUrl, branch);
+export async function resolveAgents(repoUrl: string, branch: string = 'main', orgId: string = 'system', userId: string = 'system'): Promise<GitAgent[]> {
+  let repository = await getAgentRepositoryByUrlAndBranch(repoUrl, branch, orgId);
   
   if (!repository) {
     // Extract repository name from URL
     const repoName = repoUrl.split('/').pop()?.replace('.git', '') || 'unnamed-repo';
     
     const newRepo: Omit<AgentRepository, 'id' | 'createdAt' | 'updatedAt'> = {
+      orgId: orgId,
       name: `${repoName}-${branch}`,
       gitUrl: repoUrl,
       branch: branch,
@@ -26,7 +27,8 @@ export async function resolveAgents(repoUrl: string, branch: string = 'main'): P
       lastSyncCommitHash: null,
       lastSyncAt: null,
       lastSyncStatus: 'NEVER_SYNCED',
-      lastSyncErrors: null
+      lastSyncErrors: null,
+      createdBy: userId
     };
     repository = await saveAgentRepository(newRepo);
   }

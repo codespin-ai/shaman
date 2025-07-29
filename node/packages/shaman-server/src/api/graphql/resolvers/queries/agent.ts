@@ -30,7 +30,13 @@ export const agentQueries = {
     }
 
     // For now, use the git agent lookup directly
-    const gitResult = await getGitAgentByName(args.name);
+    if (!context.user.currentOrgId) {
+      throw new GraphQLError('No organization selected', {
+        extensions: { code: 'NO_ORGANIZATION' },
+      });
+    }
+    const orgId = context.user.currentOrgId;
+    const gitResult = await getGitAgentByName(args.name, orgId);
     if (!gitResult.success) {
       if (gitResult.error.message.includes('not found')) {
         return null;
@@ -98,7 +104,13 @@ export const agentQueries = {
       });
     }
 
-    const result = await getGitAgentByName(args.name);
+    if (!context.user.currentOrgId) {
+      throw new GraphQLError('No organization selected', {
+        extensions: { code: 'NO_ORGANIZATION' },
+      });
+    }
+    const orgId = context.user.currentOrgId;
+    const result = await getGitAgentByName(args.name, orgId);
     if (!result.success) {
       if (result.error.message.includes('not found')) {
         return null;
@@ -155,7 +167,13 @@ export const agentQueries = {
 
     // If repository filter is provided, use optimized query
     if (args.filters?.repositoryName) {
-      const result = await getGitAgentsByRepository(args.filters.repositoryName, limit, offset);
+      if (!context.user.currentOrgId) {
+        throw new GraphQLError('No organization selected', {
+          extensions: { code: 'NO_ORGANIZATION' },
+        });
+      }
+      const orgId = context.user.currentOrgId;
+      const result = await getGitAgentsByRepository(args.filters.repositoryName, orgId, limit, offset);
       if (!result.success) {
         logger.error('Failed to fetch Git agents by repository', { 
           error: result.error,
@@ -172,7 +190,13 @@ export const agentQueries = {
     }
 
     // Otherwise use search
-    const result = await searchGitAgents({
+    if (!context.user.currentOrgId) {
+      throw new GraphQLError('No organization selected', {
+        extensions: { code: 'NO_ORGANIZATION' },
+      });
+    }
+    const orgId = context.user.currentOrgId;
+    const result = await searchGitAgents(orgId, {
       tags: args.filters?.tags,
       hasAllowedAgents: args.filters?.hasAllowedAgents,
       lastModifiedAfter: args.filters?.lastModifiedAfter,

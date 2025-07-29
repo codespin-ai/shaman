@@ -11,6 +11,7 @@ import { db } from './db.js';
  */
 type AgentRepositoryDbRow = {
   id: number;
+  org_id: string;
   name: string;
   git_url: string;
   branch: string;
@@ -19,6 +20,7 @@ type AgentRepositoryDbRow = {
   last_sync_at: Date | null;
   last_sync_status: string;
   last_sync_errors: unknown;
+  created_by: string;
   created_at: Date;
   updated_at: Date;
 };
@@ -29,6 +31,7 @@ type AgentRepositoryDbRow = {
 function mapAgentRepositoryFromDb(row: AgentRepositoryDbRow): AgentRepository {
   return {
     id: row.id,
+    orgId: row.org_id,
     name: row.name,
     gitUrl: row.git_url,
     branch: row.branch,
@@ -37,6 +40,7 @@ function mapAgentRepositoryFromDb(row: AgentRepositoryDbRow): AgentRepository {
     lastSyncAt: row.last_sync_at,
     lastSyncStatus: row.last_sync_status as AgentRepository['lastSyncStatus'],
     lastSyncErrors: row.last_sync_errors as Record<string, unknown> | null,
+    createdBy: row.created_by,
     createdAt: row.created_at,
     updatedAt: row.updated_at
   };
@@ -47,6 +51,7 @@ function mapAgentRepositoryFromDb(row: AgentRepositoryDbRow): AgentRepository {
  */
 function mapAgentRepositoryToDb(repo: Omit<AgentRepository, 'id' | 'createdAt' | 'updatedAt'>): Omit<AgentRepositoryDbRow, 'id' | 'created_at' | 'updated_at'> {
   return {
+    org_id: repo.orgId,
     name: repo.name,
     git_url: repo.gitUrl,
     branch: repo.branch,
@@ -54,7 +59,8 @@ function mapAgentRepositoryToDb(repo: Omit<AgentRepository, 'id' | 'createdAt' |
     last_sync_commit_hash: repo.lastSyncCommitHash,
     last_sync_at: repo.lastSyncAt,
     last_sync_status: repo.lastSyncStatus,
-    last_sync_errors: repo.lastSyncErrors
+    last_sync_errors: repo.lastSyncErrors,
+    created_by: repo.createdBy
   };
 }
 
@@ -64,34 +70,34 @@ export async function saveAgentRepository(
   const dbData = mapAgentRepositoryToDb(repository);
   const result = await db.one<AgentRepositoryDbRow>(
     `INSERT INTO agent_repository 
-     (name, git_url, branch, is_root, last_sync_commit_hash, last_sync_at, last_sync_status, last_sync_errors) 
-     VALUES ($(name), $(git_url), $(branch), $(is_root), $(last_sync_commit_hash), $(last_sync_at), $(last_sync_status), $(last_sync_errors)) 
+     (org_id, name, git_url, branch, is_root, last_sync_commit_hash, last_sync_at, last_sync_status, last_sync_errors, created_by) 
+     VALUES ($(org_id), $(name), $(git_url), $(branch), $(is_root), $(last_sync_commit_hash), $(last_sync_at), $(last_sync_status), $(last_sync_errors), $(created_by)) 
      RETURNING *`,
     dbData
   );
   return mapAgentRepositoryFromDb(result);
 }
 
-export async function getAgentRepository(id: number): Promise<AgentRepository | null> {
+export async function getAgentRepository(id: number, orgId: string): Promise<AgentRepository | null> {
   const result = await db.oneOrNone<AgentRepositoryDbRow>(
-    `SELECT * FROM agent_repository WHERE id = $(id)`,
-    { id }
+    `SELECT * FROM agent_repository WHERE id = $(id) AND org_id = $(orgId)`,
+    { id, orgId }
   );
   return result ? mapAgentRepositoryFromDb(result) : null;
 }
 
-export async function getAgentRepositoryByUrl(gitUrl: string): Promise<AgentRepository | null> {
+export async function getAgentRepositoryByUrl(gitUrl: string, orgId: string): Promise<AgentRepository | null> {
   const result = await db.oneOrNone<AgentRepositoryDbRow>(
-    `SELECT * FROM agent_repository WHERE git_url = $(gitUrl)`,
-    { gitUrl }
+    `SELECT * FROM agent_repository WHERE git_url = $(gitUrl) AND org_id = $(orgId)`,
+    { gitUrl, orgId }
   );
   return result ? mapAgentRepositoryFromDb(result) : null;
 }
 
-export async function getAgentRepositoryByUrlAndBranch(gitUrl: string, branch: string): Promise<AgentRepository | null> {
+export async function getAgentRepositoryByUrlAndBranch(gitUrl: string, branch: string, orgId: string): Promise<AgentRepository | null> {
   const result = await db.oneOrNone<AgentRepositoryDbRow>(
-    `SELECT * FROM agent_repository WHERE git_url = $(gitUrl) AND branch = $(branch)`,
-    { gitUrl, branch }
+    `SELECT * FROM agent_repository WHERE git_url = $(gitUrl) AND branch = $(branch) AND org_id = $(orgId)`,
+    { gitUrl, branch, orgId }
   );
   return result ? mapAgentRepositoryFromDb(result) : null;
 }
@@ -117,9 +123,10 @@ export async function deleteAgentRepository(id: number): Promise<boolean> {
   return result.rowCount > 0;
 }
 
-export async function getAllAgentRepositories(): Promise<AgentRepository[]> {
+export async function getAllAgentRepositories(orgId: string): Promise<AgentRepository[]> {
   const result = await db.any<AgentRepositoryDbRow>(
-    `SELECT * FROM agent_repository ORDER BY name`
+    `SELECT * FROM agent_repository WHERE org_id = $(orgId) ORDER BY name`,
+    { orgId }
   );
   return result.map(mapAgentRepositoryFromDb);
 }
