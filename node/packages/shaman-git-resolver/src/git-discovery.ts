@@ -1,7 +1,7 @@
 import type { GitAgent, AgentRepository } from '@codespin/shaman-types';
 import { getDb } from '@codespin/shaman-db';
-import { saveGitAgent, getGitAgentsByRepositoryId, updateGitAgent, deleteGitAgent } from './persistence/git-agent.js';
-import { updateAgentRepository } from './persistence/agent-repository.js';
+import { saveGitAgent, getGitAgentsByRepositoryId, updateGitAgent, deleteGitAgent } from './domain/git-agent/index.js';
+import { updateAgentRepository } from './domain/agent-repository/index.js';
 import fs from 'fs';
 import { join } from 'path';
 import { glob } from 'glob';

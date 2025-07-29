@@ -8,6 +8,6 @@ export * from './agent-resolver.js';
 export * from './git-manager.js';
 export * from './agent-discovery.js';
 
-// Export persistence functions for other packages that might need them
-export * from './persistence/agent-repository.js';
-export * from './persistence/git-agent.js';
+// Export domain functions for other packages that might need them
+export * from './domain/agent-repository/index.js';
+export * from './domain/git-agent/index.js';

@@ -8,5 +8,5 @@ export * from './types.js';
 export * from './tool-router.js';
 export { PLATFORM_TOOL_DEFINITIONS } from './platform-tools.js';
 
-// Export persistence functions
-export * from './persistence/workflow-data.js';
+// Export domain functions
+export * from './domain/workflow-data/index.js';

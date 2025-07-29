@@ -3,7 +3,7 @@ import {
   saveAgentRepository,
   getAgentRepositoryByUrlAndBranch,
   updateAgentRepository
-} from './persistence/agent-repository.js';
+} from './domain/agent-repository/index.js';
 import type { AgentRepository, GitAgent } from '@codespin/shaman-types';
 import { updateGitAgents, discoverAgentsFromBranch } from './git-discovery.js';
 import * as fs from 'fs';
