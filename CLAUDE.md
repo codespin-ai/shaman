@@ -221,10 +221,10 @@ function mapAgentRepositoryFromDb(row: AgentRepositoryDbRow): AgentRepository {
   };
 }
 
-// ✅ Good - Type-safe queries with explicit type parameters
+// ✅ Good - Type-safe queries with explicit type parameters and named parameters
 const result = await db.one<AgentRepositoryDbRow>(
-  `SELECT * FROM agent_repository WHERE id = $1`,
-  [id]
+  `SELECT * FROM agent_repository WHERE id = $(id)`,
+  { id }
 );
 return mapAgentRepositoryFromDb(result);
 ```

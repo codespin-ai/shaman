@@ -72,27 +72,25 @@ export async function saveGitAgent(agent: Omit<GitAgent, 'id' | 'createdAt' | 'u
   const result = await db.one<GitAgentDbRow>(
     `INSERT INTO git_agent 
      (agent_repository_id, name, description, version, file_path, model, providers, mcp_servers, allowed_agents, tags, last_modified_commit_hash) 
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) 
+     VALUES ($(agent_repository_id), $(name), $(description), $(version), $(file_path), $(model), $(providers), $(mcp_servers), $(allowed_agents), $(tags), $(last_modified_commit_hash)) 
      RETURNING *`,
-    [dbData.agent_repository_id, dbData.name, dbData.description, dbData.version, dbData.file_path, 
-     dbData.model, dbData.providers, dbData.mcp_servers, dbData.allowed_agents, dbData.tags, 
-     dbData.last_modified_commit_hash]
+    dbData
   );
   return mapGitAgentFromDb(result);
 }
 
 export async function getGitAgent(id: number): Promise<GitAgent | null> {
   const result = await db.oneOrNone<GitAgentDbRow>(
-    `SELECT * FROM git_agent WHERE id = $1`,
-    [id]
+    `SELECT * FROM git_agent WHERE id = $(id)`,
+    { id }
   );
   return result ? mapGitAgentFromDb(result) : null;
 }
 
 export async function getGitAgentsByRepositoryId(agentRepositoryId: number): Promise<GitAgent[]> {
   const result = await db.any<GitAgentDbRow>(
-    `SELECT * FROM git_agent WHERE agent_repository_id = $1`,
-    [agentRepositoryId]
+    `SELECT * FROM git_agent WHERE agent_repository_id = $(agentRepositoryId)`,
+    { agentRepositoryId }
   );
   return result.map(mapGitAgentFromDb);
 }
@@ -100,21 +98,20 @@ export async function getGitAgentsByRepositoryId(agentRepositoryId: number): Pro
 export async function updateGitAgent(agent: GitAgent): Promise<GitAgent> {
   const result = await db.one<GitAgentDbRow>(
     `UPDATE git_agent 
-     SET agent_repository_id = $2, name = $3, description = $4, version = $5, file_path = $6, 
-         model = $7, providers = $8, mcp_servers = $9, allowed_agents = $10, tags = $11, 
-         last_modified_commit_hash = $12, updated_at = CURRENT_TIMESTAMP
-     WHERE id = $1
+     SET agent_repository_id = $(agentRepositoryId), name = $(name), description = $(description), version = $(version), file_path = $(filePath), 
+         model = $(model), providers = $(providers), mcp_servers = $(mcpServers), allowed_agents = $(allowedAgents), tags = $(tags), 
+         last_modified_commit_hash = $(lastModifiedCommitHash), updated_at = CURRENT_TIMESTAMP
+     WHERE id = $(id)
      RETURNING *`,
-    [agent.id, agent.agentRepositoryId, agent.name, agent.description, agent.version, agent.filePath, 
-     agent.model, agent.providers, agent.mcpServers, agent.allowedAgents, agent.tags, agent.lastModifiedCommitHash]
+    agent
   );
   return mapGitAgentFromDb(result);
 }
 
 export async function deleteGitAgent(id: number): Promise<boolean> {
   const result = await db.result(
-    'DELETE FROM git_agent WHERE id = $1',
-    [id]
+    'DELETE FROM git_agent WHERE id = $(id)',
+    { id }
   );
   return result.rowCount > 0;
 }

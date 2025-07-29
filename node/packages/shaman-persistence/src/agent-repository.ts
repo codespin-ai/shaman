@@ -65,34 +65,33 @@ export async function saveAgentRepository(
   const result = await db.one<AgentRepositoryDbRow>(
     `INSERT INTO agent_repository 
      (name, git_url, branch, is_root, last_sync_commit_hash, last_sync_at, last_sync_status, last_sync_errors) 
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8) 
+     VALUES ($(name), $(git_url), $(branch), $(is_root), $(last_sync_commit_hash), $(last_sync_at), $(last_sync_status), $(last_sync_errors)) 
      RETURNING *`,
-    [dbData.name, dbData.git_url, dbData.branch, dbData.is_root, 
-     dbData.last_sync_commit_hash, dbData.last_sync_at, dbData.last_sync_status, dbData.last_sync_errors]
+    dbData
   );
   return mapAgentRepositoryFromDb(result);
 }
 
 export async function getAgentRepository(id: number): Promise<AgentRepository | null> {
   const result = await db.oneOrNone<AgentRepositoryDbRow>(
-    `SELECT * FROM agent_repository WHERE id = $1`,
-    [id]
+    `SELECT * FROM agent_repository WHERE id = $(id)`,
+    { id }
   );
   return result ? mapAgentRepositoryFromDb(result) : null;
 }
 
 export async function getAgentRepositoryByUrl(gitUrl: string): Promise<AgentRepository | null> {
   const result = await db.oneOrNone<AgentRepositoryDbRow>(
-    `SELECT * FROM agent_repository WHERE git_url = $1`,
-    [gitUrl]
+    `SELECT * FROM agent_repository WHERE git_url = $(gitUrl)`,
+    { gitUrl }
   );
   return result ? mapAgentRepositoryFromDb(result) : null;
 }
 
 export async function getAgentRepositoryByUrlAndBranch(gitUrl: string, branch: string): Promise<AgentRepository | null> {
   const result = await db.oneOrNone<AgentRepositoryDbRow>(
-    `SELECT * FROM agent_repository WHERE git_url = $1 AND branch = $2`,
-    [gitUrl, branch]
+    `SELECT * FROM agent_repository WHERE git_url = $(gitUrl) AND branch = $(branch)`,
+    { gitUrl, branch }
   );
   return result ? mapAgentRepositoryFromDb(result) : null;
 }
@@ -100,21 +99,20 @@ export async function getAgentRepositoryByUrlAndBranch(gitUrl: string, branch: s
 export async function updateAgentRepository(repository: AgentRepository): Promise<AgentRepository> {
   const result = await db.one<AgentRepositoryDbRow>(
     `UPDATE agent_repository 
-     SET name = $2, git_url = $3, branch = $4, is_root = $5, 
-         last_sync_commit_hash = $6, last_sync_at = $7, last_sync_status = $8, last_sync_errors = $9,
+     SET name = $(name), git_url = $(gitUrl), branch = $(branch), is_root = $(isRoot), 
+         last_sync_commit_hash = $(lastSyncCommitHash), last_sync_at = $(lastSyncAt), last_sync_status = $(lastSyncStatus), last_sync_errors = $(lastSyncErrors),
          updated_at = CURRENT_TIMESTAMP
-     WHERE id = $1
+     WHERE id = $(id)
      RETURNING *`,
-    [repository.id, repository.name, repository.gitUrl, repository.branch, repository.isRoot,
-     repository.lastSyncCommitHash, repository.lastSyncAt, repository.lastSyncStatus, repository.lastSyncErrors]
+    repository
   );
   return mapAgentRepositoryFromDb(result);
 }
 
 export async function deleteAgentRepository(id: number): Promise<boolean> {
   const result = await db.result(
-    'DELETE FROM agent_repository WHERE id = $1',
-    [id]
+    'DELETE FROM agent_repository WHERE id = $(id)',
+    { id }
   );
   return result.rowCount > 0;
 }
