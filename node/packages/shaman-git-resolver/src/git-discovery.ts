@@ -1,5 +1,7 @@
 import type { GitAgent, AgentRepository } from '@codespin/shaman-types';
-import { saveGitAgent, getGitAgentsByRepositoryId, updateGitAgent, deleteGitAgent, updateAgentRepository } from '@codespin/shaman-persistence';
+import { getDb } from '@codespin/shaman-db';
+import { saveGitAgent, getGitAgentsByRepositoryId, updateGitAgent, deleteGitAgent } from './persistence/git-agent.js';
+import { updateAgentRepository } from './persistence/agent-repository.js';
 import fs from 'fs';
 import { join } from 'path';
 import { glob } from 'glob';
@@ -11,6 +13,7 @@ import { promisify } from 'util';
 const execAsync = promisify(exec);
 
 export async function updateGitAgents(repository: AgentRepository, localPath: string, branch: string = 'main'): Promise<GitAgent[]> {
+  const db = getDb();
   // First ensure the local repo is up to date
   await ensureLocalRepo(repository.gitUrl, localPath, branch);
   
@@ -20,14 +23,14 @@ export async function updateGitAgents(repository: AgentRepository, localPath: st
   // If the commit hash hasn't changed, return cached agents from DB
   if (repository.lastSyncCommitHash === currentCommitHash) {
     // Repository hasn't changed, using cached agents
-    return await getGitAgentsByRepositoryId(repository.id);
+    return await getGitAgentsByRepositoryId(db, repository.id);
   }
 
   // Find all agent files
   const agentFiles = await findAgentFiles(localPath);
   const agentsWithHashes = await parseAgentFilesWithCommitHashes(agentFiles, localPath, branch);
   
-  const existingAgents = await getGitAgentsByRepositoryId(repository.id);
+  const existingAgents = await getGitAgentsByRepositoryId(db, repository.id);
   const result: GitAgent[] = [];
   const processedFilePaths = new Set<string>();
   
@@ -40,7 +43,7 @@ export async function updateGitAgents(repository: AgentRepository, localPath: st
       if (existing.lastModifiedCommitHash !== agentData.lastModifiedCommitHash) {
         // Updating agent - file changed
         const updated = { ...existing, ...agentData, agentRepositoryId: repository.id };
-        const savedAgent = await updateGitAgent(updated);
+        const savedAgent = await updateGitAgent(db, updated);
         result.push(savedAgent);
       } else {
 
@@ -49,7 +52,7 @@ export async function updateGitAgents(repository: AgentRepository, localPath: st
     } else {
 
       const newAgent = { ...agentData, agentRepositoryId: repository.id };
-      const savedAgent = await saveGitAgent(newAgent);
+      const savedAgent = await saveGitAgent(db, newAgent);
       result.push(savedAgent);
     }
   }
@@ -58,12 +61,12 @@ export async function updateGitAgents(repository: AgentRepository, localPath: st
   for (const existing of existingAgents) {
     if (!processedFilePaths.has(existing.filePath)) {
 
-      await deleteGitAgent(existing.id);
+      await deleteGitAgent(db, existing.id);
     }
   }
   
   // Update the repository's last sync commit hash
-  await updateAgentRepository({
+  await updateAgentRepository(db, {
     ...repository,
     lastSyncCommitHash: currentCommitHash,
     lastSyncAt: new Date(),

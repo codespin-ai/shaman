@@ -9,10 +9,10 @@ import type { ExternalAgent } from '@codespin/shaman-core/dist/types/agent.js';
 import type { Result } from '@codespin/shaman-core/dist/types/result.js';
 import { success, failure } from '@codespin/shaman-core/dist/types/result.js';
 import { createLogger } from '@codespin/shaman-logger';
+import { getDb } from '@codespin/shaman-db';
 
 import { fetchAgentsFromRegistry } from '@codespin/shaman-external-registry';
-import { getAllGitAgents } from '@codespin/shaman-persistence';
-import { resolveAgents } from '@codespin/shaman-git-resolver';
+import { resolveAgents, getAllGitAgents } from '@codespin/shaman-git-resolver';
 import type { 
   UnifiedAgent, 
   AgentSearchOptions, 
@@ -35,7 +35,8 @@ export async function getAllAgents(
     // Get agents from git repositories
     if (options.source === 'git' || options.source === 'all' || !options.source) {
       try {
-        const gitAgents = await getAllGitAgents();
+        const db = getDb();
+        const gitAgents = await getAllGitAgents(db);
         
         // Filter by repository if specified
         const filteredGitAgents = options.repository
@@ -243,7 +244,8 @@ async function resolveFromGit(
 ): Promise<AgentResolution | null> {
   try {
     // Get all git agents from the database
-    const gitAgents = await getAllGitAgents();
+    const db = getDb();
+    const gitAgents = await getAllGitAgents(db);
     
     // Find agent by name
     const agent = gitAgents.find((a: GitAgent) => a.name === agentName);

@@ -12,6 +12,7 @@ Shaman is a comprehensive backend framework for managing and coordinating AI age
 6. [**Multi-Tenancy Architecture**](./06-multi-tenancy.md) - ⭐ **New** - Organization-based isolation and multi-tenant features
 7. [**Tool Execution Guide**](./06-tool-execution-guide.md) - Comprehensive guide to sync/async tool execution with context retention
 8. [**Workflow Engine Adapters**](./07-workflow-engine-adapters.md) - Engine-agnostic adapters for Temporal, BullMQ, and custom engines
+9. [**Database Schema**](./08-database-schema.md) - ⭐ **New** - Complete database schema documentation with multi-tenancy
 
 ## What's New in This Architecture
 

@@ -2,6 +2,7 @@
  * Adapter to map GraphQL resolver needs to actual persistence functions
  */
 
+import { getDb } from '@codespin/shaman-db';
 import { 
   getAgentRepository,
   getAllAgentRepositories as getRepos,
@@ -10,19 +11,24 @@ import {
   deleteAgentRepository as deleteRepo,
   getGitAgentsByRepositoryId,
   getAllGitAgents,
+} from '@codespin/shaman-git-resolver';
+import {
   getRun,
   listRuns,
   getRunsNeedingInput as getRuns,
   createRun as createNewRun,
   updateRun,
   getStep,
-} from '@codespin/shaman-persistence';
+} from '@codespin/shaman-agent-executor';
 import type { Result } from '@codespin/shaman-core';
 import type { User } from './types.js';
 import type { AgentRepository, GitAgent, Run, Step, ExecutionState } from '@codespin/shaman-types';
 
-// Re-export getAllAgentRepositories
-export const getAllAgentRepositories = getRepos;
+// Re-export getAllAgentRepositories with db
+export const getAllAgentRepositories = (orgId: string) => {
+  const db = getDb();
+  return getRepos(db, orgId);
+};
 
 // User management (stubs for now)
 export async function getUserById(_id: string): Promise<Result<User>> {
@@ -78,7 +84,8 @@ export async function createAgentRepository(data: Partial<AgentRepository>): Pro
       lastSyncErrors: null,
       createdBy: data.createdBy || '',
     };
-    const repo = await saveAgentRepository(repoData);
+    const db = getDb();
+    const repo = await saveAgentRepository(db, repoData);
     return { success: true, data: repo };
   } catch (error) {
     return { success: false, error: error as Error };
@@ -99,7 +106,8 @@ export async function updateAgentRepository(name: string, orgId: string, data: P
       ...data,
       id: repo.id, // Ensure ID doesn't get overwritten
     };
-    const updated = await updateRepo(updatedRepo);
+    const db = getDb();
+    const updated = await updateRepo(db, updatedRepo);
     return { success: true, data: updated };
   } catch (error) {
     return { success: false, error: error as Error };
@@ -113,13 +121,15 @@ export async function deleteAgentRepository(name: string, orgId: string): Promis
     return { success: false, error: new Error('Repository not found') };
   }
   
-  const deleted = await deleteRepo(repo.id);
+  const db = getDb();
+  const deleted = await deleteRepo(db, repo.id);
   return { success: true, data: deleted };
 }
 
 // Git agent adapters
 export async function getGitAgentByName(name: string, orgId: string): Promise<Result<GitAgent>> {
-  const agents = await getAllGitAgents(orgId);
+  const db = getDb();
+  const agents = await getAllGitAgents(db, orgId);
   const agent = agents.find(a => a.name === name);
   return agent
     ? { success: true, data: agent }
@@ -133,7 +143,8 @@ export async function getGitAgentsByRepository(repoName: string, orgId: string, 
     return { success: true, data: [] };
   }
   
-  const agents = await getGitAgentsByRepositoryId(repo.id);
+  const db = getDb();
+  const agents = await getGitAgentsByRepositoryId(db, repo.id);
   // Apply limit and offset
   const paged = agents.slice(offset, offset + limit);
   return { success: true, data: paged };
@@ -141,21 +152,24 @@ export async function getGitAgentsByRepository(repoName: string, orgId: string, 
 
 export async function searchGitAgents(orgId: string, filters: Record<string, unknown>, limit: number, offset: number): Promise<Result<GitAgent[]>> {
   // TODO: Implement filtering
-  const agents = await getAllGitAgents(orgId);
+  const db = getDb();
+  const agents = await getAllGitAgents(db, orgId);
   const paged = agents.slice(offset, offset + limit);
   return { success: true, data: paged };
 }
 
 // Run management adapters
 export async function getRunById(id: string, orgId: string): Promise<Result<Run>> {
-  const run = await getRun(id, orgId);
+  const db = getDb();
+  const run = await getRun(db, id, orgId);
   return run
     ? { success: true, data: run }
     : { success: false, error: new Error('Run not found') };
 }
 
 export async function getRunsByUser(orgId: string, userId?: string, limit?: number, offset?: number): Promise<Result<Run[]>> {
-  const runs = await listRuns(orgId, {
+  const db = getDb();
+  const runs = await listRuns(db, orgId, {
     createdBy: userId,
     limit,
     offset,
@@ -164,7 +178,8 @@ export async function getRunsByUser(orgId: string, userId?: string, limit?: numb
 }
 
 export async function getRunsNeedingInput(orgId: string, userId?: string, limit?: number): Promise<Result<Run[]>> {
-  const runs = await getRuns(orgId, limit);
+  const db = getDb();
+  const runs = await getRuns(db, orgId, limit);
   // TODO: Filter by userId if provided
   return { success: true, data: runs };
 }
@@ -184,7 +199,8 @@ export async function createRun(data: Partial<Run>): Promise<Result<Run>> {
       totalCost: 0,
       totalTokens: 0,
     };
-    const run = await createNewRun(runData);
+    const db = getDb();
+    const run = await createNewRun(db, runData);
     return { success: true, data: run };
   } catch (error) {
     return { success: false, error: error as Error };
@@ -193,7 +209,8 @@ export async function createRun(data: Partial<Run>): Promise<Result<Run>> {
 
 export async function updateRunStatus(runId: string, status: string): Promise<Result<void>> {
   try {
-    await updateRun(runId, { status: status as ExecutionState });
+    const db = getDb();
+    await updateRun(db, runId, { status: status as ExecutionState });
     return { success: true, data: undefined };
   } catch (error) {
     return { success: false, error: error as Error };
@@ -208,7 +225,8 @@ export async function syncRepository(_gitUrl: string, _branch: string): Promise<
 
 // Step management
 export async function getStepById(id: string): Promise<Result<Step>> {
-  const step = await getStep(id);
+  const db = getDb();
+  const step = await getStep(db, id);
   return step
     ? { success: true, data: step }
     : { success: false, error: new Error('Step not found') };
@@ -216,7 +234,8 @@ export async function getStepById(id: string): Promise<Result<Step>> {
 
 // Additional repository management
 export async function getAgentRepositoryById(id: number, orgId: string): Promise<Result<AgentRepository>> {
-  const repo = await getAgentRepository(id, orgId);
+  const db = getDb();
+  const repo = await getAgentRepository(db, id, orgId);
   return repo
     ? { success: true, data: repo }
     : { success: false, error: new Error('Repository not found') };

@@ -3,7 +3,7 @@
  */
 
 import type { WorkflowData, AgentSource } from '@codespin/shaman-types';
-import { db } from './db.js';
+import type { Database } from '@codespin/shaman-db';
 import { v4 as uuidv4 } from 'uuid';
 
 /**
@@ -55,6 +55,7 @@ function mapWorkflowDataToDb(data: Omit<WorkflowData, 'id' | 'createdAt'>): Omit
  * Create a workflow data entry
  */
 export async function createWorkflowData(
+  db: Database,
   data: Omit<WorkflowData, 'id' | 'createdAt'>
 ): Promise<WorkflowData> {
   const id = uuidv4();
@@ -85,6 +86,7 @@ export async function createWorkflowData(
  * Get workflow data by run ID and key
  */
 export async function getWorkflowData(
+  db: Database,
   runId: string,
   key: string
 ): Promise<WorkflowData[]> {
@@ -99,86 +101,35 @@ export async function getWorkflowData(
 }
 
 /**
- * Query workflow data with pattern matching
+ * Get latest workflow data by run ID and key
  */
-export async function queryWorkflowData(
+export async function getLatestWorkflowData(
+  db: Database,
   runId: string,
-  pattern: string,
-  limit?: number
-): Promise<WorkflowData[]> {
-  // Convert simple wildcards to SQL LIKE pattern
-  const sqlPattern = pattern
-    .replace(/\*/g, '%')
-    .replace(/\?/g, '_');
+  key: string
+): Promise<WorkflowData | null> {
+  const result = await db.oneOrNone<WorkflowDataDbRow>(
+    `SELECT * FROM workflow_data 
+     WHERE run_id = $(runId) AND key = $(key)
+     ORDER BY created_at DESC
+     LIMIT 1`,
+    { runId, key }
+  );
   
-  const query = `
-    SELECT * FROM workflow_data 
-    WHERE run_id = $(runId) AND key LIKE $(pattern)
-    ORDER BY created_at DESC
-    ${limit ? 'LIMIT $(limit)' : ''}
-  `;
-  
-  const results = await db.manyOrNone<WorkflowDataDbRow>(query, {
-    runId,
-    pattern: sqlPattern,
-    limit
-  });
-  
-  return results.map(mapWorkflowDataFromDb);
-}
-
-/**
- * List workflow data keys with aggregation
- */
-export async function listWorkflowDataKeys(
-  runId: string,
-  filters?: {
-    agentName?: string;
-    prefix?: string;
-  }
-): Promise<Array<{ key: string; count: number; agents: string[] }>> {
-  let query = `
-    SELECT 
-      key,
-      COUNT(*)::int as count,
-      ARRAY_AGG(DISTINCT created_by_agent_name) as agents
-    FROM workflow_data
-    WHERE run_id = $(runId)
-  `;
-  
-  const params: Record<string, unknown> = { runId };
-  
-  if (filters?.agentName) {
-    query += ` AND created_by_agent_name = $(agentName)`;
-    params.agentName = filters.agentName;
-  }
-  
-  if (filters?.prefix) {
-    query += ` AND key LIKE $(prefix)`;
-    params.prefix = filters.prefix + '%';
-  }
-  
-  query += ` GROUP BY key ORDER BY key`;
-  
-  const results = await db.manyOrNone<{ key: string; count: string; agents: string[] }>(query, params);
-  
-  return results.map(row => ({
-    key: row.key,
-    count: parseInt(row.count, 10),
-    agents: row.agents
-  }));
+  return result ? mapWorkflowDataFromDb(result) : null;
 }
 
 /**
  * Get all workflow data for a run
  */
 export async function getAllWorkflowData(
+  db: Database,
   runId: string
 ): Promise<WorkflowData[]> {
   const results = await db.manyOrNone<WorkflowDataDbRow>(
     `SELECT * FROM workflow_data 
      WHERE run_id = $(runId)
-     ORDER BY created_at ASC`,
+     ORDER BY created_at DESC`,
     { runId }
   );
   
@@ -186,15 +137,54 @@ export async function getAllWorkflowData(
 }
 
 /**
- * Delete workflow data for a run (cleanup)
+ * Query workflow data by pattern
  */
-export async function deleteWorkflowData(
-  runId: string
-): Promise<number> {
-  const result = await db.result(
-    `DELETE FROM workflow_data WHERE run_id = $(runId)`,
-    { runId }
+export async function queryWorkflowData(
+  db: Database,
+  runId: string,
+  keyPattern: string
+): Promise<WorkflowData[]> {
+  const results = await db.manyOrNone<WorkflowDataDbRow>(
+    `SELECT * FROM workflow_data 
+     WHERE run_id = $(runId) AND key LIKE $(keyPattern)
+     ORDER BY created_at DESC`,
+    { runId, keyPattern }
   );
   
-  return result.rowCount;
+  return results.map(mapWorkflowDataFromDb);
+}
+
+/**
+ * Get workflow data by step ID
+ */
+export async function getWorkflowDataByStep(
+  db: Database,
+  stepId: string
+): Promise<WorkflowData[]> {
+  const results = await db.manyOrNone<WorkflowDataDbRow>(
+    `SELECT * FROM workflow_data 
+     WHERE created_by_step_id = $(stepId)
+     ORDER BY created_at DESC`,
+    { stepId }
+  );
+  
+  return results.map(mapWorkflowDataFromDb);
+}
+
+/**
+ * Get workflow data by agent
+ */
+export async function getWorkflowDataByAgent(
+  db: Database,
+  runId: string,
+  agentName: string
+): Promise<WorkflowData[]> {
+  const results = await db.manyOrNone<WorkflowDataDbRow>(
+    `SELECT * FROM workflow_data 
+     WHERE run_id = $(runId) AND created_by_agent_name = $(agentName)
+     ORDER BY created_at DESC`,
+    { runId, agentName }
+  );
+  
+  return results.map(mapWorkflowDataFromDb);
 }

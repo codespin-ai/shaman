@@ -30,7 +30,7 @@
     "@codespin/shaman-llm-vercel": "file:../shaman-llm-vercel",
     "@codespin/shaman-logger": "file:../shaman-logger",
     "@codespin/shaman-observability": "file:../shaman-observability",
-    "@codespin/shaman-persistence": "file:../shaman-persistence",
+    "@codespin/shaman-db": "file:../shaman-db",
     "@codespin/shaman-security": "file:../shaman-security",
     "@codespin/shaman-tool-router": "file:../shaman-tool-router",
     "@codespin/shaman-types": "file:../shaman-types",

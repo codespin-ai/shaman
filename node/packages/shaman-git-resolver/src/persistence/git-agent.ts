@@ -3,7 +3,7 @@
  */
 
 import type { GitAgent } from '@codespin/shaman-types';
-import { db } from './db.js';
+import type { Database } from '@codespin/shaman-db';
 
 /**
  * Database row type for git_agent table
@@ -67,7 +67,7 @@ function mapGitAgentToDb(agent: Omit<GitAgent, 'id' | 'createdAt' | 'updatedAt'>
   };
 }
 
-export async function saveGitAgent(agent: Omit<GitAgent, 'id' | 'createdAt' | 'updatedAt'>): Promise<GitAgent> {
+export async function saveGitAgent(db: Database, agent: Omit<GitAgent, 'id' | 'createdAt' | 'updatedAt'>): Promise<GitAgent> {
   const dbData = mapGitAgentToDb(agent);
   const result = await db.one<GitAgentDbRow>(
     `INSERT INTO git_agent 
@@ -79,7 +79,7 @@ export async function saveGitAgent(agent: Omit<GitAgent, 'id' | 'createdAt' | 'u
   return mapGitAgentFromDb(result);
 }
 
-export async function getGitAgent(id: number): Promise<GitAgent | null> {
+export async function getGitAgent(db: Database, id: number): Promise<GitAgent | null> {
   const result = await db.oneOrNone<GitAgentDbRow>(
     `SELECT * FROM git_agent WHERE id = $(id)`,
     { id }
@@ -87,7 +87,7 @@ export async function getGitAgent(id: number): Promise<GitAgent | null> {
   return result ? mapGitAgentFromDb(result) : null;
 }
 
-export async function getGitAgentsByRepositoryId(agentRepositoryId: number): Promise<GitAgent[]> {
+export async function getGitAgentsByRepositoryId(db: Database, agentRepositoryId: number): Promise<GitAgent[]> {
   const result = await db.any<GitAgentDbRow>(
     `SELECT * FROM git_agent WHERE agent_repository_id = $(agentRepositoryId)`,
     { agentRepositoryId }
@@ -95,7 +95,7 @@ export async function getGitAgentsByRepositoryId(agentRepositoryId: number): Pro
   return result.map(mapGitAgentFromDb);
 }
 
-export async function updateGitAgent(agent: GitAgent): Promise<GitAgent> {
+export async function updateGitAgent(db: Database, agent: GitAgent): Promise<GitAgent> {
   const result = await db.one<GitAgentDbRow>(
     `UPDATE git_agent 
      SET agent_repository_id = $(agentRepositoryId), name = $(name), description = $(description), version = $(version), file_path = $(filePath), 
@@ -108,7 +108,7 @@ export async function updateGitAgent(agent: GitAgent): Promise<GitAgent> {
   return mapGitAgentFromDb(result);
 }
 
-export async function deleteGitAgent(id: number): Promise<boolean> {
+export async function deleteGitAgent(db: Database, id: number): Promise<boolean> {
   const result = await db.result(
     'DELETE FROM git_agent WHERE id = $(id)',
     { id }
@@ -116,7 +116,7 @@ export async function deleteGitAgent(id: number): Promise<boolean> {
   return result.rowCount > 0;
 }
 
-export async function getAllGitAgents(orgId?: string): Promise<GitAgent[]> {
+export async function getAllGitAgents(db: Database, orgId?: string): Promise<GitAgent[]> {
   let query = `SELECT ga.* FROM git_agent ga`;
   const params: Record<string, unknown> = {};
   

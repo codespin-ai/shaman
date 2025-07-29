@@ -4,7 +4,7 @@
 
 import { Router } from 'express';
 import { createLogger } from '@codespin/shaman-logger';
-// import { getDb } from '@codespin/shaman-persistence';
+// import { getDb } from '@codespin/shaman-db';
 import type { AuthenticatedRequest } from '../types.js';
 
 const logger = createLogger('HealthCheck');

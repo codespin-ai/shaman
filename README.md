@@ -114,7 +114,7 @@ This is a TypeScript monorepo that deliberately avoids npm workspaces in favor o
 ### Infrastructure
 - `@codespin/shaman-types` - Shared TypeScript types
 - `@codespin/shaman-logger` - Centralized logging
-- `@codespin/shaman-persistence` - Database layer
+- `@codespin/shaman-db` - Database connection management
 - `@codespin/shaman-security` - Auth & RBAC
 - `@codespin/shaman-observability` - Metrics & tracing
 

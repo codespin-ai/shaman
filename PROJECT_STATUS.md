@@ -14,7 +14,7 @@ Shaman is a comprehensive backend framework for managing and coordinating AI age
 4. **shaman-config** - Configuration loading and validation
 5. **shaman-llm-core** - LLM provider interface
 6. **shaman-workflow-core** - Workflow engine abstraction
-7. **shaman-persistence** - Database layer with pg-promise
+7. **shaman-db** - Database connection management only
 8. **shaman-observability** - OpenTelemetry integration
 9. **shaman-llm-vercel** - Vercel AI SDK implementation
 
@@ -131,6 +131,18 @@ When starting a new session:
 
 ## Recent Activity Log
 
+- **Major Architecture Change**: ✅ COMPLETED - Migrated from centralized shaman-persistence to decentralized database pattern
+  - Created new `@codespin/shaman-db` package for database connection management only
+  - Moved persistence functions to their respective packages:
+    - `agent-repository.ts` and `git-agent.ts` → `shaman-git-resolver/src/persistence/`
+    - `run.ts` and `step.ts` → `shaman-agent-executor/src/persistence/`
+    - `workflow-data.ts` → `shaman-tool-router/src/persistence/`
+  - All persistence functions now receive database connection as first parameter
+  - Removed shaman-persistence package completely
+  - Updated all imports and dependencies
+  - Fixed pg-promise ESM import issues
+  - Updated all documentation (README.md, CLAUDE.md, agent.md)
+  - All packages build and lint successfully
 - Fixed ESLint issues in shaman-server (all errors resolved)
 - Converted promise.then() patterns to async/await where possible
 - Created PROJECT_STATUS.md for session continuity

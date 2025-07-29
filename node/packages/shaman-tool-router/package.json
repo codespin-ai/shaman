@@ -19,7 +19,7 @@
     "@codespin/shaman-core": "file:../shaman-core",
     "@codespin/shaman-types": "file:../shaman-types",
     "@codespin/shaman-workflow-core": "file:../shaman-workflow-core",
-    "@codespin/shaman-persistence": "file:../shaman-persistence",
+    "@codespin/shaman-db": "file:../shaman-db",
     "uuid": "^9.0.1"
   },
   "devDependencies": {

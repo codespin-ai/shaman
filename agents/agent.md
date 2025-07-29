@@ -23,8 +23,8 @@ Welcome, Agent. This is your primary operational guide. Adherence to these instr
 The codebase is a NodeJS/TypeScript monorepo located under `/node/packages`. Each package has a single responsibility.
 
 -   **`@codespin/shaman-types`**: Contains shared TypeScript interfaces. **Always start here.**
--   **`@codespin/shaman-persistence`**: Handles all database interactions.
--   **`@codespin/shaman-git-resolver`**: Manages Git-based agent discovery.
+-   **`@codespin/shaman-db`**: Provides database connection management only.
+-   **`@codespin/shaman-git-resolver`**: Manages Git-based agent discovery (includes its own persistence).
 -   **`@codespin/shaman-server`**: The main server application (GraphQL API).
 -   *(Review the full list in this directory for other packages)*
 
@@ -44,14 +44,14 @@ The codebase is a NodeJS/TypeScript monorepo located under `/node/packages`. Eac
     -   Migration files are located in `/database/migrations`.
     -   Use the root `npm run migrate:make` and `npm run migrate:latest` scripts.
 -   **Data Access**: Handled by **`pg-promise`**.
-    -   **Do not use an ORM**. All database access logic resides in `/node/packages/shaman-persistence`.
+    -   **Do not use an ORM**. Database access logic is distributed - each package manages its own persistence in a `src/persistence/` directory.
 
 ### Naming and Coding Conventions
 1.  **TypeScript (`.ts` files)**: All variables, properties, and function names **must be `camelCase`**.
 2.  **Database (SQL files)**: All table and column names **must be `snake_case`**.
 3.  **Table Names**: All database table names **must be singular** (e.g., `agent_repository`, not `agent_repositories`).
 4.  **File Paths**: Module imports/exports **must include the `.js` file extension** (e.g., `from './db.js'`).
-5.  **Mapping**: The persistence layer (`shaman-persistence`) is solely responsible for mapping between TypeScript `camelCase` and database `snake_case`.
+5.  **Mapping**: Each package's persistence layer is responsible for mapping between TypeScript `camelCase` and database `snake_case`.
 
 ## 4. Standard Development Workflow
 
@@ -61,7 +61,7 @@ Follow these steps **in order**:
 2.  **Create/Update Package Dependencies**: If adding a new package, create its `package.json` and update the `package.json` of any package that depends on it using a `file:` reference.
 3.  **Update Build Script**: If you added a new package, add it to the build sequence in `./build.sh`.
 4.  **Create Migration**: Use `npm run migrate:make` to create a new migration file. Define the `snake_case`, singular-named tables and columns here.
-5.  **Implement Persistence Functions**: In `@codespin/shaman-persistence`, create functional modules to interact with the new tables. Handle the `camelCase` to `snake_case` mapping within these functions.
-6.  **Implement Business Logic**: In the appropriate package (e.g., `@codespin/shaman-git-resolver`), import functions from the persistence layer and implement the core feature logic.
+5.  **Implement Persistence Functions**: In the appropriate package (e.g., `@codespin/shaman-git-resolver`), create a `src/persistence/` directory with functional modules to interact with the new tables. Handle the `camelCase` to `snake_case` mapping within these functions. All persistence functions must receive a `Database` connection as their first parameter.
+6.  **Implement Business Logic**: In the same package, import the database connection from `@codespin/shaman-db` and your local persistence functions to implement the core feature logic.
 7.  **Build**: Run `./build.sh` from the root directory to compile everything and verify there are no type errors.
 8.  **Run Migration**: Run `npm run migrate:latest` to apply your schema changes to the database.

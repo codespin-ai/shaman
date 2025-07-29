@@ -4,7 +4,7 @@
 
 import { createLogger } from '@codespin/shaman-logger';
 import { initializeFromConfig } from '@codespin/shaman-observability';
-// import { initDb } from '@codespin/shaman-persistence';
+// import { getDb } from '@codespin/shaman-db';
 import { startServer } from './main.js';
 import type { ServerConfig } from './types.js';
 

@@ -3,7 +3,7 @@
  */
 
 import type { Step, ExecutionState, StepType, AgentSource, Message } from '@codespin/shaman-types';
-import { db } from './db.js';
+import type { Database } from '@codespin/shaman-db';
 
 /**
  * Database row type for step table
@@ -33,9 +33,72 @@ type StepDbRow = {
 };
 
 /**
+ * Map database row to domain type
+ */
+function mapStepFromDb(row: StepDbRow): Step {
+  return {
+    id: row.id,
+    runId: row.run_id,
+    parentStepId: row.parent_step_id || undefined,
+    type: row.type as StepType,
+    status: row.status as ExecutionState,
+    agentName: row.agent_name || undefined,
+    agentSource: row.agent_source ? row.agent_source as AgentSource : undefined,
+    input: row.input || undefined,
+    output: row.output || undefined,
+    error: row.error || undefined,
+    startTime: row.start_time,
+    endTime: row.end_time || undefined,
+    duration: row.duration || undefined,
+    promptTokens: row.prompt_tokens || undefined,
+    completionTokens: row.completion_tokens || undefined,
+    cost: row.cost || undefined,
+    toolName: row.tool_name || undefined,
+    toolCallId: row.tool_call_id || undefined,
+    messages: row.messages as Message[] | undefined,
+    metadata: row.metadata as Record<string, unknown> | undefined
+  };
+}
+
+/**
+ * Map domain type to database row (for inserts/updates)
+ */
+function mapStepToDb(step: Omit<Step, 'id' | 'startTime'> & { id?: string }): Partial<StepDbRow> {
+  return {
+    id: step.id,
+    run_id: step.runId,
+    parent_step_id: step.parentStepId || null,
+    type: step.type,
+    status: step.status,
+    agent_name: step.agentName || null,
+    agent_source: step.agentSource || null,
+    input: step.input || null,
+    output: step.output || null,
+    error: step.error || null,
+    tool_name: step.toolName || null,
+    tool_call_id: step.toolCallId || null,
+    messages: step.messages || null,
+    metadata: step.metadata || null,
+    end_time: step.endTime || null,
+    duration: step.duration || null,
+    prompt_tokens: step.promptTokens || null,
+    completion_tokens: step.completionTokens || null,
+    cost: step.cost || null
+  };
+}
+
+/**
+ * Generate a step ID
+ */
+function generateStepId(): string {
+  return `step-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+}
+
+/**
  * Create a new step
  */
 export async function createStep(
+  db: Database,
   step: Omit<Step, 'id' | 'startTime'> & { id?: string }
 ): Promise<Step> {
   const dbData = mapStepToDb(step);
@@ -70,7 +133,7 @@ export async function createStep(
 /**
  * Get a step by ID
  */
-export async function getStep(id: string): Promise<Step | null> {
+export async function getStep(db: Database, id: string): Promise<Step | null> {
   const result = await db.oneOrNone<StepDbRow>(
     `SELECT * FROM step WHERE id = $(id)`,
     { id }
@@ -83,6 +146,7 @@ export async function getStep(id: string): Promise<Step | null> {
  * Update a step
  */
 export async function updateStep(
+  db: Database,
   id: string,
   updates: Partial<Omit<Step, 'id' | 'runId' | 'parentStepId' | 'type'>>
 ): Promise<Step> {
@@ -153,7 +217,7 @@ export async function updateStep(
 /**
  * Get steps for a run
  */
-export async function getStepsByRun(runId: string): Promise<Step[]> {
+export async function getStepsByRun(db: Database, runId: string): Promise<Step[]> {
   const results = await db.manyOrNone<StepDbRow>(
     `SELECT * FROM step 
      WHERE run_id = $(runId)
@@ -167,7 +231,7 @@ export async function getStepsByRun(runId: string): Promise<Step[]> {
 /**
  * Get child steps
  */
-export async function getChildSteps(parentStepId: string): Promise<Step[]> {
+export async function getChildSteps(db: Database, parentStepId: string): Promise<Step[]> {
   const results = await db.manyOrNone<StepDbRow>(
     `SELECT * FROM step 
      WHERE parent_step_id = $(parentStepId)
@@ -181,7 +245,7 @@ export async function getChildSteps(parentStepId: string): Promise<Step[]> {
 /**
  * Get active steps in a run
  */
-export async function getActiveSteps(runId: string): Promise<Step[]> {
+export async function getActiveSteps(db: Database, runId: string): Promise<Step[]> {
   const results = await db.manyOrNone<StepDbRow>(
     `SELECT * FROM step 
      WHERE run_id = $(runId) 
@@ -197,6 +261,7 @@ export async function getActiveSteps(runId: string): Promise<Step[]> {
  * Get steps by agent
  */
 export async function getStepsByAgent(
+  db: Database,
   runId: string,
   agentName: string
 ): Promise<Step[]> {
@@ -209,66 +274,4 @@ export async function getStepsByAgent(
   );
   
   return results.map(mapStepFromDb);
-}
-
-/**
- * Map domain type to database row (for inserts/updates)
- */
-function mapStepToDb(step: Omit<Step, 'id' | 'startTime'> & { id?: string }): Partial<StepDbRow> {
-  return {
-    id: step.id,
-    run_id: step.runId,
-    parent_step_id: step.parentStepId || null,
-    type: step.type,
-    status: step.status,
-    agent_name: step.agentName || null,
-    agent_source: step.agentSource || null,
-    input: step.input || null,
-    output: step.output || null,
-    error: step.error || null,
-    tool_name: step.toolName || null,
-    tool_call_id: step.toolCallId || null,
-    messages: step.messages || null,
-    metadata: step.metadata || null,
-    end_time: step.endTime || null,
-    duration: step.duration || null,
-    prompt_tokens: step.promptTokens || null,
-    completion_tokens: step.completionTokens || null,
-    cost: step.cost || null
-  };
-}
-
-/**
- * Map database row to domain type
- */
-function mapStepFromDb(row: StepDbRow): Step {
-  return {
-    id: row.id,
-    runId: row.run_id,
-    parentStepId: row.parent_step_id || undefined,
-    type: row.type as StepType,
-    status: row.status as ExecutionState,
-    agentName: row.agent_name || undefined,
-    agentSource: row.agent_source ? row.agent_source as AgentSource : undefined,
-    input: row.input || undefined,
-    output: row.output || undefined,
-    error: row.error || undefined,
-    startTime: row.start_time,
-    endTime: row.end_time || undefined,
-    duration: row.duration || undefined,
-    promptTokens: row.prompt_tokens || undefined,
-    completionTokens: row.completion_tokens || undefined,
-    cost: row.cost || undefined,
-    toolName: row.tool_name || undefined,
-    toolCallId: row.tool_call_id || undefined,
-    messages: row.messages as Message[] | undefined,
-    metadata: row.metadata as Record<string, unknown> | undefined
-  };
-}
-
-/**
- * Generate a step ID
- */
-function generateStepId(): string {
-  return `step-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 }

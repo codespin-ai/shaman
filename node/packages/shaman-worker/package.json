@@ -18,7 +18,6 @@
   "dependencies": {
     "@codespin/shaman-config": "file:../shaman-config",
     "@codespin/shaman-core": "file:../shaman-core",
-    "@codespin/shaman-persistence": "file:../shaman-persistence",
     "@codespin/shaman-observability": "file:../shaman-observability",
     "@codespin/shaman-tool-router": "file:../shaman-tool-router",
     "@codespin/shaman-llm-core": "file:../shaman-llm-core",

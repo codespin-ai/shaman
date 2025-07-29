@@ -151,6 +151,26 @@ cd node/packages/[package-name] && npm run lint:fix
 - TypeScript configured for `"module": "NodeNext"`
 - Type: `"module"` in all package.json files
 
+### 5. TypeScript Configuration
+- **NO tsconfig.base.json** - Each package uses its own simple, consistent tsconfig.json
+- Standard tsconfig pattern for all packages:
+  ```json
+  {
+    "compilerOptions": {
+      "target": "ES2020",
+      "module": "NodeNext",
+      "moduleResolution": "NodeNext",
+      "outDir": "./dist",
+      "strict": true,
+      "forceConsistentCasingInFileNames": true,
+      "declaration": true
+    },
+    "include": ["src/**/*"],
+    "exclude": ["node_modules", "dist"]
+  }
+  ```
+- Do NOT add extra options like `esModuleInterop`, `skipLibCheck`, etc. unless absolutely necessary
+
 ## Package Structure
 
 Located in `/node/packages/`, build order matters:
@@ -161,7 +181,7 @@ Located in `/node/packages/`, build order matters:
 4. **@codespin/shaman-config** - Configuration management
 5. **@codespin/shaman-llm-core** - LLM provider abstraction
 6. **@codespin/shaman-workflow-core** - Workflow engine abstraction
-7. **@codespin/shaman-persistence** - Database access layer
+7. **@codespin/shaman-db** - Database connection management
 8. **@codespin/shaman-observability** - Metrics and tracing
 9. **@codespin/shaman-security** - Auth, RBAC, rate limiting
 10. **@codespin/shaman-external-registry** - External agent registry
@@ -183,7 +203,7 @@ Located in `/node/packages/`, build order matters:
 2. **Update Dependencies**: Add `file:` references to package.json files
 3. **Update Build Script**: Add new packages to `./build.sh` if created
 4. **Create Migration**: Use `npm run migrate:make` for schema changes
-5. **Implement Persistence**: Add functions in `@codespin/shaman-persistence`
+5. **Implement Persistence**: Add persistence functions in the appropriate package (e.g., in `src/persistence/` directory of the package that uses the data)
 6. **Implement Logic**: Add business logic in appropriate package
 7. **Build**: Run `./build.sh` from root
 8. **Migrate**: Run `npm run migrate:latest`
@@ -355,7 +375,7 @@ import { executeAgent } from "./agent-runner";
 2. Edit migration file in `/database/[dbname]/migrations/`
 3. Run migration: `npm run migrate:[dbname]:latest`
 4. Update types in `@codespin/shaman-types`
-5. Update persistence layer in `@codespin/shaman-persistence`
+5. Update persistence functions in the relevant package's `src/persistence/` directory
 
 ## Git Agent Caching
 

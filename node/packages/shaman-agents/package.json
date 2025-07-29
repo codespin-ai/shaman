@@ -21,7 +21,7 @@
     "@codespin/shaman-logger": "file:../shaman-logger",
     "@codespin/shaman-git-resolver": "file:../shaman-git-resolver",
     "@codespin/shaman-external-registry": "file:../shaman-external-registry",
-    "@codespin/shaman-persistence": "file:../shaman-persistence"
+    "@codespin/shaman-db": "file:../shaman-db"
   },
   "devDependencies": {
     "typescript": "^5.5.4",

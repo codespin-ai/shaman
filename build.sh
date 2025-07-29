@@ -19,7 +19,7 @@ PACKAGES=(
   "shaman-config"
   "shaman-llm-core"
   "shaman-workflow-core"
-  "shaman-persistence"
+  "shaman-db"
   "shaman-observability"
   "shaman-security"
   "shaman-external-registry"

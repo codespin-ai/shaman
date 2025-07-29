@@ -9,7 +9,7 @@
     "lint:fix": "eslint src --ext .ts --fix"
   },
   "dependencies": {
-    "@codespin/shaman-persistence": "file:../shaman-persistence",
+    "@codespin/shaman-db": "file:../shaman-db",
     "@codespin/shaman-types": "file:../shaman-types",
     "@codespin/shaman-logger": "file:../shaman-logger",
     "glob": "^10.4.1",

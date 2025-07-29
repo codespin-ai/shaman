@@ -1,8 +1,9 @@
+import { getDb } from '@codespin/shaman-db';
 import {
   saveAgentRepository,
   getAgentRepositoryByUrlAndBranch,
   updateAgentRepository
-} from '@codespin/shaman-persistence';
+} from './persistence/agent-repository.js';
 import type { AgentRepository, GitAgent } from '@codespin/shaman-types';
 import { updateGitAgents, discoverAgentsFromBranch } from './git-discovery.js';
 import * as fs from 'fs';
@@ -12,7 +13,8 @@ import { resolve } from 'path';
 const projectsDir = resolve(homedir(), 'projects/shaman');
 
 export async function resolveAgents(repoUrl: string, branch: string = 'main', orgId: string = 'system', userId: string = 'system'): Promise<GitAgent[]> {
-  let repository = await getAgentRepositoryByUrlAndBranch(repoUrl, branch, orgId);
+  const db = getDb();
+  let repository = await getAgentRepositoryByUrlAndBranch(db, repoUrl, branch, orgId);
   
   if (!repository) {
     // Extract repository name from URL
@@ -30,7 +32,7 @@ export async function resolveAgents(repoUrl: string, branch: string = 'main', or
       lastSyncErrors: null,
       createdBy: userId
     };
-    repository = await saveAgentRepository(newRepo);
+    repository = await saveAgentRepository(db, newRepo);
   }
 
   const localRepoPath = resolve(projectsDir, `${repository.id}-${branch}`);
@@ -49,7 +51,7 @@ export async function resolveAgents(repoUrl: string, branch: string = 'main', or
       lastSyncStatus: 'FAILED',
       lastSyncErrors: { error: errorMessage }
     };
-    await updateAgentRepository(updatedRepo);
+    await updateAgentRepository(db, updatedRepo);
     
     throw error;
   }

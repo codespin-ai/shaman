@@ -3,7 +3,7 @@
  */
 
 import type { AgentRepository } from '@codespin/shaman-types';
-import { db } from './db.js';
+import type { Database } from '@codespin/shaman-db';
 
 /**
  * Database row type for agent_repository table
@@ -65,6 +65,7 @@ function mapAgentRepositoryToDb(repo: Omit<AgentRepository, 'id' | 'createdAt' |
 }
 
 export async function saveAgentRepository(
+  db: Database,
   repository: Omit<AgentRepository, 'id' | 'createdAt' | 'updatedAt'>
 ): Promise<AgentRepository> {
   const dbData = mapAgentRepositoryToDb(repository);
@@ -78,7 +79,7 @@ export async function saveAgentRepository(
   return mapAgentRepositoryFromDb(result);
 }
 
-export async function getAgentRepository(id: number, orgId: string): Promise<AgentRepository | null> {
+export async function getAgentRepository(db: Database, id: number, orgId: string): Promise<AgentRepository | null> {
   const result = await db.oneOrNone<AgentRepositoryDbRow>(
     `SELECT * FROM agent_repository WHERE id = $(id) AND org_id = $(orgId)`,
     { id, orgId }
@@ -86,7 +87,7 @@ export async function getAgentRepository(id: number, orgId: string): Promise<Age
   return result ? mapAgentRepositoryFromDb(result) : null;
 }
 
-export async function getAgentRepositoryByUrl(gitUrl: string, orgId: string): Promise<AgentRepository | null> {
+export async function getAgentRepositoryByUrl(db: Database, gitUrl: string, orgId: string): Promise<AgentRepository | null> {
   const result = await db.oneOrNone<AgentRepositoryDbRow>(
     `SELECT * FROM agent_repository WHERE git_url = $(gitUrl) AND org_id = $(orgId)`,
     { gitUrl, orgId }
@@ -94,7 +95,7 @@ export async function getAgentRepositoryByUrl(gitUrl: string, orgId: string): Pr
   return result ? mapAgentRepositoryFromDb(result) : null;
 }
 
-export async function getAgentRepositoryByUrlAndBranch(gitUrl: string, branch: string, orgId: string): Promise<AgentRepository | null> {
+export async function getAgentRepositoryByUrlAndBranch(db: Database, gitUrl: string, branch: string, orgId: string): Promise<AgentRepository | null> {
   const result = await db.oneOrNone<AgentRepositoryDbRow>(
     `SELECT * FROM agent_repository WHERE git_url = $(gitUrl) AND branch = $(branch) AND org_id = $(orgId)`,
     { gitUrl, branch, orgId }
@@ -102,7 +103,7 @@ export async function getAgentRepositoryByUrlAndBranch(gitUrl: string, branch: s
   return result ? mapAgentRepositoryFromDb(result) : null;
 }
 
-export async function updateAgentRepository(repository: AgentRepository): Promise<AgentRepository> {
+export async function updateAgentRepository(db: Database, repository: AgentRepository): Promise<AgentRepository> {
   const result = await db.one<AgentRepositoryDbRow>(
     `UPDATE agent_repository 
      SET name = $(name), git_url = $(gitUrl), branch = $(branch), is_root = $(isRoot), 
@@ -115,7 +116,7 @@ export async function updateAgentRepository(repository: AgentRepository): Promis
   return mapAgentRepositoryFromDb(result);
 }
 
-export async function deleteAgentRepository(id: number): Promise<boolean> {
+export async function deleteAgentRepository(db: Database, id: number): Promise<boolean> {
   const result = await db.result(
     'DELETE FROM agent_repository WHERE id = $(id)',
     { id }
@@ -123,7 +124,7 @@ export async function deleteAgentRepository(id: number): Promise<boolean> {
   return result.rowCount > 0;
 }
 
-export async function getAllAgentRepositories(orgId: string): Promise<AgentRepository[]> {
+export async function getAllAgentRepositories(db: Database, orgId: string): Promise<AgentRepository[]> {
   const result = await db.any<AgentRepositoryDbRow>(
     `SELECT * FROM agent_repository WHERE org_id = $(orgId) ORDER BY name`,
     { orgId }
