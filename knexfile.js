@@ -6,8 +6,7 @@ export const baseConfig = {
     max: 10
   },
   migrations: {
-    tableName: 'knex_migrations',
-    loadExtensions: ['.mjs', '.js']
+    tableName: 'knex_migrations'
   }
 };
 
@@ -18,19 +17,18 @@ export function createDbConfig(dbName, overrides = {}) {
   return {
     ...baseConfig,
     connection: {
-      host: process.env[`${dbNameUpper}_DB_HOST`],
-      port: process.env[`${dbNameUpper}_DB_PORT`] ? parseInt(process.env[`${dbNameUpper}_DB_PORT`], 10) : 5432,
-      database: process.env[`${dbNameUpper}_DB_NAME`],
-      user: process.env[`${dbNameUpper}_DB_USER`],
-      password: process.env[`${dbNameUpper}_DB_PASSWORD`]
+      host: process.env[`${dbNameUpper}_DB_HOST`] || 'localhost',
+      port: parseInt(process.env[`${dbNameUpper}_DB_PORT`] || '5432'),
+      database: process.env[`${dbNameUpper}_DB_NAME`] || dbName.toLowerCase(),
+      user: process.env[`${dbNameUpper}_DB_USER`] || 'postgres',
+      password: process.env[`${dbNameUpper}_DB_PASSWORD`] || 'postgres'
     },
     migrations: {
       ...baseConfig.migrations,
       directory: './migrations'
     },
     seeds: {
-      directory: './seeds',
-      loadExtensions: ['.mjs', '.js']
+      directory: './seeds'
     },
     ...overrides
   };

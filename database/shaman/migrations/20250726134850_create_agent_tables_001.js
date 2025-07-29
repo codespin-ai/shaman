@@ -1,8 +1,4 @@
-/**
- * @param { import("knex").Knex } knex
- * @returns { Promise<void> }
- */
-export async function up(knex) {
+export const up = async (knex) => {
   await knex.schema.createTable("agent_repository", (table) => {
     table.increments("id").primary();
     table.string("name").notNullable().unique();
@@ -44,14 +40,10 @@ export async function up(knex) {
     
     table.unique(["agent_repository_id", "file_path"]);
   });
-}
+};
 
-/**
- * @param { import("knex").Knex } knex
- * @returns { Promise<void> }
- */
-export async function down(knex) {
+export const down = async (knex) => {
   // Drop in reverse order of creation to respect foreign key constraints
   await knex.schema.dropTableIfExists("git_agent");
   await knex.schema.dropTableIfExists("agent_repository");
-}
+};

@@ -64,13 +64,34 @@ Shaman is a comprehensive backend framework for managing and coordinating AI age
 
 ### Database Commands
 
-**IMPORTANT**: The project uses a multi-database pattern. There is NO default database - all commands must be explicit.
+**IMPORTANT**: NEVER run database migrations or seeds unless explicitly instructed by the user
+- Only run migration/seed commands that modify the database when the user specifically asks
+- You can run status checks and create new migration/seed files without explicit permission
+- There is NO DEFAULT database - all commands must specify the database name
 
 ```bash
-# Run migrations for all databases
+# Check migration status (safe to run)
+npm run migrate:shaman:status
+npm run migrate:all:status
+
+# Create new migration (safe to run)
+npm run migrate:shaman:make migration_name
+
+# Run migrations (ONLY when explicitly asked)
+npm run migrate:shaman:latest
+npm run migrate:shaman:rollback
 npm run migrate:all
 
-# Database-specific commands (replace 'shaman' with your database name)
+# Create seed file (safe to run)
+npm run seed:shaman:make seed_name
+
+# Run seeds (ONLY when explicitly asked)
+npm run seed:shaman:run
+```
+
+### Database-specific commands (replace 'shaman' with your database name)
+
+```bash
 npm run migrate:shaman:latest    # Run latest migrations
 npm run migrate:shaman:make migration_name  # Create new migration
 npm run migrate:shaman:rollback  # Rollback migrations
