@@ -337,6 +337,7 @@ import { executeAgent } from "./agent-runner";
 - System documentation: `/docs/` directory
 - Architecture overview: `/docs/03-system-architecture.md`
 - API specification: `/docs/05-graphql-api-spec.md`
+- **External dependencies**: `/docs/external-dependencies/` - Documentation for services like Permiso (RBAC)
 
 ## Testing & Quality
 
