@@ -67,16 +67,10 @@ export const up = async (knex) => {
     'agent_repository',
     'git_agent',
     'git_credential',
-    'external_agent',
-    'mcp_server',
-    'api_key',
     'run',
     'step',
-    'message',
-    'tool_call',
     'workflow_data',
-    'artifact',
-    'audit_log',
+    'input_request',
     'organization_usage'
   ];
 
@@ -123,11 +117,7 @@ export const up = async (knex) => {
   // Direct org_id tables
   const directOrgTables = [
     'agent_repository',
-    'external_agent',
-    'mcp_server',
-    'api_key',
     'run',
-    'audit_log',
     'organization_usage'
   ];
 
@@ -166,7 +156,7 @@ export const up = async (knex) => {
   `);
 
   // Tables that reference run
-  const runReferenceTables = ['step', 'workflow_data', 'artifact'];
+  const runReferenceTables = ['step', 'workflow_data', 'input_request'];
   
   for (const table of runReferenceTables) {
     await knex.raw(`
@@ -182,23 +172,7 @@ export const up = async (knex) => {
     `);
   }
 
-  // Tables that reference step
-  const stepReferenceTables = ['message', 'tool_call'];
-  
-  for (const table of stepReferenceTables) {
-    await knex.raw(`
-      CREATE POLICY ${table}_isolation ON ${table}
-        FOR ALL
-        TO rls_db_user
-        USING (
-          step_id IN (
-            SELECT s.id FROM step s
-            JOIN run r ON s.run_id = r.id
-            WHERE r.org_id = current_setting('app.current_org_id', true)::uuid
-          )
-        );
-    `);
-  }
+  // Note: message and tool_call are stored as JSONB within step table
 
   // Grant BYPASSRLS to unrestricted user (requires superuser)
   await knex.raw(`
@@ -224,16 +198,10 @@ export const down = async (knex) => {
     'agent_repository',
     'git_agent',
     'git_credential',
-    'external_agent',
-    'mcp_server',
-    'api_key',
     'run',
     'step',
-    'message',
-    'tool_call',
     'workflow_data',
-    'artifact',
-    'audit_log',
+    'input_request',
     'organization_usage'
   ];
 
