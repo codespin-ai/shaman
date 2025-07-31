@@ -1,0 +1,223 @@
+version: '3.8'
+
+services:
+  # PostgreSQL for Shaman and Kratos
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./scripts/init-db.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Redis for BullMQ and caching
+  redis:
+    image: redis:7-alpine
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data:/data
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Ory Kratos - Identity Management
+  kratos-migrate:
+    image: oryd/kratos:v1.0.0
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      - DSN=postgresql://kratos:secret@postgres:5432/kratos?sslmode=disable
+    volumes:
+      - ./docs/external-dependencies/ory-kratos-docs/kratos-config.yml:/etc/config/kratos/kratos.yml:ro
+    command: -c /etc/config/kratos/kratos.yml migrate sql -e --yes
+
+  kratos:
+    image: oryd/kratos:v1.0.0
+    depends_on:
+      kratos-migrate:
+        condition: service_completed_successfully
+      postgres:
+        condition: service_healthy
+    ports:
+      - "4433:4433" # Public API
+      - "4434:4434" # Admin API
+    environment:
+      - DSN=postgresql://kratos:secret@postgres:5432/kratos?sslmode=disable
+      - LOG_LEVEL=debug
+      - SERVE_PUBLIC_BASE_URL=http://localhost:4433/
+      - SERVE_PUBLIC_CORS_ENABLED=true
+      - SERVE_PUBLIC_CORS_ALLOWED_ORIGINS=http://localhost:3000,http://localhost:4000,https://*.shaman.ai
+      - SERVE_ADMIN_BASE_URL=http://kratos:4434/
+      - SELFSERVICE_DEFAULT_BROWSER_RETURN_URL=http://localhost:3000/
+      - SELFSERVICE_ALLOWED_RETURN_URLS=http://localhost:3000,http://localhost:4000,https://*.shaman.ai
+      - SELFSERVICE_FLOWS_ERROR_UI_URL=http://localhost:3000/error
+      - SELFSERVICE_FLOWS_SETTINGS_UI_URL=http://localhost:3000/settings
+      - SELFSERVICE_FLOWS_RECOVERY_UI_URL=http://localhost:3000/recovery
+      - SELFSERVICE_FLOWS_VERIFICATION_UI_URL=http://localhost:3000/verification
+      - SELFSERVICE_FLOWS_LOGOUT_AFTER_DEFAULT_BROWSER_RETURN_URL=http://localhost:3000/login
+      - SELFSERVICE_FLOWS_LOGIN_UI_URL=http://localhost:3000/login
+      - SELFSERVICE_FLOWS_REGISTRATION_UI_URL=http://localhost:3000/registration
+      # Secrets (generate these for production)
+      - SECRETS_COOKIE=32-byte-long-secret-not-so-secret
+      - SECRETS_CIPHER=32-byte-long-secret-not-so-secret
+      # OIDC Providers (set these in .env)
+      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID:-}
+      - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET:-}
+      - GITHUB_CLIENT_ID=${GITHUB_CLIENT_ID:-}
+      - GITHUB_CLIENT_SECRET=${GITHUB_CLIENT_SECRET:-}
+      # SMTP (for email verification/recovery)
+      - COURIER_SMTP_CONNECTION_URI=${SMTP_CONNECTION_URI:-smtp://localhost:1025}
+      # Webhook token for Shaman integration
+      - KRATOS_WEBHOOK_TOKEN=${KRATOS_WEBHOOK_TOKEN:-webhook-secret}
+    volumes:
+      - ./docs/external-dependencies/ory-kratos-docs/kratos-config.yml:/etc/config/kratos/kratos.yml:ro
+      - ./docs/external-dependencies/ory-kratos-docs/identity.schema.json:/etc/config/kratos/identity.schema.json:ro
+      - ./docs/external-dependencies/ory-kratos-docs/oidc.google.jsonnet:/etc/config/kratos/oidc.google.jsonnet:ro
+      - ./docs/external-dependencies/ory-kratos-docs/webhook.registration.jsonnet:/etc/config/kratos/webhook.registration.jsonnet:ro
+    command: serve -c /etc/config/kratos/kratos.yml --dev --watch-courier
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:4433/health/ready"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Kratos UI (optional, for development)
+  kratos-ui:
+    image: oryd/kratos-selfservice-ui-node:v1.0.0
+    ports:
+      - "3000:3000"
+    environment:
+      - KRATOS_PUBLIC_URL=http://kratos:4433/
+      - KRATOS_BROWSER_URL=http://localhost:4433/
+      - CSRF_COOKIE_NAME=ory_kratos_ui_csrf
+      - CSRF_COOKIE_SECRET=32-byte-long-secret-not-so-secret
+      - PORT=3000
+    depends_on:
+      - kratos
+    restart: unless-stopped
+
+  # Permiso - RBAC Service
+  permiso:
+    image: ghcr.io/codespin-ai/permiso:latest
+    ports:
+      - "5001:5001"
+    environment:
+      - PERMISO_DB_HOST=postgres
+      - PERMISO_DB_PORT=5432
+      - PERMISO_DB_NAME=permiso
+      - PERMISO_DB_USER=permiso
+      - PERMISO_DB_PASSWORD=permiso
+      - PERMISO_AUTO_MIGRATE=true
+      - PERMISO_API_KEY=${PERMISO_API_KEY:-}
+      - PERMISO_API_KEY_ENABLED=${PERMISO_API_KEY_ENABLED:-false}
+      - LOG_LEVEL=debug
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:5001/graphql"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Mailslurper (for development email testing)
+  mailslurper:
+    image: oryd/mailslurper:latest-smtps
+    ports:
+      - "1025:1025" # SMTP
+      - "4436:4436" # API
+      - "4437:4437" # UI
+    environment:
+      - MAILSLURPER_SMTP_PORT=1025
+      - MAILSLURPER_API_PORT=4436
+      - MAILSLURPER_UI_PORT=4437
+
+  # Shaman Server
+  shaman-server:
+    build: .
+    ports:
+      - "4000:4000"
+    environment:
+      # Database
+      - SHAMAN_DB_HOST=postgres
+      - SHAMAN_DB_PORT=5432
+      - SHAMAN_DB_NAME=shaman
+      - SHAMAN_DB_USER=shaman
+      - SHAMAN_DB_PASSWORD=shaman
+      # Redis
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      # Kratos
+      - KRATOS_PUBLIC_URL=http://kratos:4433
+      - KRATOS_ADMIN_URL=http://kratos:4434
+      - KRATOS_WEBHOOK_TOKEN=${KRATOS_WEBHOOK_TOKEN:-webhook-secret}
+      # Permiso
+      - PERMISO_URL=http://permiso:5001/graphql
+      - PERMISO_API_KEY=${PERMISO_API_KEY:-}
+      # Server config
+      - NODE_ENV=development
+      - LOG_LEVEL=debug
+      - SERVER_PORT=4000
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      kratos:
+        condition: service_healthy
+      permiso:
+        condition: service_healthy
+    volumes:
+      - ./config.yaml:/app/config.yaml:ro
+      - ./agents:/app/agents:ro
+    command: npm run start:server
+
+  # Shaman Worker
+  shaman-worker:
+    build: .
+    environment:
+      # Database
+      - SHAMAN_DB_HOST=postgres
+      - SHAMAN_DB_PORT=5432
+      - SHAMAN_DB_NAME=shaman
+      - SHAMAN_DB_USER=shaman
+      - SHAMAN_DB_PASSWORD=shaman
+      # Redis
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      # Kratos (for audit)
+      - KRATOS_ADMIN_URL=http://kratos:4434
+      # Permiso (for authorization checks)
+      - PERMISO_URL=http://permiso:5001/graphql
+      - PERMISO_API_KEY=${PERMISO_API_KEY:-}
+      # Worker config
+      - NODE_ENV=development
+      - LOG_LEVEL=debug
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      shaman-server:
+        condition: service_started
+    volumes:
+      - ./config.yaml:/app/config.yaml:ro
+      - ./agents:/app/agents:ro
+    command: npm run start:worker
+
+volumes:
+  postgres_data:
+  redis_data:

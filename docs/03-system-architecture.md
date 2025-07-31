@@ -57,18 +57,31 @@ The **perimeter security layer** that handles all external requests.
 
 **Key Responsibilities:**
 - Subdomain-based routing (`acme-corp.shaman.ai` → ACME's environment)
-- User authentication via Ory Kratos
+- Dual authentication support:
+  - Session cookies via Ory Kratos (human users)
+  - API keys via Permiso (programmatic access)
 - Authorization checks via Permiso
 - Request forwarding to appropriate Shaman Server instance
 - Rate limiting and DDoS protection
 
-**Security Flow:**
+**Authentication Flows:**
+
+*Human Users (Management UI):*
 ```
 1. Extract org from subdomain
-2. Validate bearer token with Ory Kratos
-3. Check permissions with Permiso (can user call this agent?)
-4. Forward to Shaman Server with org context
-5. Never pass user token beyond gateway
+2. Validate session cookie with Ory Kratos
+3. Check permissions with Permiso
+4. Forward to GraphQL API with user context
+```
+
+*API Key Users (A2A Calls):*
+```
+1. Extract org from subdomain
+2. Extract API key from Authorization header
+3. Query Permiso: "Which user owns this API key?"
+4. Validate API key is active and not expired
+5. Check user permissions with Permiso
+6. Forward to A2A endpoint with user context
 ```
 
 ### 2. Shaman Server
@@ -79,11 +92,14 @@ The **core API service** handling management operations and exposed agent calls.
 - Repository management (add/remove/sync)
 - Organization settings
 - User management (delegated to Permiso)
+- API key management (create/revoke/list)
 - Audit log access
+- Requires Kratos session authentication
 
 **A2A Endpoint** (Agent Execution):
 - Receives calls to exposed agents
-- Creates workflow runs
+- Accepts API key authentication only
+- Creates workflow runs with API key owner context
 - Queues jobs for Shaman Worker
 - Returns execution results
 
@@ -223,13 +239,20 @@ customer-support-repo/
 
 **Layer 1: Perimeter Security (External Calls)**
 
+*Management UI Access:*
 ```
-External Client → API Gateway → Shaman Server → Workflow
-     ↑                ↓              ↓
-     |         Ory Kratos      Permiso
-     |         (Identity)      (Permissions)
-     |
-Bearer Token
+Browser → API Gateway → GraphQL API
+    ↑           ↓            ↓
+Session    Ory Kratos    Permiso
+Cookie     (Identity)    (Permissions)
+```
+
+*A2A API Access:*
+```
+External System → API Gateway → A2A Endpoint
+       ↑              ↓              ↓
+   API Key        Permiso        Permiso
+                (Key→User)    (Permissions)
 ```
 
 **Layer 2: Internal Security (Agent-to-Agent)**
@@ -243,12 +266,19 @@ Workflow → Worker → Internal JWT → Agent Execution
 
 ### Token Lifecycle
 
-**External Token Flow:**
-1. User provides bearer token
-2. Gateway validates with Ory Kratos
-3. Gateway checks permissions with Permiso
-4. Token stops at gateway (never passed internally)
-5. Worker maintains token for audit only
+**Session-based Flow (Human Users):**
+1. User logs in via Kratos UI
+2. Kratos sets session cookie
+3. Gateway validates session with Kratos
+4. Gateway checks permissions with Permiso
+5. Session info used for audit trail
+
+**API Key Flow (Programmatic Access):**
+1. System provides API key in Authorization header
+2. Gateway looks up key owner in Permiso
+3. Gateway validates key is active
+4. Gateway checks owner's permissions
+5. Owner identity used for audit trail
 
 **Internal Token Flow:**
 1. Worker generates short-lived JWT
@@ -263,12 +293,14 @@ Workflow → Worker → Internal JWT → Agent Execution
 
 ```
 1. POST https://acme-corp.shaman.ai/a2a/agents/ProcessInvoice
-   Headers: Authorization: Bearer <user-token>
+   Headers: Authorization: Bearer sk_live_abc123...
 
 2. API Gateway:
-   - Validates user with Ory Kratos
-   - Checks permission with Permiso
-   - Forwards to Shaman Server
+   - Extracts API key from header
+   - Queries Permiso: GET /api-keys/sk_live_abc123
+   - Gets owner: user_id: "service-account-1", org_id: "acme-corp"
+   - Checks user's permission to call ProcessInvoice
+   - Forwards to Shaman Server with user context
 
 3. Shaman Server:
    - Creates workflow_run record

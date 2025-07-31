@@ -1,0 +1,127 @@
+{
+  "$id": "https://shaman.ai/schemas/identity.schema.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Shaman User Identity",
+  "type": "object",
+  "properties": {
+    "traits": {
+      "type": "object",
+      "properties": {
+        "email": {
+          "type": "string",
+          "format": "email",
+          "title": "Email Address",
+          "ory.sh/kratos": {
+            "credentials": {
+              "password": {
+                "identifier": true
+              }
+            },
+            "verification": {
+              "via": "email"
+            },
+            "recovery": {
+              "via": "email"
+            }
+          }
+        },
+        "name": {
+          "type": "object",
+          "title": "Name",
+          "properties": {
+            "first": {
+              "title": "First Name",
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 100
+            },
+            "last": {
+              "title": "Last Name",
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 100
+            }
+          }
+        },
+        "username": {
+          "type": "string",
+          "title": "Username",
+          "minLength": 3,
+          "maxLength": 32,
+          "pattern": "^[a-zA-Z0-9_-]+$",
+          "ory.sh/kratos": {
+            "credentials": {
+              "password": {
+                "identifier": true
+              }
+            }
+          }
+        },
+        "organization": {
+          "type": "string",
+          "title": "Organization",
+          "description": "Organization ID determined during registration"
+        },
+        "profile": {
+          "type": "object",
+          "title": "Profile Information",
+          "properties": {
+            "avatar_url": {
+              "type": "string",
+              "format": "uri",
+              "title": "Avatar URL"
+            },
+            "bio": {
+              "type": "string",
+              "title": "Bio",
+              "maxLength": 500
+            },
+            "timezone": {
+              "type": "string",
+              "title": "Timezone",
+              "examples": ["America/New_York", "Europe/London", "Asia/Tokyo"]
+            },
+            "locale": {
+              "type": "string",
+              "title": "Locale",
+              "pattern": "^[a-z]{2}-[A-Z]{2}$",
+              "examples": ["en-US", "es-ES", "ja-JP"]
+            }
+          }
+        },
+        "preferences": {
+          "type": "object",
+          "title": "User Preferences",
+          "properties": {
+            "theme": {
+              "type": "string",
+              "enum": ["light", "dark", "system"],
+              "default": "system"
+            },
+            "notifications": {
+              "type": "object",
+              "properties": {
+                "email": {
+                  "type": "boolean",
+                  "default": true
+                },
+                "workflow_updates": {
+                  "type": "boolean",
+                  "default": true
+                },
+                "agent_errors": {
+                  "type": "boolean",
+                  "default": true
+                }
+              }
+            }
+          }
+        }
+      },
+      "required": [
+        "email"
+      ],
+      "additionalProperties": false
+    }
+  }
+}
