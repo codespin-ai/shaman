@@ -116,7 +116,13 @@ GIT_CLONE_DEPTH=1         # Shallow clone for performance
 # Security Configuration
 ENCRYPTION_KEY=your-256-bit-key-base64  # Required for Git token encryption
 
-# MCP Server Defaults
+# Database Users (for RLS)
+RLS_DB_USER=rls_db_user
+RLS_DB_USER_PASSWORD=secure_rls_password
+UNRESTRICTED_DB_USER=unrestricted_db_user
+UNRESTRICTED_DB_USER_PASSWORD=secure_admin_password
+
+# MCP Server Defaults (configured in agent YAML)
 MCP_DEFAULT_TIMEOUT=30000
 MCP_MAX_CONNECTIONS=100
 ```

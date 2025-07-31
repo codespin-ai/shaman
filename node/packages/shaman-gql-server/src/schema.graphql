@@ -25,8 +25,7 @@ type OrganizationSettings {
   defaultModel: String
   maxConcurrentRuns: Int
   maxRunDuration: Int
-  allowExternalAgents: Boolean!
-  allowedExternalDomains: [String!]!
+  # External agents discovered via A2A protocol, not stored in DB
   features: [String!]!
 }
 
@@ -115,7 +114,7 @@ type GitAgent {
   successRate: Float
 }
 
-# Unified Agent type (Git + External) - Minimal view for discovery
+# Agent type - Minimal view for discovery
 type Agent {
   name: String!
   description: String!
@@ -124,7 +123,7 @@ type Agent {
   
   # Source-specific minimal details
   repositoryName: String  # For Git agents
-  endpoint: String        # For external agents
+  endpoint: String        # For A2A agents discovered via protocol
   
   # Analytics
   usageCount: Int!
@@ -135,7 +134,7 @@ type Agent {
 
 enum AgentSource {
   GIT
-  A2A_EXTERNAL
+  A2A_DISCOVERED  # Discovered via A2A protocol, not stored
 }
 
 # API Key Management
@@ -473,8 +472,7 @@ input OrganizationSettingsInput {
   defaultModel: String
   maxConcurrentRuns: Int
   maxRunDuration: Int
-  allowExternalAgents: Boolean
-  allowedExternalDomains: [String!]
+  # External agents handled via A2A protocol discovery
 }
 
 input CreateRepositoryInput {

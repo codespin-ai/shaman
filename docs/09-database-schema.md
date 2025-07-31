@@ -4,7 +4,7 @@
 
 Shaman uses PostgreSQL as its primary database with a multi-tenant architecture. The database design follows these principles:
 
-- **Multi-tenancy**: All data is isolated by organization using `org_id` columns
+- **Multi-tenancy**: All data is isolated by organization using Row Level Security (RLS)
 - **Decentralized Persistence**: Each package manages its own data access layer
 - **Snake Case**: All table and column names use `snake_case`
 - **Audit Fields**: All tables include `created_at` and `updated_at` timestamps
@@ -15,9 +15,10 @@ Shaman uses PostgreSQL as its primary database with a multi-tenant architecture.
 ### Connection Management
 
 Database connections are managed by the `@codespin/shaman-db` package, which exports:
-- `getDb()`: Returns the default database connection
+- `createRlsDb(orgId)`: Creates an org-scoped connection with RLS enabled
+- `createUnrestrictedDb()`: Creates an admin connection without RLS
+- `getDb()`: DEPRECATED - Returns legacy database connection
 - `getDatabaseConnection(dbName)`: Returns a specific database connection
-- `createDatabaseConnection(config)`: Creates a new database connection
 
 ### Persistence Pattern
 
@@ -32,9 +33,16 @@ export async function saveEntity(
   db: Database,  // First parameter is always the database connection
   data: EntityData
 ): Promise<Entity> {
-  // Implementation
+  // Implementation - no manual org filtering needed with RLS
 }
 ```
+
+### Row Level Security (RLS)
+
+All tenant-scoped tables have RLS policies that automatically filter by organization:
+- Policies use `app.current_org_id` session variable
+- The RLS wrapper automatically sets this before each query
+- No manual WHERE clauses needed for org isolation
 
 ## Core Tables
 
@@ -121,22 +129,24 @@ Individual agents discovered from Git repositories.
 | created_at | timestamptz | Creation timestamp |
 | updated_at | timestamptz | Last update timestamp |
 
-#### external_agent
-A2A agents from external systems.
+#### git_credential
+Stores encrypted Git authentication tokens for private repositories.
 
 | Column | Type | Description |
 |--------|------|-------------|
-| id | uuid | Primary key |
-| org_id | uuid | Organization ID |
-| name | varchar(255) | Agent name (unique per org) |
-| description | text | Agent description |
-| endpoint | varchar(1024) | A2A endpoint URL |
-| auth_type | varchar(50) | Authentication type |
-| auth_credentials | jsonb | Encrypted credentials |
-| is_active | boolean | Active status |
-| agent_card | jsonb | A2A agent card |
-| skills | jsonb | Agent capabilities |
-| health_status | varchar(50) | Health check status |
+| id | serial | Primary key |
+| repository_id | integer | FK to agent_repository |
+| provider | varchar(50) | Git provider (github, gitlab, etc) |
+| username | varchar(255) | Git username |
+| encrypted_token | text | Encrypted personal access token |
+| token_name | varchar(255) | Optional token name |
+| expires_at | timestamptz | Token expiration date |
+| last_used_at | timestamptz | Last usage timestamp |
+| created_at | timestamptz | Creation timestamp |
+| updated_at | timestamptz | Last update timestamp |
+
+#### external_agent (REMOVED)
+**Note**: External agents are now discovered via the A2A protocol at runtime, not stored in the database. Agent discovery happens through A2A endpoint calls.
 | last_health_check_at | timestamptz | Last health check |
 | average_response_time | float | Performance metric |
 | error_rate | float | Error rate percentage |
@@ -214,22 +224,8 @@ Tracks requests for user input during execution.
 
 ### Tool & Integration Management
 
-#### mcp_server
-MCP (Model Context Protocol) servers for tools.
-
-| Column | Type | Description |
-|--------|------|-------------|
-| id | uuid | Primary key |
-| org_id | uuid | Organization ID |
-| name | varchar(255) | Server name (unique per org) |
-| description | text | Server description |
-| type | varchar(50) | HTTP, STDIO, A2A |
-| endpoint | varchar(1024) | Server endpoint |
-| is_active | boolean | Active status |
-| auth_config | jsonb | Authentication config |
-| allowed_roles | jsonb | Allowed org roles array |
-| allowed_users | jsonb | Allowed user IDs array |
-| health_status | varchar(50) | Health check status |
+#### mcp_server (REMOVED)
+**Note**: MCP servers are now configured in agent YAML frontmatter within Git repositories. This allows MCP configuration to be versioned alongside agent code.
 | last_health_check_at | timestamptz | Last health check |
 | created_by | uuid | User who added server |
 | created_at | timestamptz | Creation timestamp |
@@ -276,8 +272,7 @@ All foreign keys use CASCADE delete to maintain referential integrity:
 - `step` → `run`
 - `workflow_data` → `run`, `step`
 - `input_request` → `run`, `step`, `user` (responded_by)
-- `mcp_server` → `organization`, `user` (created_by)
-- `external_agent` → `organization`, `user` (created_by)
+- `git_credential` → `agent_repository`
 - `organization_usage` → `organization`
 
 ## Migration Management

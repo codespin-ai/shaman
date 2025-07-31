@@ -113,7 +113,7 @@ The **execution gateway** that handles all agent invocations:
 #### Internal Mode (`--role internal`)
 - Only accepts requests with internal JWT tokens
 - Executes agent logic with LLM providers
-- Manages tool execution via MCP
+- Manages tool execution via MCP and platform tools
 - Makes A2A calls to other agents
 - NOT exposed to internet
 
@@ -241,9 +241,36 @@ When an agent needs to call an external agent:
 **Layer 3: Agent Execution (Internal Server)**
 - Agents run in isolated contexts
 - No direct access to user tokens
-- Tool access controlled via MCP permissions
+- Tool access controlled via MCP permissions in agent YAML
 - Audit logging for all operations
 - Resource limits per execution
+
+### Row Level Security (RLS) Implementation
+
+Shaman implements comprehensive RLS for automatic multi-tenant isolation:
+
+```typescript
+// Create org-scoped database connection
+const db = createRlsDb(orgId);
+
+// All queries automatically filtered by organization
+const agents = await getAgentsByOrg(db); // Only returns this org's agents
+```
+
+**Database Users:**
+- `rls_db_user`: Application user with RLS policies enforced
+- `unrestricted_db_user`: Admin user for migrations and system tasks
+
+**RLS Features:**
+- Automatic context injection: Sets `app.current_org_id` before each query
+- Transparent operation: No manual filtering required in queries
+- Policy-based: PostgreSQL enforces isolation at database level
+- Performance optimized: Uses session variables for efficient filtering
+
+**Protected Tables:**
+- All tenant-scoped tables have RLS policies
+- Policies cascade through foreign key relationships
+- Cross-tenant queries automatically blocked
 
 ### JWT Token Structure
 
@@ -354,7 +381,7 @@ Agent Name → Alias Resolution → Repository Check → Git Sync → Agent Load
 
 ### Tool Execution via MCP
 
-Agents access tools through MCP servers:
+Agents access tools through MCP servers configured in their Git repositories:
 
 ```
 Agent → Tool Request → MCP Client → Transport → MCP Server → Tool
@@ -363,10 +390,16 @@ Agent → Tool Request → MCP Client → Transport → MCP Server → Tool
                           Tool Response Pipeline
 ```
 
-**MCP Transports:**
-- `stdio`: Local process communication
-- `http+sse`: Remote server communication
-- Future: WebSocket, gRPC
+**MCP Configuration:**
+- Defined in agent YAML frontmatter (not in database)
+- Servers discovered from Git repositories
+- Multiple transport options (stdio, HTTP+SSE)
+
+**Built-in Platform Tools:**
+- `workflow_data_write`: Store data for agent collaboration
+- `workflow_data_read`: Retrieve specific data by key
+- `workflow_data_query`: Search data by patterns
+- `workflow_data_list`: List all stored data with metadata
 
 ### Workflow Orchestration
 
@@ -435,7 +468,7 @@ Each organization operates in complete isolation:
 **Execution Level:**
 - Workflow queues scoped by tenant
 - Agent namespaces prevent conflicts
-- Separate MCP tool permissions
+- MCP servers configured in agent repositories
 
 ## Scalability Patterns
 

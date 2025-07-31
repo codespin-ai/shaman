@@ -11,7 +11,7 @@ Shaman is a **multi-tenant AI agent orchestration platform** that enables organi
 Key features:
 - **Two-server architecture** separating public API from agent execution
 - **A2A protocol** for all agent-to-agent communication over HTTP
-- **MCP protocol** for agent-to-tool communication
+- **MCP protocol** for agent-to-tool communication (configured in Git repos)
 - **Git-based agent management** with version control
 - **Multi-tenant isolation** with subdomain routing
 - **Enterprise security** with dual authentication models
@@ -34,7 +34,7 @@ Internal Server (--role internal)
 ├─ Executes agents
 ├─ Not internet accessible
 ├─ JWT authentication only
-├─ MCP tool orchestration
+├─ MCP tool orchestration (reads config from Git)
 └─ A2A agent communication
 ```
 
@@ -43,7 +43,7 @@ Internal Server (--role internal)
 All communication uses standardized protocols:
 
 - **A2A (Agent-to-Agent)**: HTTP-based protocol with JWT authentication
-- **MCP (Model Context Protocol)**: Tool access via stdio or HTTP+SSE
+- **MCP (Model Context Protocol)**: Tool access via stdio or HTTP+SSE (configured in agent YAML)
 - **No direct function calls**: Everything goes through protocols
 
 ### 3. Git-Centric Agent Management
@@ -184,8 +184,9 @@ External capabilities agents can use:
 - **API calls**: Interact with external services
 - **File operations**: Read/write files
 - **Custom tools**: Any capability exposed via MCP
+- **Platform tools**: Built-in workflow data management
 
-Tools are configured per agent:
+Tools are configured in agent YAML frontmatter (stored in Git):
 ```yaml
 mcpServers:
   production_db:
@@ -215,7 +216,7 @@ mcpServers:
 
 **Layer 3: Agent Execution (Internal Server)**
 - Isolated execution contexts
-- MCP permission boundaries
+- MCP permissions defined in agent YAML
 - Resource limits per agent
 - Comprehensive audit logging
 
