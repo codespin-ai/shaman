@@ -6,175 +6,187 @@
 
 ## What Shaman Is
 
-Shaman is a backend framework that serves as the central orchestration hub in a federated agent ecosystem. The system handles three main responsibilities: managing AI agents as code through git repositories, serving as a fully compliant Agent2Agent (A2A) protocol gateway, and providing enterprise-grade control plane functionality with git synchronization, permissions, and audit trails.
+Shaman is a multi-tenant backend framework for managing and orchestrating AI agents through a federated ecosystem. Each organization gets its own isolated environment with agents defined as code in git repositories. The system provides enterprise-grade control with authentication, authorization, and comprehensive audit trails while enabling seamless agent-to-agent collaboration both within and across organizations.
 
-The framework allows organizations to define AI agents in git repositories as markdown files with frontmatter configuration. This approach enables familiar development workflows including version control, collaboration, and deployment processes. At the same time, Shaman can both expose these internal git-based agents to external systems via the A2A protocol and consume external A2A-compliant agents seamlessly.
+The framework allows organizations to define AI agents in git repositories as markdown files with YAML frontmatter. These agents can be exposed as public API endpoints or kept private for internal workflows. Shaman handles the complexity of multi-tenancy, security, and orchestration while keeping agent authoring simple and accessible to non-technical users.
 
 ## Core Design Principles
 
-**Agents as Code**: AI agents live in git repositories as markdown files with YAML frontmatter. This brings software development practices to agent management - version control, branching, pull requests, and deployment pipelines all work naturally.
+**Multi-Tenant by Design**: Each organization operates in complete isolation with its own subdomain, repositories, and agents. Organizations cannot access each other's resources without explicit API calls.
 
-**Protocol Interoperability**: The system natively supports both MCP (Model Context Protocol) for tools and A2A (Agent2Agent) for agent federation. Internal agents can call external A2A agents, and internal agents can be exposed via A2A to external consumers.
+**Agents as Code**: AI agents live in git repositories as markdown files with YAML frontmatter. This brings software development practices to agent management - version control, branching, pull requests, and deployment pipelines.
 
-**Bidirectional Federation**: Internal git-based agents can be exposed externally while consuming external A2A agents. This creates a two-way federation where organizations can both share and consume specialized capabilities.
+**Two-Layer Security**: External API calls are authenticated at the perimeter, while internal agent-to-agent calls use workflow-scoped JWT tokens. This ensures security without exposing complexity to agent authors.
 
-**Dynamic Execution**: Workflows form complex DAGs at runtime based on agent decisions. Agents can call other agents, which can call more agents, creating dynamic execution trees that adapt to the specific requirements of each request.
+**Dynamic Workflow Execution**: Workflows form Directed Acyclic Graphs (DAGs) at runtime. When an exposed agent is called, it triggers a workflow that can fan out to multiple agents in parallel or sequence.
 
-**Pluggable Infrastructure**: Critical components like workflow engines, LLM providers, and storage systems can be swapped via adapter patterns. Development can use BullMQ while production uses Temporal.io, for example.
+**Simple Agent Authoring**: Agents are written in plain English with no knowledge of authentication, tokens, or infrastructure. Technical complexity is handled by the Shaman runtime.
 
-**Observable by Design**: OpenTelemetry tracing, structured logging, and comprehensive metrics are built into every component. Every agent call, tool execution, and state transition is tracked and can be analyzed.
+**Protocol Interoperability**: Native support for both MCP (Model Context Protocol) for tools and A2A (Agent2Agent) for cross-system agent federation.
 
-**Enterprise Ready**: The system includes git synchronization, agent namespacing, authentication, authorization, and comprehensive audit trails. It's designed for organizations that need governance and compliance.
+**Observable by Design**: OpenTelemetry tracing and structured logging throughout. Every agent call, tool execution, and workflow step is tracked for debugging and compliance.
 
-**Explicit Agent Completion**: Agents must explicitly signal completion using standardized tools. This provides reliable parent-child coordination and eliminates ambiguity about when an agent has finished its work.
-
-**Unified Tool/Agent Interface**: Agents call both tools and other agents through the same mechanism. From an agent's perspective, calling another agent looks identical to calling a tool, which simplifies the programming model.
+**Pluggable Infrastructure**: Workflow engines, LLM providers, and storage systems can be swapped via adapter patterns. Use BullMQ in development and Temporal in production.
 
 ## Core Entities
 
-**Provider**: A configured LLM service endpoint like OpenAI, Anthropic, or a local Ollama instance. Providers are defined statically in configuration with connection details and authentication credentials.
+### Identity & Multi-Tenancy
 
-**Agent Repository**: A git repository containing agent definitions as markdown files with frontmatter. Repositories can be root (unnamespaced) or namespaced. Root repositories allow agents to be called directly by name, while namespaced repositories require a prefix.
+**Organization (Tenant)**: The primary unit of isolation. Each organization has its own subdomain (e.g., `acme-corp.shaman.ai`), users, repositories, and agents. Organizations are completely isolated from each other.
 
-**Agent Definition**: A markdown file with YAML frontmatter containing agent configuration (name, description, model, permissions) plus a prompt template. The frontmatter defines what the agent can do, and the markdown content defines how it behaves.
+**User**: An individual identity belonging to an organization. Authentication is handled by Ory Kratos while authorization and user data are managed by Permiso. Shaman maintains local mirrors of user data for performance.
 
-**Directory**: A hierarchical structure within git repositories. Agents can be organized in nested folders like `/sales/pr-agent` or `/support/billing-agent`, enabling logical grouping and navigation.
+### Agent Management
 
-**Tag**: Keywords defined in agent frontmatter for discovery and categorization. Tags support filtering and search across the agent ecosystem.
+**Repository**: A git repository linked to an organization containing agent definitions and configuration. Each repository includes an `agents.json` file for aliasing and configuration.
 
-**MCP Server**: A service exposing tools via the Model Context Protocol. These can be local processes (STDIO), remote HTTP endpoints, or external A2A-compliant agents. The system abstracts these differences so agents can use tools consistently.
+**Agent**: The fundamental unit of work - a stateless service that performs a specific task using an LLM. Agents are defined as markdown files with YAML frontmatter.
 
-**Tool**: A function exposed by an MCP Server with JSON Schema definition, usage statistics, and permission controls. Tools provide the concrete capabilities that agents use to accomplish tasks.
+**Exposed Agent**: An agent accessible via public API endpoint at the organization's subdomain. These serve as entry points to workflows and can be called by external systems.
 
-**External A2A Agent**: An agent from an external system implementing the A2A protocol. These are registered in Shaman for consumption by internal agents, enabling cross-organizational agent collaboration.
+**Private Agent**: An agent that can only be called by other agents within the same repository. Private agents have no public endpoints and are used for internal workflow steps.
 
-## Execution Entities
+### Execution
 
-**Run**: The top-level execution instance with a unique ID. A run represents the complete fulfillment of a user request and contains all the steps, agent calls, and data involved in processing that request.
+**Workflow**: A DAG of agent executions triggered when an exposed agent is called. The workflow engine orchestrates parallel and sequential execution of agents.
 
-**Step**: A single agent execution within a run. Each step has its own conversation history, token usage tracking, execution timeline, and parent-child relationships. Steps form the nodes in the execution DAG.
+**Run**: A complete workflow execution with a unique ID, representing the fulfillment of a user request from start to finish.
 
-**Message**: Individual conversation turns with role-based typing (system, user, assistant, tool). Messages support extensible part systems for different content types.
+**Step**: A single agent execution within a run. Steps form the nodes of the workflow DAG and track conversation history, token usage, and timing.
 
-**Stream Chunk**: Real-time execution events pushed via WebSocket subscriptions. Clients can subscribe to token streams, tool calls, agent calls, and completion events.
-
-**Input Request**: User input requirements generated by agents using the `request_user_input` tool. These are stored with context and can be resolved later by users or automated systems.
+**Tool**: An external capability that agents can use, exposed via MCP (Model Context Protocol). Tools can be databases, APIs, or other services.
 
 ## Agent Management Model
 
 ### Git-Based Agent Definitions
 
-Agents are defined as markdown files with YAML frontmatter in git repositories. Here's a complete example:
+Agents are markdown files with YAML frontmatter in git repositories:
 
 ```markdown
 ---
-name: "CustomerSupportAgent"
-description: "Handles customer inquiries about orders, returns, and account issues"
-version: "2.1.0"
-tags: ["customer-support", "tier-1", "orders"]
+name: "ProcessInvoice"
+description: "Processes incoming invoices for payment"
+version: "1.0.0"
+tags: ["finance", "invoicing"]
 model: "gpt-4-turbo"
-providers: ["openai_gpt4"]
+exposed: true  # This makes it an exposed agent
 mcpServers:
-  order-management:
-    - "order_lookup"
-    - "order_status"
-    - "order_cancel"
-  customer-db:
-    - "customer_profile"
-    - "account_history"
-  # Full access to internal support tools
-  internal-support-tools: "*"
-allowedAgents: ["BillingSpecialist", "EscalationManager"]
-examples:
-  - "Help customer with order status inquiry"
-  - "Process return request for damaged item"
+  invoice-db:
+    - "get_invoice"
+    - "update_status"
+  payment-system: "*"  # Full access to payment tools
 ---
 
-You are a Tier 1 Customer Support Agent for an e-commerce platform. Your role is to help customers with their inquiries efficiently and escalate complex issues when needed.
+You are an invoice processing specialist. When given an invoice, you should:
 
-## Available Tools
+1. Validate the invoice data
+2. Check for duplicates
+3. Calculate any taxes
+4. Prepare for payment processing
 
-Your tools will be automatically injected based on configured MCP servers.
-
-## Available Agents
-
-You can delegate to: {{allowed_agents}}
+Available tools and agents are automatically provided by the system.
 
 Your task: {{prompt}}
 ```
 
-### Repository Structure and Namespacing
+### Repository Configuration
 
-Root repositories contain unnamespaced agents that can be called directly:
+Each repository includes an `agents.json` file for configuration:
 
-```
-main-agents/
-├── sales/pr-agent/prompt.md          → "sales/pr-agent"
-├── support/billing-agent/prompt.md   → "support/billing-agent"
-└── public/demo-agent/prompt.md       → "public/demo-agent"
-```
-
-Namespaced repositories require a prefix based on the repository name:
-
-```
-experimental-agents/
-├── nlp/sentiment/prompt.md           → "experimental/nlp/sentiment"
-└── vision/object-detect/prompt.md    → "experimental/vision/object-detect"
-```
-
-### Agent Resolution Strategy
-
-When an agent calls another agent, the system resolves the target agent in this order:
-
-1. Check root repositories first for unnamespaced access
-2. Parse namespace prefixes and check specific namespaced repositories
-3. Check registered external A2A agents
-4. Return an error if the agent isn't found anywhere
-
-### Explicit Completion Model
-
-All agent-to-agent calls use explicit completion. Child agents must call a `complete_agent_execution` tool to signal task completion. This provides clear completion semantics, structured results, partial completion support when agents are blocked or uncertain, and reliable parent coordination.
-
-### Fine-Grained Tool Access Control
-
-The new `mcpServers` configuration supports both fine-grained tool access and full server access:
-
-**Fine-Grained Access**: Specify exactly which tools from each server:
-
-```yaml
-mcpServers:
-  github-api:
-    - "get_pr_diff"
-    - "add_comment"
-  jira-api:
-    - "create_ticket"
+```json
+{
+  "TaxCalculator": {
+    "url": "https://tax-service.com/a2a/agents/CalculateTax",
+    "aliases": ["Tax", "TaxCalc"]
+  },
+  "InternalAuditor": {
+    "url": "compliance/audit/InternalAuditor",
+    "aliases": ["Auditor"]
+  },
+  "CurrencyConverter": {
+    "url": "https://finance.apis.com/a2a/agents/Convert"
+  }
+}
 ```
 
-**Full Server Access**: Use `null`, `"*"`, or `[]` for complete access:
+This allows agents to use simple names when calling other agents, whether they're external services or deeply nested internal agents.
 
-```yaml
-mcpServers:
-  internal-tools: "*" # Full access with wildcard
-  dev-tools: null # Full access with null
-```
+### Agent Calling Rules
 
-This approach provides security through the principle of least privilege while maintaining flexibility for trusted internal tools.
+**Exposed agents** can:
+- Call any private agent in the same repository
+- Call external agents via full A2A URLs or aliases
+
+**Private agents** can:
+- Call other agents in the same repository by name
+- Call external agents only via the external gateway
+
+All agent calling is done through the `call_agent` tool, making it as simple as any other tool call.
+
+## Security Model
+
+### Two-Layer Architecture
+
+**Layer 1: Perimeter Security**
+- Applies to exposed agents only
+- API Gateway validates user tokens with Ory Kratos
+- Authorizes requests with Permiso
+- User tokens never enter the internal system
+
+**Layer 2: Internal Security**
+- Workflow engine generates short-lived JWT tokens
+- Tokens represent the workflow run, not the user
+- Each internal call is authenticated with these workflow JWTs
+- Original user token is maintained by infrastructure for auditing
+
+### Zero-Trust Internal Calls
+
+When the workflow engine calls agents internally:
+1. Generates a workflow-scoped JWT token
+2. Token includes: issuer (shaman-worker), audience (target agent), run ID, org ID
+3. Target agent's infrastructure validates the token
+4. Agent itself never sees or handles authentication
 
 ## Standard System Tools
 
-All agents automatically have access to these system tools:
+All agents automatically have access to:
 
-### Agent Coordination Tools
+**call_agent**: Delegate tasks to other agents (internal or external)
+```json
+{
+  "agent": "TaxCalculator",  // Or full URL for external
+  "task": "Calculate tax for $1000 in California"
+}
+```
 
-**call_agent**: Delegates a task to another specialized agent (internal or external). Takes the agent name, input description, and context scope. This is how agents compose and delegate work to other agents.
+**complete_agent_execution**: Signal task completion (required)
+```json
+{
+  "result": "Tax calculated: $87.50",
+  "status": "SUCCESS"
+}
+```
 
-**complete_agent_execution**: Signals completion of the agent's task. This is required to finish execution and provides the final result, status (SUCCESS/PARTIAL/FAILED), confidence level, whether follow-up is needed, and optional metadata.
+**request_user_input**: Request information from users
+```json
+{
+  "prompt": "Please provide the invoice number",
+  "type": "text",
+  "required": true
+}
+```
 
-### User Interaction Tools
+## Multi-Tenant Architecture
 
-**request_user_input**: Requests input from the user and pauses execution until a response is received. Supports different input types (text, choice, file, approval), optional choices for selection, required/optional input, and timeout handling.
+Each organization operates in complete isolation:
 
-These system tools provide the fundamental capabilities every agent needs: calling other agents, completing execution, interacting with users, and managing persistent state. They're injected automatically so agents don't need to configure them explicitly.
+- **Dedicated subdomain**: `acme-corp.shaman.ai`
+- **Isolated repositories**: Only accessible by the organization
+- **Separate agent namespace**: No conflicts between organizations
+- **Independent user management**: Via Ory Kratos and Permiso
+- **Isolated workflow execution**: Workflows run in org context
+
+External systems interact with organizations through their subdomains, ensuring clear separation and security boundaries.
 
 ---
 

@@ -4,31 +4,109 @@
 
 # Use Cases and Agent Model
 
+## Agent Types and Repository Structure
+
+### Exposed vs Private Agents
+
+Shaman distinguishes between two types of agents:
+
+**Exposed Agents**: Accessible via public API endpoints at the organization's subdomain. These serve as entry points to workflows and can be called by external systems.
+
+```markdown
+---
+name: "ProcessInvoice"
+exposed: true  # This makes it an exposed agent
+description: "Entry point for invoice processing workflows"
+model: "gpt-4-turbo"
+tags: ["finance", "public-api"]
+---
+```
+
+**Private Agents**: Can only be called by other agents within the same repository. They have no public endpoints and are used for internal workflow steps.
+
+```markdown
+---
+name: "ValidateInvoiceData"
+exposed: false  # Or omit this field - agents are private by default
+description: "Internal validation logic for invoice data"
+model: "gpt-4-turbo"
+tags: ["finance", "internal"]
+---
+```
+
+### Repository Configuration with agents.json
+
+Each repository includes an `agents.json` file that defines aliases for both external services and internal agents:
+
+```json
+{
+  "TaxCalculator": {
+    "url": "https://tax-service.com/a2a/agents/CalculateTax",
+    "aliases": ["Tax", "TaxCalc"]
+  },
+  "ComplianceChecker": {
+    "url": "compliance/legal/international/ComplianceChecker",
+    "aliases": ["Compliance", "ComplianceCheck"]
+  },
+  "InvoiceValidator": {
+    "url": "ValidateInvoiceData",
+    "aliases": ["Validator"]
+  }
+}
+```
+
+This allows agents to use simple names regardless of whether the target is external or deeply nested internally.
+
 ## Enterprise Customer Support Automation
 
-A large e-commerce company wants to automate customer support inquiries while maintaining human oversight for complex issues. The system uses a tiered approach where a general support agent handles common inquiries and escalates specialized issues to expert agents.
+A large e-commerce company implements tiered customer support with intelligent escalation. The system uses exposed agents as entry points and private agents for internal processing.
 
-### Git Repository Structure
+### Repository Structure
 
 ```
-main-agents/
-├── support/tier1-agent/prompt.md
-├── support/billing-specialist/prompt.md
-└── support/escalation-manager/prompt.md
+customer-support-repo/
+├── agents.json
+├── Tier1Support/
+│   └── prompt.md          # Exposed agent - customer entry point
+├── BillingSpecialist/
+│   └── prompt.md          # Private agent - internal escalation
+├── RefundProcessor/
+│   └── prompt.md          # Private agent - handles refunds
+└── internal/
+    ├── FraudChecker/
+    │   └── prompt.md      # Private agent - fraud detection
+    └── VIPHandler/
+        └── prompt.md      # Private agent - VIP customer logic
 ```
 
-### Agent Definition Example
+### agents.json Configuration
 
-The tier 1 support agent handles the initial customer contact:
+```json
+{
+  "FraudDetector": {
+    "url": "https://security.partner.com/a2a/agents/FraudCheck",
+    "aliases": ["Fraud", "FraudCheck"]
+  },
+  "PaymentProcessor": {
+    "url": "https://payments.internal.com/a2a/agents/Process"
+  },
+  "ComplianceAuditor": {
+    "url": "internal/FraudChecker",
+    "aliases": ["InternalFraud"]
+  }
+}
+```
+
+### Tier 1 Support Agent (Exposed)
 
 ````markdown
 ---
-name: "Tier1CustomerSupport"
-description: "Handles common customer inquiries about orders, returns, and account issues"
+name: "Tier1Support"
+exposed: true
+description: "Customer-facing support agent for general inquiries"
 version: "2.1.0"
-tags: ["customer-support", "tier-1", "e-commerce"]
+tags: ["customer-support", "tier-1", "public"]
 model: "gpt-4-turbo"
-providers: ["openai_gpt4"]
 mcpServers:
   order-management:
     - "order_lookup"
@@ -36,760 +114,240 @@ mcpServers:
   customer-db:
     - "customer_profile"
     - "account_history"
-  refund-processor:
-    - "process_standard_refund"
-allowedAgents: ["support/billing-specialist", "support/escalation-manager"]
-examples:
-  - "Customer wants to check order status"
-  - "Process return for damaged product"
-  - "Help with billing inquiry"
 ---
 
-You are a Tier 1 Customer Support Agent for an e-commerce platform. Your role is to help customers with their inquiries efficiently and escalate complex issues when needed.
+You are a Tier 1 Customer Support Agent. Help customers efficiently and escalate when needed.
 
 ## Available Tools
 
-You have access to these tools:
+- **order_lookup**: Search for customer orders
+- **order_status**: Get order status
+- **customer_profile**: Get customer details
+- **account_history**: View transaction history
 
-- **order_lookup**: Search for customer orders by ID or customer info
-- **order_status**: Get current status of a specific order
-- **customer_profile**: Get customer account details and history
-- **account_history**: View customer's transaction history
-- **process_standard_refund**: Process standard refunds within policy
+## Agent Delegation
 
-## Available Agents
-
-You can delegate to these specialists:
-
-- **support/billing-specialist**: For complex billing issues, payment problems, or policy exceptions
-- **support/escalation-manager**: For VIP customers or sensitive complaints
-
-## Agent Calling Examples
-
-To delegate a billing issue:
-
-```json
-{
-  "tool_calls": [
-    {
-      "id": "call_billing",
-      "type": "function",
-      "function": {
-        "name": "call_agent",
-        "arguments": "{\"agent_name\": \"support/billing-specialist\", \"input\": \"Customer wants refund for 95-day-old order but is VIP with $50K annual spend\"}"
-      }
-    }
-  ]
-}
-```
-
-## Completion Requirement
-
-You MUST complete your work by calling:
-
-```json
-{
-  "tool_calls": [
-    {
-      "id": "complete",
-      "type": "function",
-      "function": {
-        "name": "complete_agent_execution",
-        "arguments": "{\"result\": \"Your summary of actions taken\", \"status\": \"SUCCESS\", \"confidence\": 0.9}"
-      }
-    }
-  ]
-}
-```
+For billing issues, call BillingSpecialist
+For refunds, call RefundProcessor
+For VIP customers (>$10K annual), call internal/VIPHandler
 
 Your task: {{prompt}}
 ````
 
-### Complete Execution Flow
+### Execution Flow
 
 ```
-Customer: "I want to cancel order #ORDER-789 and get a refund"
+Customer: "I want a refund for order #789"
 
-1. Tier1Agent calls order_lookup tool:
-   → Gets order details: $299, placed 95 days ago
+1. Tier1Support (exposed) receives request
+   → Calls order_lookup tool
+   → Identifies VIP customer
 
-2. Tier1Agent calls customer_profile tool:  
-   → Customer is VIP with $50K annual spend
+2. Delegates to internal/VIPHandler (private)
+   → VIPHandler checks customer value
+   → Calls FraudDetector (external via alias)
 
-3. Tier1Agent recognizes policy exception needed, calls agent:
-   {
-   "name": "call_agent",
-   "arguments": {
-   "agent_name": "support/billing-specialist",
-   "input": "VIP customer John Smith wants refund for order #ORDER-789. Order is 95 days old (exceeds 90-day policy) but customer has $50K annual spend. Please evaluate exception."
-   }
-   }
+3. FraudDetector returns clean result
+   → VIPHandler calls RefundProcessor (private)
 
-4. BillingSpecialist analyzes case, requests approval:
-   {
-   "name": "request_user_input",
-   "arguments": {
-   "prompt": "Customer exceeds refund policy but is VIP. Approve exception?",
-   "inputType": "choice",
-   "choices": ["Approve full refund", "Offer store credit", "Deny exception"]
-   }
-   }
+4. RefundProcessor processes refund
+   → Returns success to VIPHandler
+   → VIPHandler returns to Tier1Support
 
-5. Human responds: "Approve full refund"
-
-6. BillingSpecialist processes refund and completes:
-   {
-   "name": "complete_agent_execution",
-   "arguments": {
-   "result": "Full refund of $299.99 approved and processed. Refund ID: REF-456789",
-   "status": "SUCCESS",
-   "confidence": 1.0
-   }
-   }
-
-7. Tier1Agent receives completion, sends final response:
-   {
-   "name": "complete_agent_execution",
-   "arguments": {
-   "result": "Order #ORDER-789 has been cancelled and full refund of $299.99 processed. You'll see the refund in 3-5 business days. Refund tracking: REF-456789",
-   "status": "SUCCESS",
-   "confidence": 0.95
-   }
-   }
+5. Tier1Support completes with customer response
 ```
 
-## Software Development Workflow with External Integration
+## Software Development Workflow
 
-A development team automates code review processes using internal agents plus external specialized services. The system combines internal knowledge with external expertise for comprehensive analysis.
+A development team automates code review with security scanning. The system combines internal review processes with external security services.
 
 ### Repository Structure
 
 ```
-dev-agents/
-├── code/pr-reviewer/prompt.md
-├── code/test-runner/prompt.md
-└── deploy/staging-manager/prompt.md
+dev-tools-repo/
+├── agents.json
+├── PRReviewer/
+│   └── prompt.md          # Exposed - triggered by GitHub webhooks
+├── SecurityScanner/
+│   └── prompt.md          # Private - internal security checks
+├── TestRunner/
+│   └── prompt.md          # Private - runs test suites
+└── deploy/
+    └── StagingDeployer/
+        └── prompt.md      # Private - handles deployments
 ```
 
-### External Agent Registration
-
-External security analysis is provided by a partner service:
-
-```graphql
-mutation RegisterExternalSecurityAgent {
-  createMcpServer(input: {
-    name: "ExternalSecurityAuditor"
-    description: "External security analysis service"
-    type: A2A
-    endpoint: "https://security-ai.partner.com/a2a/v1"
-    apiKey: "encrypted-partner-key"
-  }) {
-    id
-    discoveredAgents {
-      name        # "external/security-auditor"
-      description
-    }
-  }
-}
-```
-
-### Code Review Agent Definition
+### Code Review Agent (Exposed)
 
 ```markdown
 ---
-name: "CodeReviewer"
-description: "Reviews pull requests for code quality, security issues, and best practices"
+name: "PRReviewer"
+exposed: true
+description: "Automated pull request reviewer"
 version: "1.5.0"
-tags: ["development", "code-review", "security"]
+tags: ["development", "code-review", "public-api"]
 model: "gpt-4-turbo"
-providers: ["openai_gpt4"]
 mcpServers:
   github:
-    - "github_get_pr"
-    - "github_add_comment"
-  sonarqube:
-    - "sonarqube_scan"
-  # Full access to internal CI tools
-  internal-ci-tools: "*"
-allowedAgents:
-  ["code/test-runner", "deploy/staging-manager", "external/security-auditor"]
-examples:
-  - "Review PR #123 for security vulnerabilities"
-  - "Analyze code quality in payment module"
+    - "get_pr_diff"
+    - "add_comment"
+    - "update_status"
+  sonarqube: "*"  # Full access to all SonarQube tools
 ---
 
-You are a Senior Code Reviewer responsible for maintaining code quality and security standards.
-
-## Available Tools
-
-- **github_get_pr**: Get pull request details and diff
-- **github_add_comment**: Add review comments
-- **sonarqube_scan**: Run code quality analysis
-- Full access to all internal CI tools for builds, tests, and deployments
-
-## Available Agents
-
-- **code/test-runner**: Execute comprehensive test suites
-- **deploy/staging-manager**: Handle staging deployments
-- **external/security-auditor**: External security analysis service
+You are a Senior Code Reviewer. Analyze PRs for quality and security.
 
 ## Review Process
 
-1. Analyze code changes thoroughly
-2. For security-sensitive changes, delegate to external/security-auditor
-3. If code passes review, delegate to code/test-runner
-4. Complete with approval/rejection decision
+1. Get PR details and diff
+2. For security-sensitive code, delegate to SecurityScanner
+3. For all code, delegate to TestRunner
+4. Add review comments and update PR status
+
+External security scanning available via "SecurityAuditor" (alias in agents.json)
 
 Your task: {{prompt}}
 ```
 
-### Multi-System Execution Flow
+### Multi-Stage Review Flow
 
 ```
-Request: "Review pull request #456 in payment-service repository"
+GitHub Webhook: "New PR #456 in payment-service"
 
-1. CodeReviewer calls github_get_pr tool
-   → Retrieves PR diff and details
+1. PRReviewer (exposed) activated
+   → Calls get_pr_diff tool
+   → Detects payment processing changes
 
-2. CodeReviewer notices payment processing code, calls external agent:
-   {
-     "name": "call_agent",
-     "arguments": {
-       "agent_name": "external/security-auditor",
-       "input": "Please audit the payment processing changes in PR #456. Focus on PCI compliance and data handling."
-     }
-   }
+2. Delegates to SecurityScanner (private)
+   → SecurityScanner calls external "SecurityAuditor"
+   → External service performs deep analysis
+   → Returns security report
 
-3. External security service processes via A2A protocol:
-   POST https://security-ai.partner.com/a2a/v1
-   {
-     "method": "message/send",
-     "params": {
-       "message": {
-         "role": "user",
-         "parts": [{"kind": "text", "text": "Please audit..."}]
-       }
-     }
-   }
+3. PRReviewer delegates to TestRunner (private)
+   → TestRunner executes test suite
+   → Returns coverage and results
 
-4. External service completes and returns A2A task:
-   {
-     "id": "task-external-123",
-     "status": {"state": "completed"},
-     "artifacts": [{
-       "parts": [{"kind": "text", "text": "Security audit passed. No PCI violations found..."}]
-     }]
-   }
-
-5. CodeReviewer receives completion, calls internal test runner:
-   {
-     "name": "call_agent",
-     "arguments": {
-       "agent_name": "code/test-runner",
-       "input": "Run full test suite for payment-service PR #456"
-     }
-   }
-
-6. TestRunner executes and completes:
-   {
-     "name": "complete_agent_execution",
-     "arguments": {
-       "result": "All 247 tests passed. Coverage: 94.2%",
-       "status": "SUCCESS",
-       "confidence": 1.0
-     }
-   }
-
-7. CodeReviewer calls github_add_comment and completes:
-   {
-     "name": "complete_agent_execution",
-     "arguments": {
-       "result": "PR #456 approved. External security audit passed, all tests passing. Ready for merge.",
-       "status": "SUCCESS",
-       "confidence": 0.95
-     }
-   }
+4. PRReviewer synthesizes all results
+   → Adds review comments via GitHub
+   → Updates PR status
+   → Completes workflow
 ```
 
-## Legal Document Analysis with Federated Expertise
+## Multi-Organization Federation
 
-A company needs comprehensive contract analysis using both internal knowledge and external legal expertise. The system coordinates multiple specialized agents to provide thorough analysis.
+Organizations share specialized agents while maintaining security boundaries. Each organization exposes select agents and consumes others via A2A protocol.
 
-### Repository Structure
-
-```
-main-agents/
-├── legal/contract-coordinator/prompt.md
-├── legal/compliance-checker/prompt.md
-└── legal/risk-assessor/prompt.md
-
-partner-agents/ (external A2A registrations)
-└── external/specialized-legal-ai
-```
-
-### Multi-Repository Agent Coordination
+### Financial Services Organization
 
 ```
-Request: "Analyze this NDA for potential risks and compliance issues"
-
-1. legal/contract-coordinator (internal git agent):
-   - Initial document analysis
-   - Calls legal/compliance-checker (same repo)
-   - Calls legal/risk-assessor (same repo)
-
-2. For specialized legal expertise, calls external agent:
-   {
-     "name": "call_agent",
-     "arguments": {
-       "agent_name": "external/specialized-legal-ai",
-       "input": "Provide expert legal analysis of this NDA focusing on IP protection and liability clauses"
-     }
-   }
-
-3. External A2A agent processes request:
-   - Receives A2A message via HTTPS
-   - Performs specialized legal analysis
-   - Returns structured legal opinion
-
-4. Internal coordinator combines all analysis:
-   - Internal compliance check results
-   - Internal risk assessment
-   - External expert legal opinion
-   - Generates comprehensive recommendation
+finserv-agents-repo/
+├── agents.json
+├── public/
+│   ├── RiskCalculator/
+│   │   └── prompt.md      # Exposed - available to partners
+│   └── ComplianceValidator/
+│       └── prompt.md      # Exposed - available to partners
+└── internal/
+    ├── CustomerAnalyzer/
+    │   └── prompt.md      # Private - internal only
+    └── FraudDetector/
+        └── prompt.md      # Private - internal only
 ```
 
-## Cross-Organization Agent Federation
-
-Multiple organizations share specialized agents while maintaining security boundaries. This enables collaborative AI ecosystems where organizations can both contribute and consume specialized capabilities.
-
-### Organization A Configuration (Financial Services)
-
+**agents.json**:
 ```json
 {
-  "agentRepositories": [
-    {
-      "name": "main-agents",
-      "gitUrl": "https://github.com/finserv/agents.git",
-      "isRoot": true,
-      "branch": "production"
-    }
-  ],
-
-  "agentExposure": {
-    "allowedPrefixes": ["public/"],
-    "exposedAgents": ["public/risk-calculator", "public/compliance-validator"],
-    "securitySchemes": {
-      "oauth2": {
-        "type": "oauth2",
-        "flows": {
-          "clientCredentials": {
-            "tokenUrl": "https://auth.finserv.com/oauth/token"
-          }
-        }
-      }
-    }
+  "AMLScreener": {
+    "url": "https://regtech.partner.com/a2a/agents/AMLScreener",
+    "aliases": ["AML"]
   },
-
-  "externalAgents": {
-    "partner-bank": {
-      "endpoint": "https://agents.partner-bank.com/a2a/v1",
-      "authentication": {
-        "type": "oauth2",
-        "clientId": "finserv-integration",
-        "clientSecret": "env(PARTNER_BANK_SECRET)"
-      }
-    },
-    "regtech-vendor": {
-      "endpoint": "https://agents.regtech-vendor.com/a2a/v1",
-      "authentication": {
-        "type": "apiKey",
-        "apiKey": "env(REGTECH_API_KEY)"
-      }
-    }
-  }
-}
-```
-
-### Organization B Configuration (RegTech Vendor)
-
-```json
-{
-  "agentRepositories": [
-    {
-      "name": "compliance-agents",
-      "gitUrl": "https://github.com/regtech/agents.git",
-      "isRoot": true,
-      "branch": "stable"
-    }
-  ],
-
-  "agentExposure": {
-    "allowedPrefixes": ["public/"],
-    "exposedAgents": ["public/aml-screener", "public/kyc-validator"],
-    "securitySchemes": {
-      "apiKey": {
-        "type": "apiKey",
-        "in": "header",
-        "name": "X-API-Key"
-      }
-    }
+  "KYCValidator": {
+    "url": "https://regtech.partner.com/a2a/agents/KYCValidator"
   },
-
-  "externalAgents": {
-    "finserv-partner": {
-      "endpoint": "https://agents.finserv.com/a2a/v1",
-      "authentication": {
-        "type": "oauth2",
-        "clientId": "regtech-integration",
-        "clientSecret": "env(FINSERV_SECRET)"
-      }
-    },
-    "data-vendor": {
-      "endpoint": "https://agents.data-vendor.com/a2a/v1",
-      "authentication": {
-        "type": "apiKey",
-        "apiKey": "env(DATA_VENDOR_KEY)"
-      }
-    }
+  "DataEnricher": {
+    "url": "https://data-vendor.com/a2a/agents/Enrichment"
   }
 }
 ```
 
-### Cross-Organization Execution Flow
+### RegTech Partner Organization
 
 ```
-Organization A agent receives: "Screen this transaction for AML violations"
-
-1. internal/transaction-analyzer processes basic transaction data
-2. Calls external/regtech-vendor/aml-screener:
-   → POST https://agents.regtech-vendor.com/a2a/v1
-   → Specialized AML analysis performed
-   → Returns risk score and violation flags
-
-3. Based on results, calls partner-bank/fraud-detector:
-   → POST https://agents.partner-bank.com/a2a/v1
-   → Cross-references transaction patterns
-   → Returns fraud probability assessment
-
-4. Combines all analysis:
-   → Internal transaction processing
-   → External AML screening results
-   → Partner fraud detection results
-   → Returns comprehensive compliance assessment
+regtech-agents-repo/
+├── agents.json
+├── public/
+│   ├── AMLScreener/
+│   │   └── prompt.md      # Exposed - available to clients
+│   └── KYCValidator/
+│       └── prompt.md      # Exposed - available to clients
+└── proprietary/
+    └── RiskEngine/
+        └── prompt.md      # Private - secret sauce
 ```
 
-## A2A Provider: Exposing Shaman Agents Externally
+### Cross-Organization Transaction Flow
 
-The `shaman-a2a-provider` module enables organizations to expose their Git-based agents to external systems via the standardized A2A protocol. This transforms Shaman from just a consumer of external agents into a provider that can share its specialized capabilities.
+```
+FinServ receives: "Validate high-value transaction from new customer"
 
-### Provider Configuration
+1. internal/CustomerAnalyzer (private) performs initial analysis
+   → Determines need for enhanced due diligence
+
+2. Calls external AMLScreener via alias
+   → POST https://regtech.partner.com/a2a/agents/AMLScreener
+   → RegTech's exposed agent performs screening
+   → Returns risk scores
+
+3. Calls external KYCValidator
+   → POST https://regtech.partner.com/a2a/agents/KYCValidator
+   → Validates customer identity
+   → Returns verification status
+
+4. public/RiskCalculator aggregates all data
+   → Combines internal and external analysis
+   → Produces final risk assessment
+```
+
+## Agent Resolution Process
+
+When an agent calls another agent, Shaman follows this resolution process:
 
 ```typescript
-// server.ts
-import { createA2AServer } from '@codespin/shaman-a2a-provider';
-import { agentsConfig } from './config';
+// Agent makes a call
+call_agent({ agent: "TaxCalculator", task: "Calculate tax for $1000" })
 
-const a2aConfig: A2AProviderConfig = {
-  port: 3001,
-  basePath: '/a2a/v1',
-  
-  // Authentication configuration
-  authentication: {
-    type: 'bearer',
-    validateToken: async (token) => {
-      // Validate against your auth system
-      return await authService.validateBearerToken(token);
-    }
-  },
-  
-  // Rate limiting
-  rateLimiting: {
-    enabled: true,
-    maxRequests: 100,
-    windowMs: 60000 // 1 minute
-  },
-  
-  // CORS settings
-  cors: {
-    enabled: true,
-    allowedOrigins: ['https://partner.com', 'https://client.org']
-  },
-  
-  // Agent exposure control
-  allowedAgents: ['CustomerSupport', 'BillingAssistant'],
-  blockedCategories: ['internal', 'experimental']
-};
+// Resolution steps:
+1. Check agents.json for alias "TaxCalculator"
+   → Found: { "url": "https://tax-service.com/a2a/agents/CalculateTax" }
+   → Use this URL
 
-const server = createA2AServer(a2aConfig, agentsConfig);
-await server.start();
+2. If not in agents.json, check same repository
+   → Look for TaxCalculator/prompt.md
+   → Look for TaxCalculator.md
+
+3. If not found locally, check external registry
+   → Query registered external A2A services
+
+4. If still not found, return error
 ```
 
-### Agent Whitelisting Strategies
+### Calling Rules by Agent Type
 
-**By Name**: Explicitly list which agents can be exposed
-```typescript
-allowedAgents: ['CustomerSupport', 'BillingAssistant', 'ComplianceChecker']
-```
+**Exposed Agents**:
+- Can call any private agent in same repository
+- Can call external agents via full URL or alias
+- Can be called from outside via public API
 
-**By Category**: Expose agents based on their tags
-```typescript
-allowedCategories: ['public', 'partner-api'],
-blockedCategories: ['internal', 'beta']
-```
+**Private Agents**:
+- Can call other agents in same repository by name
+- Can call external agents only via aliases in agents.json
+- Cannot be called from outside the repository
 
-**By Namespace**: Use prefixes for bulk exposure
-```typescript
-// In agent repository configuration
-{
-  "agentExposure": {
-    "allowedPrefixes": ["public/", "partner/"],
-    "blockedPrefixes": ["internal/", "dev/"]
-  }
-}
-```
-
-### External Integration Example
-
-When an external system wants to use your Shaman agents:
-
-```bash
-# 1. Discover available agents
-curl -H "Authorization: Bearer $TOKEN" \
-  https://your-domain.com/a2a/v1/agents
-
-# 2. Get specific agent details
-curl -H "Authorization: Bearer $TOKEN" \
-  https://your-domain.com/a2a/v1/agents/CustomerSupport
-
-# 3. Execute the agent
-curl -X POST \
-  -H "Authorization: Bearer $TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "prompt": "Help me check order status for #12345",
-    "context": {
-      "sessionId": "ext-session-789",
-      "conversationHistory": []
-    }
-  }' \
-  https://your-domain.com/a2a/v1/agents/CustomerSupport/execute
-```
-
-### Security Considerations
-
-1. **Authentication**: Always enable authentication in production
-2. **Rate Limiting**: Protect against abuse with appropriate limits
-3. **Agent Filtering**: Only expose agents meant for external use
-4. **Network Security**: Use HTTPS and consider IP whitelisting
-5. **Audit Logging**: Track all external agent invocations
-
-This bidirectional A2A capability enables Shaman deployments to participate as both consumers and providers in the federated agent ecosystem.
-
-## Repository Configuration Schema
-
-### Agent Repository Definition
-
-```typescript
-interface AgentRepository {
-  name: string; // Unique repository identifier
-  gitUrl: string; // Git repository URL
-  branch: string; // Git branch to track
-  isRoot: boolean; // Whether agents are unnamespaced
-  syncInterval: string; // How often to sync (e.g., "5m")
-  authType: "ssh-key" | "token" | "none";
-  sshKeyPath?: string; // Path to SSH private key
-  authToken?: string; // GitHub/GitLab token (env var)
-  webhookSecret?: string; // Webhook validation secret
-  readOnly: boolean; // Whether repository is read-only
-  isActive: boolean; // Whether repository is active
-}
-```
-
-### Git Synchronization API Types
-
-```typescript
-interface SyncResult {
-  repositoryName: string;
-  success: boolean;
-  syncedCommit: string;
-  discoveredAgents: GitAgent[];
-  syncErrors: SyncError[];
-  syncDuration: number;
-}
-
-interface SyncError {
-  message: string;
-  filePath?: string;
-  timestamp: Date;
-  errorType: string;
-}
-
-interface GitAgent {
-  name: string;
-  description: string;
-  version: string;
-  tags: string[];
-
-  // Git metadata
-  repositoryName: string;
-  filePath: string;
-  gitCommit: string;
-  lastModified: Date;
-
-  // Configuration - Updated to support new mcpServers object format
-  model?: string;
-  providers: string[];
-  mcpServers: Record<string, string[] | null | "*" | "">;
-  allowedAgents: string[];
-  examples: string[];
-}
-```
-
-### Agent Resolver Implementation
-
-```typescript
-class GitAgentResolver {
-  private rootRepositories: Map<string, AgentRepository>;
-  private namedRepositories: Map<string, AgentRepository>;
-  private externalA2ARegistry: ExternalA2ARegistry;
-
-  async resolveAgent(agentName: string): Promise<ResolvedAgent> {
-    // 1. Check root repositories first (unnamespaced)
-    for (const [repoName, repo] of this.rootRepositories) {
-      const agent = await this.findAgentInRepo(repo, agentName);
-      if (agent) {
-        return {
-          agent: agent,
-          source: "git",
-          repository: repoName,
-          isNamespaced: false,
-          priority: "root",
-        };
-      }
-    }
-
-    // 2. Check namespaced repositories
-    if (agentName.includes("/")) {
-      const parts = agentName.split("/");
-
-      for (let i = 1; i < parts.length; i++) {
-        const namespace = parts.slice(0, i).join("/");
-        const agentPath = parts.slice(i).join("/");
-
-        const namespacedRepo = this.namedRepositories.get(namespace);
-        if (namespacedRepo) {
-          const agent = await this.findAgentInRepo(namespacedRepo, agentPath);
-          if (agent) {
-            return {
-              agent: agent,
-              source: "git",
-              repository: namespacedRepo.name,
-              isNamespaced: true,
-              priority: "namespaced",
-            };
-          }
-        }
-      }
-    }
-
-    // 3. Check external A2A agents
-    const externalAgent = await this.externalA2ARegistry.findAgent(agentName);
-    if (externalAgent) {
-      return {
-        agent: externalAgent,
-        source: "a2a",
-        isNamespaced: false,
-        priority: "external",
-      };
-    }
-
-    throw new AgentNotFoundError(`Agent "${agentName}" not found`);
-  }
-
-  private async findAgentInRepo(
-    repo: AgentRepository,
-    agentPath: string
-  ): Promise<GitAgent | null> {
-    const possiblePaths = [
-      `${agentPath}/prompt.md`,
-      `${agentPath}/agent.md`,
-      `${agentPath}.md`,
-    ];
-
-    for (const filePath of possiblePaths) {
-      try {
-        const content = await this.gitService.getFile(
-          repo.name,
-          filePath,
-          repo.currentCommit
-        );
-        if (content) {
-          return await this.parseAgentDefinition(repo, filePath, content);
-        }
-      } catch (error) {
-        continue; // Try next file path
-      }
-    }
-
-    return null;
-  }
-
-  // Updated to parse new mcpServers object format
-  private async parseAgentDefinition(
-    repo: AgentRepository,
-    filePath: string,
-    content: string
-  ): Promise<GitAgent> {
-    const { frontmatter, markdown } = parseMarkdownWithFrontmatter(content);
-    
-    // Parse mcpServers field - handle both old array format and new object format
-    let mcpServers: Record<string, string[] | null | "*" | "">;
-    
-    if (Array.isArray(frontmatter.mcpServers)) {
-      // Convert old array format to new object format (grant full access)
-      mcpServers = {};
-      for (const serverName of frontmatter.mcpServers) {
-        mcpServers[serverName] = "*"; // Full access
-      }
-    } else if (typeof frontmatter.mcpServers === 'object' && frontmatter.mcpServers !== null) {
-      // New object format
-      mcpServers = frontmatter.mcpServers;
-    } else {
-      // Default to empty if not specified
-      mcpServers = {};
-    }
-
-    return {
-      name: frontmatter.name,
-      description: frontmatter.description,
-      version: frontmatter.version || "1.0.0",
-      tags: frontmatter.tags || [],
-      model: frontmatter.model,
-      providers: frontmatter.providers || [],
-      mcpServers,
-      allowedAgents: frontmatter.allowedAgents || [],
-      examples: frontmatter.examples || [],
-      contextScope: frontmatter.contextScope || "FULL",
-      
-      // Git metadata
-      repository: repo,
-      filePath,
-      gitCommit: repo.currentCommit,
-      lastModified: new Date(),
-      
-      // Computed properties
-      isNamespaced: !repo.isRoot,
-      fullPath: repo.isRoot ? frontmatter.name : `${repo.name}/${frontmatter.name}`,
-      
-      // Analytics (would be populated from metrics system)
-      usageCount: 0,
-      lastUsed: null,
-      averageExecutionTime: null,
-      successRate: null
-    };
-  }
-}
-```
+This design ensures:
+- Clear security boundaries
+- Simple agent authoring (just use names/aliases)
+- Flexible integration with external services
+- Repository-level access control
 
 ---
 
