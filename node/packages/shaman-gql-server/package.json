@@ -1,0 +1,60 @@
+{
+  "name": "@codespin/shaman-gql-server",
+  "version": "0.0.1",
+  "description": "GraphQL management API server for Shaman",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "sideEffects": false,
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "codegen": "graphql-codegen --config codegen.yml",
+    "build": "npm run codegen && tsc",
+    "start": "node dist/start.js",
+    "dev": "tsx watch src/start.ts",
+    "lint": "eslint src --ext .ts",
+    "lint:fix": "eslint src --ext .ts --fix"
+  },
+  "license": "MIT",
+  "dependencies": {
+    "@apollo/server": "^4.12.2",
+    "@codespin/shaman-agents": "file:../shaman-agents",
+    "@codespin/shaman-config": "file:../shaman-config",
+    "@codespin/shaman-core": "file:../shaman-core",
+    "@codespin/shaman-db": "file:../shaman-db",
+    "@codespin/shaman-external-registry": "file:../shaman-external-registry",
+    "@codespin/shaman-git-resolver": "file:../shaman-git-resolver",
+    "@codespin/shaman-logger": "file:../shaman-logger",
+    "@codespin/shaman-observability": "file:../shaman-observability",
+    "@codespin/shaman-security": "file:../shaman-security",
+    "@codespin/shaman-types": "file:../shaman-types",
+    "@graphql-tools/schema": "^10.0.25",
+    "@types/uuid": "^10.0.0",
+    "body-parser": "^2.2.0",
+    "compression": "^1.8.1",
+    "cors": "^2.8.5",
+    "express": "^5.1.0",
+    "graphql": "^16.11.0",
+    "graphql-subscriptions": "^3.0.0",
+    "graphql-tag": "^2.12.6",
+    "graphql-ws": "^6.0.6",
+    "helmet": "^8.1.0",
+    "uuid": "^11.1.0",
+    "ws": "^8.18.3"
+  },
+  "devDependencies": {
+    "@graphql-codegen/cli": "^5.0.0",
+    "@graphql-codegen/typescript": "^4.0.1",
+    "@graphql-codegen/typescript-resolvers": "^4.0.1",
+    "@types/body-parser": "^1.19.6",
+    "@types/compression": "^1.8.1",
+    "@types/cors": "^2.8.19",
+    "@types/express": "^5.0.3",
+    "@types/ws": "^8.18.1",
+    "@typescript-eslint/eslint-plugin": "^8.38.0",
+    "@typescript-eslint/parser": "^8.38.0",
+    "eslint": "^9.32.0"
+  }
+}

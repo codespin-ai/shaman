@@ -1,0 +1,43 @@
+{
+  "name": "@codespin/shaman-a2a-server",
+  "version": "0.0.1",
+  "description": "A2A protocol server for agent execution with public/internal roles",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "sideEffects": false,
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/start.js",
+    "lint": "eslint src --ext .ts",
+    "lint:fix": "eslint src --ext .ts --fix"
+  },
+  "license": "MIT",
+  "dependencies": {
+    "@codespin/shaman-core": "file:../shaman-core",
+    "@codespin/shaman-types": "file:../shaman-types",
+    "@codespin/shaman-logger": "file:../shaman-logger",
+    "@codespin/shaman-agents": "file:../shaman-agents",
+    "@codespin/shaman-security": "file:../shaman-security",
+    "@codespin/shaman-workflow": "file:../shaman-workflow",
+    "@codespin/shaman-config": "file:../shaman-config",
+    "@codespin/shaman-observability": "file:../shaman-observability",
+    "@codespin/shaman-db": "file:../shaman-db",
+    "commander": "^12.1.0",
+    "jsonwebtoken": "^9.0.2",
+    "express": "^4.18.2",
+    "@types/express": "^4.17.21",
+    "uuid": "^9.0.0",
+    "@types/uuid": "^9.0.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.5.4",
+    "eslint": "^9.32.0",
+    "@typescript-eslint/parser": "^8.38.0",
+    "@typescript-eslint/eslint-plugin": "^8.38.0",
+    "@types/jsonwebtoken": "^9.0.7"
+  }
+}

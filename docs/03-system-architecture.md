@@ -4,135 +4,160 @@
 
 # System Architecture
 
-Shaman employs a **two-server deployment model** that separates public-facing operations from internal agent execution. All agent-to-agent communication uses the **A2A protocol over HTTP**, ensuring security, auditability, and standards compliance.
+Shaman employs a **clean separation of concerns** with distinct servers for management (GraphQL) and execution (A2A). All agent execution flows through the A2A protocol, ensuring security, auditability, and standards compliance.
 
-## Two-Server Architecture
+## Server Architecture Overview
 
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
 │                         External World                               │
 │  Browsers, Mobile Apps, External Systems, Partner APIs              │
+└─────────────────────────────────┬────────────┬──────────────────────┘
+                                  │ HTTPS      │ A2A Protocol
+                                  ▼            ▼
+┌─────────────────────────────────────────────────────────────────────┐
+│                      GRAPHQL SERVER                                  │
+│                   (shaman-gql-server)                                │
+│                                                                      │
+│  ┌──────────────┐  ┌─────────────────┐  ┌────────────────────────┐ │
+│  │  GraphQL API │  │ Ory Kratos      │  │  Permiso RBAC          │ │
+│  │ (Management) │  │ (Auth)          │  │  (Permissions)         │ │
+│  └──────────────┘  └─────────────────┘  └────────────────────────┘ │
+│                                                                      │
+│  ┌──────────────────────────────────────────────────────────────┐  │
+│  │ Management Operations Only:                                    │  │
+│  │ • Agent repository sync                                        │  │
+│  │ • User/tenant management                                       │  │
+│  │ • Workflow monitoring                                          │  │
+│  │ • NO AGENT EXECUTION                                          │  │
+│  └──────────────────────────────────────────────────────────────┘  │
+└─────────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────────┐
+│                   A2A SERVER - PUBLIC MODE                           │
+│              (shaman-a2a-server --role public)                       │
+│                                                                      │
+│  ┌──────────────┐  ┌─────────────────┐  ┌────────────────────────┐ │
+│  │ A2A Endpoint │  │ API Key/OAuth   │  │  Workflow Engine       │ │
+│  │  /a2a/v1/*   │  │  Validation     │  │  (BullMQ)              │ │
+│  └──────────────┘  └─────────────────┘  └────────────────────────┘ │
+│                                                                      │
+│  • Accepts external A2A requests                                     │
+│  • Starts workflow jobs                                              │
+│  • Returns execution results                                         │
 └─────────────────────────────────┬───────────────────────────────────┘
-                                  │ HTTPS
+                                  │ Internal A2A (JWT)
                                   ▼
 ┌─────────────────────────────────────────────────────────────────────┐
-│                    PUBLIC SERVER (--role public)                     │
+│                   A2A SERVER - INTERNAL MODE                         │
+│              (shaman-a2a-server --role internal)                     │
 │                                                                      │
 │  ┌──────────────┐  ┌─────────────────┐  ┌────────────────────────┐ │
-│  │ API Gateway  │  │  GraphQL API    │  │  A2A Public Endpoint   │ │
-│  │ (Auth/Route) │  │  (Management)    │  │  (/a2a/v1/agents/*)   │ │
+│  │ A2A Endpoint │  │ JWT Token       │  │  Agent Executor        │ │
+│  │  /a2a/v1/*   │  │  Validation     │  │  (LLM + Tools)         │ │
 │  └──────────────┘  └─────────────────┘  └────────────────────────┘ │
 │                                                                      │
-│  ┌──────────────┐  ┌─────────────────┐  ┌────────────────────────┐ │
-│  │ Ory Kratos   │  │    Permiso      │  │  WebSocket Gateway     │ │
-│  │ (Sessions)   │  │  (RBAC/Users)   │  │  (Live Updates)        │ │
-│  └──────────────┘  └─────────────────┘  └────────────────────────┘ │
-└─────────────────────────────────┬───────────────────────────────────┘
-                                  │ A2A Protocol (HTTPS + JWT)
-                                  ▼
-┌─────────────────────────────────────────────────────────────────────┐
-│                   INTERNAL SERVER (--role internal)                  │
-│                                                                      │
-│  ┌──────────────┐  ┌─────────────────┐  ┌────────────────────────┐ │
-│  │ A2A Internal │  │ Agent Executor  │  │  Workflow Engine       │ │
-│  │  Endpoint    │  │ (LLM + Tools)   │  │  (Temporal/BullMQ)     │ │
-│  └──────────────┘  └─────────────────┘  └────────────────────────┘ │
-│                                                                      │
-│  ┌──────────────┐  ┌─────────────────┐  ┌────────────────────────┐ │
-│  │ Git Agent    │  │  MCP Server     │  │  JWT Token             │ │
-│  │  Resolver    │  │  Manager        │  │  Generator             │ │
-│  └──────────────┘  └─────────────────┘  └────────────────────────┘ │
+│  • Only accepts internal requests (JWT auth)                         │
+│  • Executes agent logic                                              │
+│  • Makes A2A calls to other agents                                  │
 └─────────────────────────────────────────────────────────────────────┘
                                   │
                                   ▼
 ┌─────────────────────────────────────────────────────────────────────┐
 │                         INFRASTRUCTURE                               │
 │  ┌──────────────┐  ┌─────────────────┐  ┌────────────────────────┐ │
-│  │ PostgreSQL   │  │ Redis/Message   │  │  Object Storage        │ │
-│  │ (Multi-DB)   │  │    Queue        │  │  (Artifacts)           │ │
+│  │ PostgreSQL   │  │ Redis (BullMQ)  │  │  Object Storage        │ │
+│  │ (Multi-DB)   │  │                 │  │  (Artifacts)           │ │
 │  └──────────────┘  └─────────────────┘  └────────────────────────┘ │
 └─────────────────────────────────────────────────────────────────────┘
 ```
 
-## Server Roles and Responsibilities
+## Server Components
 
-### Public Server (`--role public`)
+### GraphQL Server (`shaman-gql-server`)
 
-The **public-facing server** that handles all external interactions:
+The **management-only server** that provides administrative APIs:
 
 **Primary Functions:**
-- API Gateway with subdomain-based tenant routing
-- GraphQL API for management operations
-- External A2A endpoint for agent invocations
-- Authentication via Ory Kratos (sessions) and API keys
+- GraphQL API for all management operations
+- User authentication via Ory Kratos
 - Authorization via Permiso RBAC
-- WebSocket gateway for real-time updates
+- Agent repository management
+- Workflow monitoring and queries
+- NO agent execution capabilities
 
 **Key Characteristics:**
 - Stateless and horizontally scalable
-- Does NOT execute agents directly
-- Forwards agent requests to internal server via A2A
-- Maintains security perimeter
-- Handles all external authentication
+- Cannot execute agents
+- Read-only access to workflow data
+- Manages configuration and metadata
 
 **Startup Command:**
 ```bash
-npm start -- --role public --port 3000
+cd node/packages/shaman-gql-server && npm start
 ```
 
-### Internal Server (`--role internal`)
+### A2A Server (`shaman-a2a-server`)
 
-The **agent execution server** that runs in a protected environment:
+The **execution gateway** that handles all agent invocations:
 
-**Primary Functions:**
-- Receives A2A requests from public server
+**Deployment Modes:**
+
+#### Public Mode (`--role public`)
+- Accepts A2A requests from external systems
+- Validates API keys or OAuth tokens
+- Starts workflow jobs via BullMQ
+- Returns execution results
+- Exposed to internet (with security)
+
+#### Internal Mode (`--role internal`)
+- Only accepts requests with internal JWT tokens
 - Executes agent logic with LLM providers
-- Manages MCP tool connections
-- Orchestrates workflows via pluggable engines
-- Handles agent-to-agent communication via A2A
+- Manages tool execution via MCP
+- Makes A2A calls to other agents
+- NOT exposed to internet
 
-**Key Characteristics:**
-- Not directly accessible from internet
-- Authenticates via JWT tokens only
-- Can make outbound A2A calls to other agents
-- Manages tool execution via MCP protocol
-- Maintains conversation context
-
-**Startup Command:**
+**Startup Commands:**
 ```bash
-npm start -- --role internal --port 4000
+# Public mode
+cd node/packages/shaman-a2a-server && npm start -- --role public --port 5000
+
+# Internal mode
+cd node/packages/shaman-a2a-server && npm start -- --role internal --port 5001
 ```
 
 ## Communication Flows
 
 ### 1. External Agent Invocation
 
-When an external system calls an exposed agent:
+When an external system wants to execute an agent:
 
 ```
-1. External System → Public Server
+1. External System → A2A Server (Public)
    POST https://acme.shaman.ai/a2a/v1/agents/ProcessOrder/execute
    Authorization: Bearer sk_live_abc123...
    
-2. Public Server:
-   - Validates API key with Permiso
-   - Checks permissions for agent access
-   - Creates workflow run record
+2. A2A Public Server:
+   - Validates API key
+   - Creates workflow job in BullMQ
+   - Returns task ID immediately
+   
+3. Worker picks up job:
    - Generates internal JWT token
+   - Makes A2A call to internal server
    
-3. Public Server → Internal Server (A2A)
-   POST https://internal-server:4000/a2a/v1/agents/ProcessOrder/execute
+4. Worker → A2A Server (Internal)
+   POST https://internal-a2a:5001/a2a/v1/agents/ProcessOrder/execute
    Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
-   X-Shaman-Context: {"tenantId":"acme","userId":"api-user-123"}
    
-4. Internal Server:
+5. A2A Internal Server:
    - Validates JWT token
-   - Resolves agent from Git repository
    - Executes agent with LLM
-   - Returns result via A2A response
+   - Returns result
    
-5. Public Server → External System
-   Returns final result with execution metadata
+6. Worker updates job status
+   
+7. External system can poll or receive webhook
 ```
 
 ### 2. Agent-to-Agent Communication
@@ -258,19 +283,21 @@ Agent → Tool Request → MCP Client → Transport → MCP Server → Tool
 
 ### Workflow Orchestration
 
-The workflow engine manages execution flow:
+The workflow engine (BullMQ) manages execution flow:
 
 ```
-Workflow Definition → Task Queue → Worker Pool → Agent Execution
-        │                 │            │              │
-        └─────────────────┴────────────┴──────────────┘
-                    Workflow State Machine
+A2A Request → Job Queue → Worker Pool → Agent Execution
+      │           │            │              │
+      └───────────┴────────────┴──────────────┘
+               BullMQ Job Processing
 ```
 
-**Supported Engines:**
-- **Temporal**: Production-grade with durability
-- **BullMQ**: Redis-based for development
-- **Custom**: Implement adapter interface
+**Workflow Features:**
+- **BullMQ**: Redis-based job queue
+- **Job persistence**: Survives server restarts
+- **Retry logic**: Configurable retry policies
+- **Job priorities**: Important jobs first
+- **Monitoring**: Built-in job dashboard
 
 ## Multi-Tenant Isolation
 

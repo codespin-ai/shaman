@@ -5,10 +5,11 @@ This file is maintained for AI assistants to quickly understand the current stat
 ## Quick Context
 Shaman is a comprehensive backend framework for managing and coordinating AI agents through a federated ecosystem. It's built as a NodeJS/TypeScript monorepo without npm workspaces, using a custom build system.
 
-**CRITICAL ARCHITECTURE**: Shaman uses a two-server deployment model where:
-- **Public Server** (`--role public`): Handles external API requests, authentication
-- **Internal Server** (`--role internal`): Executes agents in isolated environment
+**CRITICAL ARCHITECTURE CHANGE**: Shaman now splits into two distinct servers:
+- **GraphQL Server** (`shaman-gql-server`): Pure management API - NO agent execution
+- **A2A Server** (`shaman-a2a-server`): ALL agent execution, supports --role public/internal
 - All agent-to-agent communication uses HTTP/A2A protocol (NOT direct function calls)
+- Single workflow engine using BullMQ (removed abstraction layer)
 
 ## Current Implementation Status
 
@@ -18,56 +19,54 @@ Shaman is a comprehensive backend framework for managing and coordinating AI age
 3. **shaman-core** - Core utilities and base types
 4. **shaman-config** - Configuration loading and validation
 5. **shaman-llm-core** - LLM provider interface
-6. **shaman-workflow-core** - Workflow engine abstraction
-7. **shaman-db** - Database connection management only
-8. **shaman-observability** - OpenTelemetry integration
-9. **shaman-llm-vercel** - Vercel AI SDK implementation
+6. **shaman-db** - Database connection management only
+7. **shaman-observability** - OpenTelemetry integration
+8. **shaman-llm-vercel** - Vercel AI SDK implementation
+9. **shaman-workflow** - Workflow engine using BullMQ
 
 ### ✅ Completed Agent Infrastructure
 10. **shaman-git-resolver** - Git-based agent discovery with caching
 11. **shaman-external-registry** - External agent registry support
 12. **shaman-agents** - Unified agent resolution
-13. **shaman-a2a-provider** - A2A protocol server implementation
-14. **shaman-a2a-client** - A2A protocol HTTP client for agent-to-agent calls
-15. **shaman-tool-router** - Tool execution routing
-16. **shaman-agent-executor** - Agent execution engine
-17. **shaman-workflow-temporal** - Temporal workflow adapter
+13. **shaman-a2a-client** - A2A protocol HTTP client for agent-to-agent calls
+14. **shaman-tool-router** - Tool execution routing
+15. **shaman-agent-executor** - Agent execution engine
 
-### ✅ Completed Server
-18. **shaman-server** - GraphQL API server with:
-    - Express middleware setup
-    - Apollo Server configuration (commented out, needs integration)
-    - GraphQL schema and resolvers
-    - Health endpoints
-    - Basic structure for subscriptions (not implemented)
-    - **MISSING**: --role flag support for two-server model
+### ✅ New Server Architecture
+16. **shaman-gql-server** - GraphQL management API:
+    - Pure management operations (no execution)
+    - User authentication via Ory Kratos
+    - Agent repository management
+    - Workflow monitoring
+    
+17. **shaman-a2a-server** - A2A execution server:
+    - Handles ALL agent execution
+    - Supports --role public and --role internal
+    - Starts workflow jobs via BullMQ
+    - JWT validation for internal calls
 
 ### ⚠️ Partially Implemented
-19. **shaman-security** - Has structure but needs:
+18. **shaman-security** - Has structure but needs:
     - JWT validation implementation (only stub exists)
     - RBAC policy enforcement
     - Rate limiting refinement
     - Internal JWT token generation for A2A calls
     
-20. **shaman-workflow-bullmq** - Has adapter skeleton but needs:
-    - Queue management
-    - Job processing
-    - Error handling
+19. **shaman-worker** - Has bootstrap but needs:
+    - BullMQ job processing
+    - A2A client integration
+    - Proper job lifecycle management
 
-21. **shaman-worker** - Has bootstrap but needs:
-    - Workflow processing logic
-    - Agent execution integration
-    - Queue consumers
-
-22. **shaman-cli** - Has command structure but needs:
+20. **shaman-cli** - Has command structure but needs:
     - Command implementations
-    - Server API integration
+    - Support for both servers
 
-### ❌ Critical Implementation Gaps
-1. **Server Role Support**: No --role flag parsing in server startup
-2. **A2A Integration**: Agent-executor still uses direct function calls instead of A2A client
-3. **JWT Infrastructure**: Only empty stub files exist for JWT functionality
-4. **Server Integration**: A2A provider not integrated into main server
+### ❌ Implementation Gaps for New Architecture
+1. **A2A Server Start Script**: Need to add --role flag parsing
+2. **Workflow Integration**: A2A server needs to create BullMQ jobs
+3. **Worker A2A Calls**: Worker needs to use A2A client for execution
+4. **JWT Infrastructure**: Security package needs real JWT implementation
+5. **GraphQL Queries**: Need to update to not include execution mutations
 
 ## Remaining Work Options
 
@@ -145,14 +144,19 @@ When starting a new session:
 
 ## Recent Activity Log
 
-- **Latest Changes (Current Session)**:
+- **Latest Major Refactor (Current Session)**:
+  - ✅ Split shaman-server into shaman-gql-server and shaman-a2a-server
+  - ✅ Created shaman-workflow package (unified BullMQ implementation)
+  - ✅ Renamed shaman-a2a-provider to shaman-a2a-server
+  - ✅ Removed workflow-core, workflow-temporal, workflow-bullmq packages
+  - ✅ Updated all package dependencies for new architecture
+  - ✅ Updated build.sh with new package structure
+  - ✅ Completely revised documentation for new architecture
+  
+- **Previous Session**:
   - ✅ Created `@codespin/shaman-a2a-client` package with full implementation
   - ✅ Added JWT token generation and validation utilities
-  - ✅ Updated build.sh to include new a2a-client package
   - ✅ Added jsonwebtoken dependencies to security, server, and a2a-client packages
-  - ✅ Updated CLAUDE.md with two-server architecture documentation
-  - ✅ Added A2A provider dependency to server package
-  - ✅ Added A2A client dependency to agent-executor package
 
 - **Major Architecture Change**: ✅ COMPLETED - Migrated from centralized shaman-persistence to decentralized database pattern
   - Created new `@codespin/shaman-db` package for database connection management only

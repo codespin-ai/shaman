@@ -26,7 +26,10 @@ Shaman is a comprehensive backend framework for managing and coordinating AI age
 
 ## Recent Important Changes
 
-- **Two-Server Architecture**: Shaman now requires two servers: `--role public` and `--role internal`
+- **Server Split**: Shaman now has two separate servers: `shaman-gql-server` (management) and `shaman-a2a-server` (execution)
+- **A2A Server Roles**: The A2A server supports `--role public` and `--role internal` for different deployment scenarios
+- **No GraphQL Execution**: GraphQL server is purely for management - all agent execution goes through A2A
+- **Unified Workflow**: Single `shaman-workflow` package using BullMQ (removed abstraction layer)
 - **A2A Protocol**: All agent-to-agent communication uses HTTP/A2A protocol (not direct function calls)
 - **New A2A Client**: Added `shaman-a2a-client` package for agent-to-agent HTTP calls
 - **Git Operations**: Now uses native git commands instead of isomorphic-git
@@ -36,7 +39,6 @@ Shaman is a comprehensive backend framework for managing and coordinating AI age
 - **Type Safety**: All `any` types removed from codebase, replaced with proper types
 - **LLM Provider**: Vercel AI SDK provider implemented with OpenAI and Anthropic support
 - **Agent Executor**: Complete agent execution engine with tool calling and conversation management
-- **Workflow Foundation**: Temporal adapter, tool router, and platform tools implemented
 - **Domain-Driven Architecture**: Refactored persistence layer to domain structure with one-function-per-file pattern and dedicated mapper directories
 
 ## Essential Commands
@@ -185,23 +187,21 @@ Located in `/node/packages/`, build order matters:
 3. **@codespin/shaman-core** - Core types and utilities
 4. **@codespin/shaman-config** - Configuration management
 5. **@codespin/shaman-llm-core** - LLM provider abstraction
-6. **@codespin/shaman-workflow-core** - Workflow engine abstraction
-7. **@codespin/shaman-db** - Database connection management
-8. **@codespin/shaman-observability** - Metrics and tracing
-9. **@codespin/shaman-security** - Auth, RBAC, rate limiting (includes JWT)
-10. **@codespin/shaman-external-registry** - External agent registry
-11. **@codespin/shaman-git-resolver** - Git-based agent discovery (with caching)
-12. **@codespin/shaman-agents** - Unified agent resolution from all sources
-13. **@codespin/shaman-a2a-provider** - Expose Git agents via A2A protocol
-14. **@codespin/shaman-a2a-client** - HTTP client for A2A agent calls
-15. **@codespin/shaman-llm-vercel** - Vercel AI SDK provider
-16. **@codespin/shaman-tool-router** - Tool execution routing
-17. **@codespin/shaman-agent-executor** - Core agent execution engine
-18. **@codespin/shaman-workflow-bullmq** - BullMQ workflow adapter
-19. **@codespin/shaman-workflow-temporal** - Temporal workflow adapter
-20. **@codespin/shaman-server** - Main GraphQL server
-21. **@codespin/shaman-worker** - Background worker
-22. **@codespin/shaman-cli** - CLI tool
+6. **@codespin/shaman-db** - Database connection management
+7. **@codespin/shaman-observability** - Metrics and tracing
+8. **@codespin/shaman-security** - Auth, RBAC, rate limiting (includes JWT)
+9. **@codespin/shaman-external-registry** - External agent registry
+10. **@codespin/shaman-git-resolver** - Git-based agent discovery (with caching)
+11. **@codespin/shaman-agents** - Unified agent resolution from all sources
+12. **@codespin/shaman-a2a-client** - HTTP client for A2A agent calls
+13. **@codespin/shaman-llm-vercel** - Vercel AI SDK provider
+14. **@codespin/shaman-tool-router** - Tool execution routing
+15. **@codespin/shaman-agent-executor** - Core agent execution engine
+16. **@codespin/shaman-workflow** - Workflow engine using BullMQ
+17. **@codespin/shaman-a2a-server** - A2A protocol server (public/internal roles)
+18. **@codespin/shaman-gql-server** - GraphQL management API
+19. **@codespin/shaman-worker** - Background worker for job processing
+20. **@codespin/shaman-cli** - CLI tool
 
 ## Development Workflow
 
@@ -411,42 +411,46 @@ Key functions:
 - Commit hashes stored in `agent_repository.last_sync_commit_hash`
 - Per-file hashes in `git_agent.last_modified_commit_hash`
 
-## Two-Server Architecture
+## Server Architecture
 
-**IMPORTANT**: Shaman uses a two-server deployment model for security and scalability:
+**IMPORTANT**: Shaman splits functionality into two distinct servers:
 
-### Public Server (`--role public`)
-- Handles external GraphQL API requests
-- Manages authentication via Ory Kratos
-- Performs authorization and rate limiting
-- Makes A2A HTTP calls to internal server for agent execution
+### GraphQL Server (`shaman-gql-server`)
+- Pure management API - NO agent execution
+- Handles user authentication via Ory Kratos
+- Agent repository management
+- Workflow monitoring and queries
+- User and permission management
 - Exposed to the internet
 
-### Internal Server (`--role internal`)
-- Executes agents in isolated environment
-- Exposes A2A endpoints for agent discovery and execution
-- Validates internal JWT tokens from public server
-- Not accessible from the internet
-- All agent-to-agent calls use A2A protocol (HTTP)
+### A2A Server (`shaman-a2a-server`)
+- Handles ALL agent execution
+- Supports two deployment modes:
+  - `--role public`: Accepts external A2A requests, exposed to internet
+  - `--role internal`: Only accepts internal requests, not exposed
+- Starts workflows via BullMQ
+- Validates JWT tokens (internal) or API keys (external)
 
 ### Starting Servers
 ```bash
-# Public server
-node dist/start.js --role public --port 4000
+# GraphQL management server
+cd node/packages/shaman-gql-server && npm start
 
-# Internal server  
-node dist/start.js --role internal --port 5000
+# A2A server (public mode - accepts external requests)
+cd node/packages/shaman-a2a-server && npm start -- --role public --port 5000
+
+# A2A server (internal mode - only internal requests)  
+cd node/packages/shaman-a2a-server && npm start -- --role internal --port 5001
 ```
 
-## A2A Provider & Client
+## A2A Architecture
 
-### A2A Provider
-The shaman-a2a-provider module exposes Git agents via the A2A protocol:
-- Express-based HTTP server with A2A endpoints
-- Agent discovery, execution, and health check endpoints
-- Configurable authentication and rate limiting
-- Whitelist/blacklist support for agent exposure
-- Integrated into main server based on --role
+### A2A Server
+The shaman-a2a-server is the execution gateway for all agents:
+- Receives agent execution requests via A2A protocol
+- Starts workflow jobs using BullMQ
+- Supports both public and internal deployment modes
+- Validates authentication (JWT for internal, API keys for external)
 
 Key endpoints:
 - `GET /a2a/v1/agents` - Discover available agents
@@ -458,7 +462,7 @@ The shaman-a2a-client module enables agent-to-agent communication:
 - HTTP client for A2A protocol
 - Internal JWT token generation
 - Retry logic with exponential backoff
-- Used by agent-executor for all agent calls
+- Used by agent-executor for all agent-to-agent calls
 
 ## Agent Executor
 

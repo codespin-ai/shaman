@@ -1,7 +1,7 @@
 {
-  "name": "@codespin/shaman-cli",
+  "name": "@codespin/shaman-workflow",
   "version": "0.0.1",
-  "description": "Dev/Ops command-line wrapper around server & worker.",
+  "description": "Workflow engine for Shaman using BullMQ",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -16,12 +16,16 @@
   },
   "license": "MIT",
   "dependencies": {
-    "@codespin/shaman-config": "file:../shaman-config",
-    "@codespin/shaman-gql-server": "file:../shaman-gql-server",
-    "@codespin/shaman-a2a-server": "file:../shaman-a2a-server",
-    "@codespin/shaman-worker": "file:../shaman-worker"
+    "@codespin/shaman-core": "file:../shaman-core",
+    "@codespin/shaman-types": "file:../shaman-types",
+    "@codespin/shaman-logger": "file:../shaman-logger",
+    "@codespin/shaman-agent-executor": "file:../shaman-agent-executor",
+    "bullmq": "^5.31.1",
+    "ioredis": "^5.4.2"
   },
   "devDependencies": {
+    "typescript": "^5.3.3",
+    "@types/node": "^22.5.0",
     "eslint": "^9.32.0",
     "@typescript-eslint/parser": "^8.38.0",
     "@typescript-eslint/eslint-plugin": "^8.38.0"
