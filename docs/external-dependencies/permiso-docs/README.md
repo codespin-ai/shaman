@@ -1,5 +1,10 @@
 # Permiso
+
 A comprehensive Role-Based Access Control (RBAC) system with GraphQL API, built with TypeScript.
+
+## Overview
+
+Permiso is an external RBAC service that Shaman integrates with for fine-grained authorization. It provides multi-tenant organizations, users, roles, and resource-based permissions.
 
 ## Features
 
@@ -10,68 +15,31 @@ A comprehensive Role-Based Access Control (RBAC) system with GraphQL API, built 
 - 🚀 **GraphQL API** - Modern, type-safe API with full CRUD operations
 - 📊 **Effective Permissions** - Combined user and role permission calculation
 
-## Quick Start
+## Endpoint
 
-### Prerequisites
-
-- Node.js 22+
-- PostgreSQL 12+
-- npm or yarn
-
-### Installation
-
-```bash
-# Clone the repository
-git clone https://github.com/codespin-ai/permiso.git
-cd permiso
-
-# Install dependencies
-npm install
-
-# Build all packages
-./build.sh
+```
+POST http://localhost:5001/graphql
 ```
 
-### Database Setup
+## Authentication
 
-To run the development environment, use the following scripts from the `devenv` directory:
-
-- **For macOS:** `./run.sh up`
-- **For Linux:** `./run-rootless.sh up`
-
-This will start a PostgreSQL container.
-
-You can then set the following environment variables to connect to the database:
+Permiso supports optional API key authentication. When enabled, all requests must include a valid API key in the `x-api-key` header.
 
 ```bash
-# Set environment variables
-export PERMISO_DB_HOST=localhost
-export PERMISO_DB_PORT=5432
-export PERMISO_DB_NAME=permiso
-export PERMISO_DB_USER=postgres
-export PERMISO_DB_PASSWORD=your_password
+# Using curl
+curl -X POST http://localhost:5001/graphql \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: your-secret-api-key" \
+  -d '{"query": "{ organizations { id name } }"}'
 
-# Run migrations
-cd node/packages/permiso-server
-npm run migrate:latest
+# Using Apollo Client
+const client = new ApolloClient({
+  uri: 'http://localhost:5001/graphql',
+  headers: {
+    'x-api-key': 'your-secret-api-key'
+  }
+});
 ```
-
-### Starting the Server
-
-```bash
-# Start the GraphQL server
-./start.sh
-
-# The server will be available at http://localhost:5001/graphql
-```
-
-## Architecture
-
-Permiso is built as a monorepo with the following packages:
-
-- **`@codespin/permiso-core`** - Core types and utilities (Result type, etc.)
-- **`@codespin/permiso-logger`** - Centralized logging with Winston
-- **`@codespin/permiso-server`** - GraphQL server for RBAC implementation
 
 ## Core Concepts
 
@@ -110,84 +78,32 @@ Define what actions can be performed on resources:
 
 ### Properties
 
-Key-value metadata that can be attached to organizations, users, and roles:
+Key-value metadata stored as JSONB that can be attached to organizations, users, and roles:
 
-- Support for hidden properties
-- Filterable queries
-- Useful for custom business logic
+- **Flexible JSON storage** - Store strings, numbers, booleans, objects, arrays, or null
+- **Hidden properties** - Mark sensitive data as hidden
+- **Filterable queries** - Query by property names and values
+- **Type-safe** - PostgreSQL JSONB validation and operations
 
 ## Usage Example
 
-```typescript
-import {
-  initializeDatabase,
-  createOrganization,
-  createUser,
-  createRole,
-  grantRolePermission,
-  assignUserRole,
-} from "@codespin/permiso-server";
-
-// Initialize database
-const db = initializeDatabase();
-
-// Create an organization
-const org = await createOrganization(db, {
-  id: "acme-corp",
-  data: "ACME Corporation",
-});
-
-// Create a role
-const role = await createRole(db, {
-  id: "editor",
-  orgId: "acme-corp",
-  data: "Content Editor Role",
-});
-
-// Grant permissions to role
-await grantRolePermission(db, "acme-corp", "editor", "/documents/*", "read");
-await grantRolePermission(db, "acme-corp", "editor", "/documents/*", "write");
-
-// Create a user
-const user = await createUser(db, {
-  id: "john-doe",
-  orgId: "acme-corp",
-  identityProvider: "google",
-  identityProviderUserId: "john@acme.com",
-});
-
-// Assign role to user
-await assignUserRole(db, "acme-corp", "john-doe", "editor");
-
-// Check permissions
-const hasPermission = await hasPermission(
-  db,
-  "acme-corp",
-  "john-doe",
-  "/documents/report.pdf",
-  "write"
-);
-// Returns: true
-```
-
-## GraphQL API
-
-Permiso provides a complete GraphQL schema for all RBAC operations. Key features:
-
-- Full CRUD operations for all entities
-- Filtering and pagination support
-- Nested relationship queries
-- Batch operations
-- Real-time permission checking
-
-Example query:
+### Checking User Permissions
 
 ```graphql
 query GetUserPermissions {
   user(orgId: "acme-corp", userId: "john-doe") {
     id
+    properties {
+      name
+      value
+      hidden
+    }
     roles {
       id
+      properties {
+        name
+        value
+      }
       permissions {
         resourceId
         action
@@ -202,42 +118,77 @@ query GetUserPermissions {
 }
 ```
 
-## Development
+### Creating Organizations with Properties
 
-### Project Structure
-
+```graphql
+mutation {
+  createOrganization(
+    input: {
+      id: "acme-corp"
+      name: "ACME Corporation"
+      description: "Global leader in innovation"
+      properties: [
+        {
+          name: "tier"
+          value: "enterprise"
+        }
+        {
+          name: "settings"
+          value: {
+            maxUsers: 5000
+            features: ["sso", "audit", "api"]
+          }
+        }
+      ]
+    }
+  ) {
+    id
+    name
+    properties {
+      name
+      value
+    }
+  }
+}
 ```
-permiso/
-├── node/packages/
-│   ├── permiso-core/       # Core utilities
-│   ├── permiso-logger/     # Logging
-│   └── permiso-server/     # GraphQL server
-├── build.sh                # Build script
-├── clean.sh                # Clean script
-└── lint-all.sh            # Lint all packages
+
+### Setting User Properties
+
+```graphql
+mutation {
+  setUserProperty(
+    orgId: "acme-corp"
+    userId: "john-doe"
+    name: "profile"
+    value: {
+      department: "engineering"
+      level: 3
+      skills: ["typescript", "graphql", "postgres"]
+      manager: "jane-smith"
+    }
+  ) {
+    name
+    value
+  }
+}
 ```
 
-### Building
+### Checking Permissions
 
-```bash
-# Build all packages
-./build.sh
-
-# Clean build artifacts
-./clean.sh
-
-# Run linting
-./lint-all.sh
-```
-
-### Testing
-
-```bash
-# Run tests (coming soon)
-npm test
+```graphql
+query {
+  hasPermission(
+    orgId: "acme-corp"
+    userId: "john-doe"
+    resourceId: "/documents/report.pdf"
+    action: "write"
+  )
+}
 ```
 
 ## Environment Variables
+
+When deploying Permiso, use these environment variables:
 
 | Variable              | Description                     | Default     |
 | --------------------- | ------------------------------- | ----------- |
@@ -250,11 +201,8 @@ npm test
 | `PERMISO_API_KEY_ENABLED` | Enable API key auth         | `false`     |
 | `PERMISO_SERVER_PORT` | GraphQL server port             | `5001`      |
 | `LOG_LEVEL`           | Logging level                   | `info`      |
-| `PERMISO_AUTO_MIGRATE` | Auto-run database migrations (Docker) | `false`     |
 
-## Docker Support
-
-Permiso can be run as a Docker container for easy deployment and distribution.
+## Docker Deployment
 
 ### Using Pre-built Images
 
@@ -262,7 +210,7 @@ Permiso can be run as a Docker container for easy deployment and distribution.
 # Pull from GitHub Container Registry
 docker pull ghcr.io/codespin-ai/permiso:latest
 
-# Run with automatic database setup (recommended for first run)
+# Run with automatic database setup
 docker run -p 5001:5001 \
   -e PERMISO_DB_HOST=your-db-host \
   -e PERMISO_DB_PORT=5432 \
@@ -271,196 +219,33 @@ docker run -p 5001:5001 \
   -e PERMISO_DB_PASSWORD=your-password \
   -e PERMISO_AUTO_MIGRATE=true \
   ghcr.io/codespin-ai/permiso:latest
-
-# Run without automatic migrations (for production)
-docker run -p 5001:5001 \
-  -e PERMISO_DB_HOST=your-db-host \
-  -e PERMISO_DB_PORT=5432 \
-  -e PERMISO_DB_NAME=permiso \
-  -e PERMISO_DB_USER=postgres \
-  -e PERMISO_DB_PASSWORD=your-password \
-  ghcr.io/codespin-ai/permiso:latest
-```
-
-#### Automatic Database Setup
-
-The Docker image includes an intelligent entrypoint that can automatically set up your database:
-
-- **`PERMISO_AUTO_MIGRATE=true`** - Enables automatic database migrations
-- On first run: Creates all necessary tables
-- On subsequent runs: Applies any pending migrations
-- Safe for development and staging environments
-- For production: Run migrations manually or in a separate step
-
-### Building Your Own Image
-
-```bash
-# Build the Docker image
-./docker-build.sh
-
-# Or manually with Docker
-docker build -t permiso:latest .
-
-# Run the container
-docker run -p 5001:5001 \
-  --env-file .env \
-  permiso:latest
-```
-
-### Docker Compose for Development
-
-For local development with PostgreSQL:
-
-```bash
-# macOS users
-cd devenv
-./run.sh up
-
-# Linux users
-cd devenv
-./run-rootless.sh up
-
-# Run the application (outside container)
-cd ..
-./build.sh
-./start.sh
 ```
 
 ### Quick Start with Docker Compose
 
-For a complete setup with both PostgreSQL and Permiso:
-
-```bash
-# Copy the example file
-cp docker-compose.example.yml docker-compose.yml
-
-# Edit passwords and configuration as needed
-# Then start everything:
-docker-compose up -d
-
-# The application will be available at http://localhost:5001/graphql
-# Database migrations will run automatically on first start
-```
-
-### Pushing to a Registry
-
-```bash
-# Push to GitHub Container Registry (official)
-./docker-push.sh ghcr.io/codespin-ai/permiso latest
-
-# Push to your own registry
-./docker-push.sh docker.io/yourorg/permiso latest
-
-# Push to AWS ECR
-./docker-push.sh 123456789.dkr.ecr.us-east-1.amazonaws.com/permiso latest
-```
-
-### Environment Configuration
-
-Create a `.env` file based on `.env.example`:
-
-```bash
-cp .env.example .env
-# Edit .env with your configuration
-```
-
-### Production Deployment
-
-The Docker image is optimized for production with:
-- Multi-stage build for smaller image size
-- Node 24 on Ubuntu 24.04 minimal base
-- Non-root user execution
-- Health checks included
-- Proper signal handling for graceful shutdown
-
-Example Kubernetes deployment:
-
 ```yaml
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: permiso
-spec:
-  replicas: 2
-  selector:
-    matchLabels:
-      app: permiso
-  template:
-    metadata:
-      labels:
-        app: permiso
-    spec:
-      containers:
-      - name: permiso
-        image: ghcr.io/codespin-ai/permiso:latest
-        ports:
-        - containerPort: 5001
-        env:
-        - name: PERMISO_DB_HOST
-          value: postgres-service
-        - name: PERMISO_DB_PASSWORD
-          valueFrom:
-            secretKeyRef:
-              name: permiso-secrets
-              key: db-password
-        livenessProbe:
-          httpGet:
-            path: /graphql
-            port: 5001
-          initialDelaySeconds: 30
-          periodSeconds: 10
+version: '3.8'
+services:
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: permiso
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+
+  permiso:
+    image: ghcr.io/codespin-ai/permiso:latest
+    ports:
+      - "5001:5001"
+    environment:
+      PERMISO_DB_HOST: postgres
+      PERMISO_DB_PORT: 5432
+      PERMISO_DB_NAME: permiso
+      PERMISO_DB_USER: postgres
+      PERMISO_DB_PASSWORD: postgres
+      PERMISO_AUTO_MIGRATE: true
+    depends_on:
+      - postgres
 ```
 
-## API Authentication
-
-Permiso supports optional API key authentication to secure your GraphQL endpoint. When enabled, all requests must include a valid API key in the `x-api-key` header.
-
-### Enabling API Key Authentication
-
-```bash
-# Set the API key (this automatically enables authentication)
-export PERMISO_API_KEY=your-secret-api-key
-
-# Or explicitly enable with a separate flag
-export PERMISO_API_KEY_ENABLED=true
-export PERMISO_API_KEY=your-secret-api-key
-
-# Start the server
-./start.sh
-```
-
-### Making Authenticated Requests
-
-Include the API key in the `x-api-key` header:
-
-```bash
-# Using curl
-curl -X POST http://localhost:5001/graphql \
-  -H "Content-Type: application/json" \
-  -H "x-api-key: your-secret-api-key" \
-  -d '{"query": "{ organizations { id name } }"}'
-
-# Using Apollo Client
-const client = new ApolloClient({
-  uri: 'http://localhost:5001/graphql',
-  headers: {
-    'x-api-key': 'your-secret-api-key'
-  }
-});
-```
-
-## Contributing
-
-1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add some amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
-
-## License
-
-MIT © Codespin
-
-## Acknowledgments
-
-Inspired by [Tankman](https://github.com/lesser-app/tankman)
+For detailed API documentation, see [api-spec.md](./api-spec.md).
