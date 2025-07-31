@@ -6,9 +6,9 @@
 
 ## Overview
 
-The Shaman GraphQL API provides a strongly-typed interface for managing AI agents, executing workflows, and monitoring system operations. This API is designed for the management UI and requires **session-based authentication** via Ory Kratos.
+The Shaman GraphQL API provides a strongly-typed interface for managing AI agents and monitoring system operations. This API is designed for the management UI and requires **session-based authentication** via Ory Kratos.
 
-**Note**: This API is NOT used for agent execution. External systems calling agents should use the A2A endpoints with API key authentication.
+**IMPORTANT**: This API does NOT execute agents. ALL agent execution (including from the UI) must go through the A2A server. The GraphQL API is purely for management operations.
 
 ## Authentication
 
@@ -82,20 +82,17 @@ enum MCPAccessType {
 }
 ```
 
-### Workflow Execution
+### Workflow Monitoring
 
-Execute agents through the GraphQL API (for UI testing, not production use):
+Monitor existing workflow runs (execution happens via A2A server):
 
 ```graphql
-mutation ExecuteAgent {
-  executeAgent(input: {
-    agentName: "CustomerSupport"
-    input: "Help me with order #12345"
-    source: GIT
-    contextScope: FULL
-  }) {
+query GetRun {
+  run(id: "run_abc123") {
     id
     status
+    startedAt
+    completedAt
     steps {
       edges {
         node {

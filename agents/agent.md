@@ -25,7 +25,8 @@ The codebase is a NodeJS/TypeScript monorepo located under `/node/packages`. Eac
 -   **`@codespin/shaman-types`**: Contains shared TypeScript interfaces. **Always start here.**
 -   **`@codespin/shaman-db`**: Provides database connection management only.
 -   **`@codespin/shaman-git-resolver`**: Manages Git-based agent discovery (includes its own persistence).
--   **`@codespin/shaman-server`**: The main server application (GraphQL API).
+-   **`@codespin/shaman-gql-server`**: The GraphQL management API server.
+-   **`@codespin/shaman-a2a-server`**: The A2A execution server.
 -   *(Review the full list in this directory for other packages)*
 
 ### Dependency Management

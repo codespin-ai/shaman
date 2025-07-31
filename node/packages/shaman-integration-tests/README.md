@@ -24,19 +24,19 @@ shaman-integration-tests/
 
 Before tests can be enabled and run, the following components must be implemented in Shaman:
 
-### 1. GraphQL Schema (`shaman-server/src/schema.graphql`)
+### 1. GraphQL Schema (`shaman-gql-server/src/schema.graphql`)
 - Define types for AgentRepository, GitAgent, Run, Step, WorkflowData
 - Define queries for listing and fetching entities
-- Define mutations for creating and updating entities
+- Define mutations for management operations (NO execution)
 
-### 2. GraphQL Resolvers (`shaman-server/src/resolvers/`)
+### 2. GraphQL Resolvers (`shaman-gql-server/src/resolvers/`)
 - Implement resolvers for all queries and mutations
 - Connect resolvers to persistence layer
 
-### 3. Server Binary (`shaman-server/src/bin/shaman-server.ts`)
-- Create executable that starts the GraphQL server
-- Configure Apollo Server with schema and resolvers
-- Set up proper error handling and logging
+### 3. Server Binaries
+- **GraphQL Server** (`shaman-gql-server/src/start.ts`): Management API
+- **A2A Server** (`shaman-a2a-server/src/start.ts`): Agent execution with --role flag
+- Both servers must be running for full functionality
 
 ### 4. Database Migrations
 - Ensure all tables are created with proper indexes

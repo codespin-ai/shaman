@@ -1,15 +1,26 @@
 # Implementation Analysis: Current State vs. New Architecture
 
-This document analyzes how the current Shaman implementation aligns with the documented two-server architecture using A2A protocol for agent communication.
+**NOTE: This document was written before the major refactoring that split servers. It's kept for historical reference.**
 
-## Executive Summary
+## Update (Post-Refactoring)
 
-The current implementation **does NOT align** with the documented architecture. Major gaps exist:
+The architecture has been significantly refactored:
 
-1. **No --role flag support** - Server doesn't differentiate between public/internal roles
-2. **No A2A for internal calls** - Agents use direct function calls via workflow engine
-3. **Single server mode** - No separation of public API from agent execution
-4. **Missing JWT infrastructure** - No internal JWT token generation for A2A calls
+1. **Server Split Complete** ✅
+   - `shaman-gql-server`: Pure GraphQL management API
+   - `shaman-a2a-server`: All agent execution with --role support
+
+2. **Workflow Unified** ✅
+   - Single `shaman-workflow` package using BullMQ
+   - Removed abstraction layer and multiple adapters
+
+3. **Clear Separation** ✅
+   - GraphQL server has NO execution capabilities
+   - All execution goes through A2A protocol
+
+## Original Analysis (Historical)
+
+The original analysis identified these gaps which have now been addressed architecturally (though implementation is still needed):
 
 ## Detailed Analysis
 

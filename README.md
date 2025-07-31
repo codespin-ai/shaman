@@ -6,30 +6,32 @@ Shaman is a comprehensive backend framework for managing and coordinating AI age
 
 - **Agent Discovery**: Automatic discovery of agents from Git repositories with caching
 - **Multi-LLM Support**: Pluggable LLM providers (OpenAI, Anthropic via Vercel AI SDK)
-- **Workflow Orchestration**: Support for Temporal and BullMQ workflow engines
+- **Dual Server Architecture**: Separate GraphQL management API and A2A execution server
+- **Workflow Orchestration**: BullMQ-based job queue for reliable execution
 - **Tool Ecosystem**: Built-in platform tools and extensible tool router
 - **Type-Safe**: Fully typed TypeScript codebase with no `any` types
 - **Production Ready**: Built-in observability, security, and persistence layers
 
 ## Architecture
 
-Shaman follows a modular architecture with clear separation of concerns:
+Shaman follows a dual-server architecture with clear separation between management and execution:
 
 ```
+┌────────────────────────┐        ┌────────────────────────┐
+│   GraphQL Server       │        │    A2A Server          │
+│   (Management API)     │        │   (Agent Execution)    │
+│                        │        │                        │
+│ • Agent Management     │        │ • Agent Execution      │
+│ • User/Tenant Mgmt     │        │ • Workflow Jobs        │
+│ • Monitoring           │        │ • Tool Routing         │
+│ • NO EXECUTION         │        │ • LLM Integration      │
+└────────────────────────┘        └────────────────────────┘
+         │                                    │
+         └─────────────┬──────────────────────┘
+                       │
 ┌─────────────────────────────────────────────────────────────┐
-│                      GraphQL API Layer                       │
-├─────────────────────────────────────────────────────────────┤
-│                    Workflow Orchestration                    │
-│         (Temporal / BullMQ / Custom Adapters)               │
-├─────────────────────────────────────────────────────────────┤
-│                     Agent Execution                          │
-│     (Agent Executor + LLM Providers + Tool Router)          │
-├─────────────────────────────────────────────────────────────┤
-│                    Agent Discovery                           │
-│        (Git Resolver + External Registry + A2A)             │
-├─────────────────────────────────────────────────────────────┤
 │                  Infrastructure Layer                        │
-│    (Persistence + Security + Observability + Config)        │
+│    (PostgreSQL + Redis + Security + Observability)         │
 └─────────────────────────────────────────────────────────────┘
 ```
 
@@ -39,7 +41,7 @@ Shaman follows a modular architecture with clear separation of concerns:
 
 - Node.js 18+ 
 - PostgreSQL 14+
-- Redis (for BullMQ) or Temporal Server (for Temporal workflows)
+- Redis (required for BullMQ workflow engine)
 
 ### Installation
 
@@ -56,8 +58,15 @@ npm install
 npm run migrate:latest
 npm run seed:run
 
-# Start the server
-./start.sh
+# Start the servers
+# Terminal 1: GraphQL Management API
+cd node/packages/shaman-gql-server && npm start
+
+# Terminal 2: A2A Execution Server (public mode)
+cd node/packages/shaman-a2a-server && npm start -- --role public --port 5000
+
+# Terminal 3: Worker (processes jobs)
+cd node/packages/shaman-worker && npm start
 ```
 
 ### Environment Variables
@@ -77,8 +86,7 @@ OPENAI_API_KEY=your-openai-key
 ANTHROPIC_API_KEY=your-anthropic-key
 
 # Workflow Engine
-TEMPORAL_ADDRESS=localhost:7233  # If using Temporal
-REDIS_URL=redis://localhost:6379  # If using BullMQ
+REDIS_URL=redis://localhost:6379  # Required for BullMQ
 ```
 
 ## Project Structure
@@ -99,7 +107,8 @@ This is a TypeScript monorepo that deliberately avoids npm workspaces in favor o
 - `@codespin/shaman-agents` - Unified agent resolution
 - `@codespin/shaman-agent-executor` - Agent execution engine
 - `@codespin/shaman-git-resolver` - Git-based agent discovery
-- `@codespin/shaman-a2a-provider` - A2A protocol support
+- `@codespin/shaman-a2a-client` - A2A protocol client
+- `@codespin/shaman-a2a-server` - A2A protocol server
 
 ### LLM & Tools
 - `@codespin/shaman-llm-core` - LLM provider interface
@@ -107,9 +116,12 @@ This is a TypeScript monorepo that deliberately avoids npm workspaces in favor o
 - `@codespin/shaman-tool-router` - Tool execution routing
 
 ### Workflow & Orchestration
-- `@codespin/shaman-workflow-core` - Workflow abstraction
-- `@codespin/shaman-workflow-temporal` - Temporal adapter
-- `@codespin/shaman-workflow-bullmq` - BullMQ adapter
+- `@codespin/shaman-workflow` - BullMQ-based workflow engine
+
+### Servers
+- `@codespin/shaman-gql-server` - GraphQL management API
+- `@codespin/shaman-a2a-server` - A2A execution server
+- `@codespin/shaman-worker` - Job processing worker
 
 ### Infrastructure
 - `@codespin/shaman-types` - Shared TypeScript types
