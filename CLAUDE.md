@@ -222,8 +222,11 @@ Required PostgreSQL connection variables for the 'shaman' database:
 - `SHAMAN_DB_HOST`
 - `SHAMAN_DB_PORT`
 - `SHAMAN_DB_NAME`
-- `SHAMAN_DB_USER`
-- `SHAMAN_DB_PASSWORD`
+
+Database users (Row Level Security):
+- `RLS_DB_USER` and `RLS_DB_USER_PASSWORD` - For application queries (restricted by org)
+- `UNRESTRICTED_DB_USER` and `UNRESTRICTED_DB_USER_PASSWORD` - For migrations and admin
+- `SHAMAN_DB_USER` and `SHAMAN_DB_PASSWORD` - Legacy (deprecated)
 
 For additional databases, use the same pattern:
 - `[DBNAME]_DB_HOST`
@@ -233,6 +236,26 @@ For additional databases, use the same pattern:
 - `[DBNAME]_DB_PASSWORD`
 
 ## Code Patterns
+
+### Database Access with Row Level Security
+
+```typescript
+// ✅ Good - Create RLS-enabled database for application queries
+import { createRlsDb } from '@codespin/shaman-db';
+
+// In GraphQL context or request handler
+const db = createRlsDb(organizationId); // Automatically filters by org
+
+// ✅ Good - Create unrestricted database for migrations
+import { createUnrestrictedDb } from '@codespin/shaman-db';
+
+// In migration scripts
+const db = createUnrestrictedDb(); // Full access
+
+// ❌ Bad - Legacy approach (deprecated)
+import { getDb } from '@codespin/shaman-db';
+const db = getDb(); // Shows deprecation warning
+```
 
 ### Database Row Pattern (DbRow) - Domain Structure
 ```typescript

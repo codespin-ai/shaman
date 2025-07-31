@@ -78,8 +78,18 @@ Create a `.env` file with:
 SHAMAN_DB_HOST=localhost
 SHAMAN_DB_PORT=5432
 SHAMAN_DB_NAME=shaman
+
+# Legacy database user (deprecated)
 SHAMAN_DB_USER=postgres
 SHAMAN_DB_PASSWORD=postgres
+
+# RLS-enabled database user (for application)
+RLS_DB_USER=rls_db_user
+RLS_DB_USER_PASSWORD=secure_rls_password
+
+# Unrestricted database user (for migrations, admin)
+UNRESTRICTED_DB_USER=unrestricted_db_user
+UNRESTRICTED_DB_USER_PASSWORD=secure_admin_password
 
 # LLM Providers (optional)
 OPENAI_API_KEY=your-openai-key
