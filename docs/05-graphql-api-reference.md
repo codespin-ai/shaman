@@ -422,6 +422,33 @@ query ListAgents {
 }
 ```
 
+### Workflow Management
+
+```graphql
+# Create a new run explicitly (for multi-agent orchestration)
+mutation CreateRun {
+  createRun(input: {
+    description: "Process order with fraud check and inventory update"
+    metadata: {
+      orderId: "12345",
+      customerId: "cust-789"
+    }
+  }) {
+    run {
+      id
+      status
+      createdAt
+    }
+    errors {
+      code
+      message
+    }
+  }
+}
+```
+
+**Note**: This enables orchestration patterns where multiple agents can be started as root steps in the same workflow. Pass the returned `run.id` in the A2A metadata field `shaman:runId` when invoking agents.
+
 ### Workflow Monitoring
 
 ```graphql

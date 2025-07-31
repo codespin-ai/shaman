@@ -452,6 +452,11 @@ type AuditLogEdge {
 }
 
 # Input Types
+input CreateRunInput {
+  description: String
+  metadata: JSON
+}
+
 input CreateOrganizationInput {
   name: String!
   slug: String!
@@ -592,6 +597,9 @@ type OrganizationEdge {
 
 # Mutations
 type Mutation {
+  # Workflow management
+  createRun(input: CreateRunInput!): CreateRunPayload!
+  
   # Organization management
   createOrganization(input: CreateOrganizationInput!): CreateOrganizationPayload!
   updateOrganization(id: ID!, input: UpdateOrganizationInput!): UpdateOrganizationPayload!
@@ -617,6 +625,11 @@ type Mutation {
 }
 
 # Mutation Payloads
+type CreateRunPayload {
+  run: Run
+  errors: [Error!]!
+}
+
 type CreateOrganizationPayload {
   organization: Organization
   errors: [Error!]!

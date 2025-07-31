@@ -305,17 +305,34 @@ Shaman tracks the complete execution DAG across distributed agents using the A2A
 ```
 
 ### How It Works
+
+#### Option 1: Implicit Run Creation (Default)
 1. **Initial Request**: A2A public server creates a new Run with unique ID
 2. **First Agent**: Receives metadata with runId and no parentStepId
 3. **Agent Calls Agent**: Includes runId and its own stepId as parentStepId
 4. **Response Flow**: Each agent returns results with same metadata
 5. **DAG Construction**: System builds complete execution tree from metadata
 
+#### Option 2: Explicit Run Creation (Advanced Orchestration)
+1. **Create Run**: Client calls GraphQL `createRun` mutation, gets runId
+2. **Start Multiple Agents**: Client invokes multiple agents with same runId:
+   ```json
+   {
+     "metadata": {
+       "shaman:runId": "run-abc123"  // Pre-created run ID
+       // No parentStepId - these are all root steps
+     }
+   }
+   ```
+3. **Parallel Execution**: Multiple agents execute as root steps in same workflow
+4. **Fork-Join Patterns**: Enables map-reduce, parallel processing, etc.
+
 ### Benefits
 - **Full Traceability**: Every step linked to its parent and workflow
 - **Distributed Tracking**: Works across any number of servers
 - **A2A Compliant**: Uses standard metadata field, no protocol changes
 - **Tenant Isolation**: organizationId ensures data separation
+- **Flexible Orchestration**: Support for both single-root and multi-root workflows
 
 ## Component Architecture
 
