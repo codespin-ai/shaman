@@ -68,7 +68,9 @@ type Agent {
 
 ### Workflow Monitoring
 
-Monitor existing workflow runs (execution happens via A2A server):
+Monitor existing workflow runs (execution happens via A2A server).
+
+**Note**: The system builds a complete execution DAG (Directed Acyclic Graph) by tracking parent-child relationships between Steps. This is achieved through the A2A protocol's `metadata` field that carries `runId` and `parentStepId` through all agent calls.
 
 ```graphql
 query GetRun {

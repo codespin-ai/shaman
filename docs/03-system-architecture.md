@@ -168,18 +168,41 @@ When one agent needs to call another:
 1. OrderProcessor (Internal Server A) decides to call InventoryChecker
    
 2. Internal Server A → Internal Server B (A2A)
-   POST https://internal-server-b:4000/a2a/v1/agents/InventoryChecker/execute
-   Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
-   X-Shaman-Context: {"parentTaskId":"task-123","depth":2}
+   POST https://internal-server-b:4000/a2a/v1/message/send
+   Authorization: Bearer <api-token>
+   Content-Type: application/json
+   
+   {
+     "jsonrpc": "2.0",
+     "id": "req-001",
+     "method": "message/send",
+     "params": {
+       "message": {
+         "role": "user",
+         "parts": [{
+           "kind": "text",
+           "text": "Check inventory for item SKU-12345"
+         }]
+       },
+       "metadata": {
+         "shaman:runId": "run-abc123",
+         "shaman:parentStepId": "step-456",
+         "shaman:depth": 2,
+         "shaman:organizationId": "acme"
+       }
+     }
+   }
    
 3. Internal Server B:
-   - Validates JWT (issued by workflow engine)
+   - Validates API token
    - Checks agent exists and is accessible
-   - Executes InventoryChecker
-   - Returns result
+   - Executes InventoryChecker with workflow context
+   - Returns result with same metadata
    
 4. OrderProcessor receives result and continues
 ```
+
+**Critical Detail**: The `metadata` field carries the workflow context (runId, parentStepId, depth) through all agent-to-agent calls. This enables Shaman to build the complete execution DAG (Directed Acyclic Graph) across distributed agent invocations.
 
 ### 3. External Agent Federation
 
@@ -263,6 +286,36 @@ The system supports universal Git authentication across all providers (GitHub, G
 - Tokens scoped to minimum required permissions (read-only)
 - Automatic token rotation reminders
 - Audit logging for all credential operations
+
+## Workflow Tracking via A2A Metadata
+
+Shaman tracks the complete execution DAG across distributed agents using the A2A protocol's `metadata` field:
+
+### Metadata Structure
+```json
+{
+  "metadata": {
+    "shaman:runId": "run-abc123",           // Unique workflow instance ID
+    "shaman:parentStepId": "step-parent-456", // Parent step in the DAG
+    "shaman:depth": 2,                       // Call depth (for recursion limits)
+    "shaman:organizationId": "acme",         // Tenant isolation
+    "shaman:initiatorId": "user-789"         // Original caller
+  }
+}
+```
+
+### How It Works
+1. **Initial Request**: A2A public server creates a new Run with unique ID
+2. **First Agent**: Receives metadata with runId and no parentStepId
+3. **Agent Calls Agent**: Includes runId and its own stepId as parentStepId
+4. **Response Flow**: Each agent returns results with same metadata
+5. **DAG Construction**: System builds complete execution tree from metadata
+
+### Benefits
+- **Full Traceability**: Every step linked to its parent and workflow
+- **Distributed Tracking**: Works across any number of servers
+- **A2A Compliant**: Uses standard metadata field, no protocol changes
+- **Tenant Isolation**: organizationId ensures data separation
 
 ## Component Architecture
 
