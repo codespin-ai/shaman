@@ -38,6 +38,9 @@ Shaman is a comprehensive backend framework for managing and coordinating AI age
     - User authentication via Ory Kratos
     - Agent repository management
     - Workflow monitoring
+    - Single schema.graphql file with codegen setup
+    - Simplified role model: OWNER, ADMIN, USER
+    - Minimal agent info (details stay in Git repos)
     
 17. **shaman-a2a-server** - A2A execution server:
     - Handles ALL agent execution

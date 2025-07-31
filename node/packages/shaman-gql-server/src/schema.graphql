@@ -1,0 +1,723 @@
+scalar DateTime
+scalar JSON
+
+# Core Types
+
+type Organization {
+  id: ID!
+  name: String!
+  slug: String!
+  description: String
+  settings: OrganizationSettings!
+  subscriptionInfo: SubscriptionInfo
+  createdAt: DateTime!
+  updatedAt: DateTime!
+  
+  # Relationships
+  users(first: Int, after: String): UserConnection!
+  repositories(first: Int, after: String): AgentRepositoryConnection!
+  apiKeys(first: Int, after: String, filter: ApiKeyFilter): ApiKeyConnection!
+  runs(first: Int, after: String, orderBy: RunOrderBy): RunConnection!
+  auditLogs(first: Int, after: String, filter: AuditLogFilter): AuditLogConnection!
+}
+
+type OrganizationSettings {
+  defaultModel: String
+  maxConcurrentRuns: Int
+  maxRunDuration: Int
+  allowExternalAgents: Boolean!
+  allowedExternalDomains: [String!]!
+  features: [String!]!
+}
+
+type SubscriptionInfo {
+  plan: String!
+  status: String!
+  currentPeriodStart: DateTime!
+  currentPeriodEnd: DateTime!
+  cancelAtPeriodEnd: Boolean!
+}
+
+type User {
+  id: ID!
+  email: String!
+  name: String!
+  type: UserType!
+  isActive: Boolean!
+  lastLoginAt: DateTime
+  createdAt: DateTime!
+  updatedAt: DateTime!
+  
+  # Relationships
+  organization: Organization!
+  roles: [String!]!  # Array of role names like Permiso
+  apiKeys(first: Int, after: String): ApiKeyConnection!
+  runs(first: Int, after: String): RunConnection!
+}
+
+enum UserType {
+  HUMAN
+  SERVICE_ACCOUNT
+}
+
+# Standard roles - can be extended per organization
+enum StandardRole {
+  OWNER
+  ADMIN
+  USER
+}
+
+type AgentRepository {
+  id: ID!
+  name: String!
+  gitUrl: String!
+  branch: String!
+  isRoot: Boolean!
+  hasCredentials: Boolean!
+  lastCredentialUpdate: DateTime
+  lastSyncCommitHash: String
+  lastSyncAt: DateTime
+  lastSyncStatus: SyncStatus!
+  lastSyncErrors: JSON
+  createdAt: DateTime!
+  updatedAt: DateTime!
+  
+  # Relationships
+  organization: Organization!
+  agents(first: Int, after: String, filter: AgentFilter): GitAgentConnection!
+}
+
+enum SyncStatus {
+  NEVER_SYNCED
+  SUCCESS
+  IN_PROGRESS
+  FAILED
+}
+
+type GitAgent {
+  id: ID!
+  name: String!
+  description: String
+  filePath: String!
+  tags: [String!]!
+  exposed: Boolean!
+  lastModifiedCommitHash: String
+  createdAt: DateTime!
+  updatedAt: DateTime!
+  
+  # Relationships
+  repository: AgentRepository!
+  
+  # Computed fields
+  usageCount: Int!
+  lastUsed: DateTime
+  averageExecutionTime: Float
+  successRate: Float
+}
+
+# Unified Agent type (Git + External) - Minimal view for discovery
+type Agent {
+  name: String!
+  description: String!
+  source: AgentSource!
+  tags: [String!]!
+  
+  # Source-specific minimal details
+  repositoryName: String  # For Git agents
+  endpoint: String        # For external agents
+  
+  # Analytics
+  usageCount: Int!
+  lastUsed: DateTime
+  averageExecutionTime: Float
+  successRate: Float
+}
+
+enum AgentSource {
+  GIT
+  A2A_EXTERNAL
+}
+
+# API Key Management
+type ApiKey {
+  id: ID!
+  keyPrefix: String!
+  name: String!
+  description: String
+  status: ApiKeyStatus!
+  expiresAt: DateTime
+  lastUsedAt: DateTime
+  createdAt: DateTime!
+  
+  # Relationships
+  user: User!
+  permissions: [ApiKeyPermission!]!
+}
+
+enum ApiKeyStatus {
+  ACTIVE
+  REVOKED
+  EXPIRED
+}
+
+type ApiKeyPermission {
+  resourceId: String!
+  action: String!
+}
+
+# Workflow Monitoring
+type Run {
+  id: ID!
+  status: ExecutionState!
+  initialInput: String!
+  totalCost: Float!
+  startTime: DateTime!
+  endTime: DateTime
+  duration: Int
+  traceId: String
+  metadata: JSON
+  
+  # Relationships
+  organization: Organization!
+  initiatingUser: User!
+  authMethod: AuthMethod!
+  apiKeyUsed: ApiKey
+  steps(first: Int, after: String): StepConnection!
+}
+
+enum ExecutionState {
+  SUBMITTED
+  WORKING
+  INPUT_REQUIRED
+  BLOCKED_ON_INPUT
+  BLOCKED_ON_DEPENDENCY
+  COMPLETED
+  CANCELED
+  FAILED
+  REJECTED
+}
+
+enum AuthMethod {
+  SESSION
+  API_KEY
+}
+
+type Step {
+  id: ID!
+  type: StepType!
+  status: ExecutionState!
+  agentName: String
+  agentSource: AgentSource
+  input: String
+  output: String
+  error: StepError
+  startTime: DateTime
+  endTime: DateTime
+  duration: Int
+  promptTokens: Int
+  completionTokens: Int
+  cost: Float
+  toolName: String
+  metadata: JSON
+  
+  # Relationships
+  run: Run!
+  parentStep: Step
+  childSteps(first: Int, after: String): StepConnection!
+  messages(first: Int, after: String): MessageConnection!
+  toolCalls(first: Int, after: String): ToolCallConnection!
+}
+
+enum StepType {
+  AGENT_EXECUTION
+  LLM_CALL
+  TOOL_CALL
+  AGENT_CALL
+}
+
+type StepError {
+  code: String!
+  message: String!
+  stackTrace: String
+}
+
+type Message {
+  id: ID!
+  role: MessageRole!
+  content: String!
+  timestamp: DateTime!
+  sequenceNumber: Int!
+  toolCallId: String
+}
+
+enum MessageRole {
+  SYSTEM
+  USER
+  ASSISTANT
+  TOOL
+}
+
+type ToolCall {
+  id: ID!
+  toolName: String!
+  parameters: JSON!
+  result: JSON
+  duration: Int!
+  isSystemTool: Boolean!
+  isAgentCall: Boolean!
+}
+
+# Git Credentials
+type GitCredential {
+  id: ID!
+  provider: GitProvider!
+  tokenName: String
+  expiresAt: DateTime
+  lastUsedAt: DateTime
+  createdAt: DateTime!
+  updatedAt: DateTime!
+  
+  # Relationships
+  repository: AgentRepository!
+}
+
+enum GitProvider {
+  GITHUB
+  GITLAB
+  BITBUCKET
+  GENERIC
+}
+
+type GitCredentialTestResult {
+  success: Boolean!
+  message: String
+  lastCommitHash: String
+  branchInfo: BranchInfo
+}
+
+type BranchInfo {
+  name: String!
+  isProtected: Boolean!
+}
+
+# Audit Logs
+type AuditLog {
+  id: ID!
+  timestamp: DateTime!
+  action: AuditAction!
+  user: User!
+  authMethod: AuthMethod!
+  resourceType: String!
+  resourceId: String!
+  metadata: AuditMetadata!
+}
+
+enum AuditAction {
+  API_KEY_CREATED
+  API_KEY_REVOKED
+  AGENT_EXECUTED
+  REPOSITORY_SYNCED
+  REPOSITORY_CREATED
+  REPOSITORY_DELETED
+  USER_CREATED
+  USER_UPDATED
+  USER_DELETED
+  CREDENTIALS_SET
+  CREDENTIALS_REMOVED
+}
+
+type AuditMetadata {
+  ipAddress: String
+  userAgent: String
+  apiKeyUsed: String
+  additionalData: JSON
+}
+
+# Pagination Types
+type PageInfo {
+  hasNextPage: Boolean!
+  hasPreviousPage: Boolean!
+  startCursor: String
+  endCursor: String
+}
+
+type UserConnection {
+  edges: [UserEdge!]!
+  pageInfo: PageInfo!
+  totalCount: Int!
+}
+
+type UserEdge {
+  cursor: String!
+  node: User!
+}
+
+type AgentRepositoryConnection {
+  edges: [AgentRepositoryEdge!]!
+  pageInfo: PageInfo!
+  totalCount: Int!
+}
+
+type AgentRepositoryEdge {
+  cursor: String!
+  node: AgentRepository!
+}
+
+type GitAgentConnection {
+  edges: [GitAgentEdge!]!
+  pageInfo: PageInfo!
+  totalCount: Int!
+}
+
+type GitAgentEdge {
+  cursor: String!
+  node: GitAgent!
+}
+
+type AgentConnection {
+  edges: [AgentEdge!]!
+  pageInfo: PageInfo!
+  totalCount: Int!
+}
+
+type AgentEdge {
+  cursor: String!
+  node: Agent!
+}
+
+type ApiKeyConnection {
+  edges: [ApiKeyEdge!]!
+  pageInfo: PageInfo!
+  totalCount: Int!
+}
+
+type ApiKeyEdge {
+  cursor: String!
+  node: ApiKey!
+}
+
+type RunConnection {
+  edges: [RunEdge!]!
+  pageInfo: PageInfo!
+  totalCount: Int!
+}
+
+type RunEdge {
+  cursor: String!
+  node: Run!
+}
+
+type StepConnection {
+  edges: [StepEdge!]!
+  pageInfo: PageInfo!
+  totalCount: Int!
+}
+
+type StepEdge {
+  cursor: String!
+  node: Step!
+}
+
+type MessageConnection {
+  edges: [MessageEdge!]!
+  pageInfo: PageInfo!
+  totalCount: Int!
+}
+
+type MessageEdge {
+  cursor: String!
+  node: Message!
+}
+
+type ToolCallConnection {
+  edges: [ToolCallEdge!]!
+  pageInfo: PageInfo!
+  totalCount: Int!
+}
+
+type ToolCallEdge {
+  cursor: String!
+  node: ToolCall!
+}
+
+type AuditLogConnection {
+  edges: [AuditLogEdge!]!
+  pageInfo: PageInfo!
+  totalCount: Int!
+}
+
+type AuditLogEdge {
+  cursor: String!
+  node: AuditLog!
+}
+
+# Input Types
+input CreateOrganizationInput {
+  name: String!
+  slug: String!
+  description: String
+}
+
+input UpdateOrganizationInput {
+  name: String
+  description: String
+  settings: OrganizationSettingsInput
+}
+
+input OrganizationSettingsInput {
+  defaultModel: String
+  maxConcurrentRuns: Int
+  maxRunDuration: Int
+  allowExternalAgents: Boolean
+  allowedExternalDomains: [String!]
+}
+
+input CreateRepositoryInput {
+  name: String!
+  gitUrl: String!
+  branch: String!
+  isRoot: Boolean!
+}
+
+input UpdateRepositoryInput {
+  name: String
+  branch: String
+  isRoot: Boolean
+}
+
+input CreateServiceAccountInput {
+  email: String!
+  name: String!
+  description: String
+  roles: [String!]!
+  allowedAgents: [String!]!
+  apiKeyExpiry: DateTime
+}
+
+input CreateApiKeyInput {
+  userId: ID!
+  name: String!
+  description: String
+  expiresAt: DateTime
+  permissions: [ApiKeyPermissionInput!]!
+}
+
+input ApiKeyPermissionInput {
+  resourceId: String!
+  action: String!
+}
+
+input GitCredentialInput {
+  repositoryId: ID!
+  provider: GitProvider!
+  token: String!
+  tokenName: String
+}
+
+input ApiKeyFilter {
+  status: ApiKeyStatus
+  userId: ID
+}
+
+input AgentFilter {
+  exposed: Boolean
+  tags: [String!]
+  source: AgentSource
+}
+
+input AuditLogFilter {
+  startDate: DateTime!
+  endDate: DateTime!
+  actions: [AuditAction!]
+  userId: ID
+  resourceType: String
+}
+
+input RunOrderBy {
+  field: RunOrderField!
+  direction: OrderDirection!
+}
+
+enum RunOrderField {
+  CREATED_AT
+  COMPLETED_AT
+  TOTAL_COST
+  DURATION
+}
+
+enum OrderDirection {
+  ASC
+  DESC
+}
+
+# Queries
+type Query {
+  # Current user/org
+  viewer: User!
+  
+  # Organization queries
+  organization(id: ID!): Organization
+  organizations(first: Int, after: String): OrganizationConnection!
+  
+  # User queries
+  user(id: ID!): User
+  users(first: Int, after: String, organizationId: ID): UserConnection!
+  
+  # Repository queries
+  repository(id: ID!): AgentRepository
+  repositories(first: Int, after: String, organizationId: ID): AgentRepositoryConnection!
+  
+  # Agent queries (unified view)
+  agents(first: Int, after: String, filter: AgentFilter): AgentConnection!
+  agent(name: String!): Agent
+  
+  # Workflow monitoring
+  run(id: ID!): Run
+  runs(first: Int, after: String, orderBy: RunOrderBy): RunConnection!
+  
+  # Audit logs
+  auditLogs(first: Int, after: String, filter: AuditLogFilter): AuditLogConnection!
+}
+
+type OrganizationConnection {
+  edges: [OrganizationEdge!]!
+  pageInfo: PageInfo!
+  totalCount: Int!
+}
+
+type OrganizationEdge {
+  cursor: String!
+  node: Organization!
+}
+
+# Mutations
+type Mutation {
+  # Organization management
+  createOrganization(input: CreateOrganizationInput!): CreateOrganizationPayload!
+  updateOrganization(id: ID!, input: UpdateOrganizationInput!): UpdateOrganizationPayload!
+  deleteOrganization(id: ID!): DeleteOrganizationPayload!
+  
+  # Repository management
+  createRepository(input: CreateRepositoryInput!): CreateRepositoryPayload!
+  updateRepository(id: ID!, input: UpdateRepositoryInput!): UpdateRepositoryPayload!
+  deleteRepository(id: ID!): DeleteRepositoryPayload!
+  syncRepository(id: ID!): SyncRepositoryPayload!
+  
+  # Git credentials
+  setGitCredentials(input: GitCredentialInput!): SetGitCredentialsPayload!
+  removeGitCredentials(repositoryId: ID!): RemoveGitCredentialsPayload!
+  testGitCredentials(repositoryId: ID!): TestGitCredentialsPayload!
+  
+  # User & API key management
+  createServiceAccount(input: CreateServiceAccountInput!): CreateServiceAccountPayload!
+  createApiKey(input: CreateApiKeyInput!): CreateApiKeyPayload!
+  revokeApiKey(id: ID!): RevokeApiKeyPayload!
+  
+  # NO AGENT EXECUTION MUTATIONS - All execution via A2A server
+}
+
+# Mutation Payloads
+type CreateOrganizationPayload {
+  organization: Organization
+  errors: [Error!]!
+}
+
+type UpdateOrganizationPayload {
+  organization: Organization
+  errors: [Error!]!
+}
+
+type DeleteOrganizationPayload {
+  success: Boolean!
+  errors: [Error!]!
+}
+
+type CreateRepositoryPayload {
+  repository: AgentRepository
+  errors: [Error!]!
+}
+
+type UpdateRepositoryPayload {
+  repository: AgentRepository
+  errors: [Error!]!
+}
+
+type DeleteRepositoryPayload {
+  success: Boolean!
+  errors: [Error!]!
+}
+
+type SyncRepositoryPayload {
+  repository: AgentRepository
+  errors: [Error!]!
+}
+
+type SetGitCredentialsPayload {
+  repository: AgentRepository
+  errors: [Error!]!
+}
+
+type RemoveGitCredentialsPayload {
+  repository: AgentRepository
+  errors: [Error!]!
+}
+
+type TestGitCredentialsPayload {
+  result: GitCredentialTestResult
+  errors: [Error!]!
+}
+
+type CreateServiceAccountPayload {
+  user: User
+  apiKey: ApiKey
+  errors: [Error!]!
+}
+
+type CreateApiKeyPayload {
+  apiKey: ApiKey
+  errors: [Error!]!
+}
+
+type RevokeApiKeyPayload {
+  apiKey: ApiKey
+  errors: [Error!]!
+}
+
+type Error {
+  code: ErrorCode!
+  message: String!
+  field: String
+}
+
+enum ErrorCode {
+  AUTHENTICATION_REQUIRED
+  PERMISSION_DENIED
+  NOT_FOUND
+  VALIDATION_ERROR
+  RATE_LIMITED
+  INTERNAL_ERROR
+}
+
+# Subscriptions (optional for now)
+type Subscription {
+  runUpdates(runId: ID!): RunUpdateEvent!
+}
+
+type RunUpdateEvent {
+  run: Run!
+  event: RunEvent!
+}
+
+type RunEvent {
+  type: RunEventType!
+  timestamp: DateTime!
+  data: JSON!
+}
+
+enum RunEventType {
+  STEP_STARTED
+  MESSAGE_ADDED
+  TOOL_CALLED
+  STEP_COMPLETED
+  RUN_COMPLETED
+}

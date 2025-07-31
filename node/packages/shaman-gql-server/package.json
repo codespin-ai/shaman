@@ -5,56 +5,47 @@
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
-  "sideEffects": false,
-  "files": [
-    "dist"
-  ],
   "scripts": {
     "codegen": "graphql-codegen --config codegen.yml",
-    "build": "npm run codegen && tsc",
-    "start": "node dist/start.js",
-    "dev": "tsx watch src/start.ts",
-    "lint": "eslint src --ext .ts",
-    "lint:fix": "eslint src --ext .ts --fix"
+    "build": "npm run codegen && tsc && cp src/schema.graphql dist/",
+    "clean": "rm -rf dist",
+    "lint": "eslint src",
+    "lint:fix": "eslint src --fix",
+    "dev": "tsx watch src/bin/start.ts",
+    "start": "node dist/bin/start.js"
   },
-  "license": "MIT",
   "dependencies": {
-    "@apollo/server": "^4.12.2",
-    "@codespin/shaman-agents": "file:../shaman-agents",
-    "@codespin/shaman-config": "file:../shaman-config",
+    "@apollo/server": "^5.0.0",
+    "@codespin/shaman-types": "file:../shaman-types",
     "@codespin/shaman-core": "file:../shaman-core",
     "@codespin/shaman-db": "file:../shaman-db",
-    "@codespin/shaman-external-registry": "file:../shaman-external-registry",
-    "@codespin/shaman-git-resolver": "file:../shaman-git-resolver",
     "@codespin/shaman-logger": "file:../shaman-logger",
-    "@codespin/shaman-observability": "file:../shaman-observability",
+    "@codespin/shaman-config": "file:../shaman-config",
     "@codespin/shaman-security": "file:../shaman-security",
-    "@codespin/shaman-types": "file:../shaman-types",
-    "@graphql-tools/schema": "^10.0.25",
-    "@types/uuid": "^10.0.0",
-    "body-parser": "^2.2.0",
-    "compression": "^1.8.1",
+    "@codespin/shaman-git-resolver": "file:../shaman-git-resolver",
+    "@codespin/shaman-agents": "file:../shaman-agents",
+    "@codespin/shaman-observability": "file:../shaman-observability",
+    "body-parser": "^1.20.2",
     "cors": "^2.8.5",
-    "express": "^5.1.0",
-    "graphql": "^16.11.0",
-    "graphql-subscriptions": "^3.0.0",
-    "graphql-tag": "^2.12.6",
-    "graphql-ws": "^6.0.6",
-    "helmet": "^8.1.0",
-    "uuid": "^11.1.0",
-    "ws": "^8.18.3"
+    "express": "^4.18.2",
+    "graphql": "^16.8.1",
+    "graphql-scalars": "^1.22.4"
   },
   "devDependencies": {
-    "@graphql-codegen/cli": "^5.0.0",
-    "@graphql-codegen/typescript": "^4.0.1",
-    "@graphql-codegen/typescript-resolvers": "^4.0.1",
-    "@types/body-parser": "^1.19.6",
-    "@types/compression": "^1.8.1",
-    "@types/cors": "^2.8.19",
-    "@types/express": "^5.0.3",
-    "@types/ws": "^8.18.1",
-    "@typescript-eslint/eslint-plugin": "^8.38.0",
-    "@typescript-eslint/parser": "^8.38.0",
-    "eslint": "^9.32.0"
+    "@graphql-codegen/cli": "^5.0.7",
+    "@graphql-codegen/typescript": "^4.1.6",
+    "@graphql-codegen/typescript-operations": "^4.6.1",
+    "@graphql-codegen/typescript-resolvers": "^4.5.1",
+    "@types/cors": "^2.8.17",
+    "@types/express": "^4.17.21",
+    "@types/node": "^20.10.4",
+    "tsx": "^4.6.2",
+    "typescript": "^5.3.3"
+  },
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
   }
 }

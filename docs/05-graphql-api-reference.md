@@ -37,13 +37,13 @@ The session is validated with Kratos, and the user's permissions are checked via
 
 ## Schema Location
 
-The complete GraphQL schema is defined in: [`/node/packages/shaman-server/src/schema.graphql`](../node/packages/shaman-server/src/schema.graphql)
+The complete GraphQL schema is defined in: [`/node/packages/shaman-gql-server/src/schema.graphql`](../node/packages/shaman-gql-server/src/schema.graphql)
 
 ## Key Concepts
 
 ### Agent Model
 
-The agent system distinguishes between Git-based agents and external A2A agents through a unified `Agent` type:
+The agent system provides a minimal unified view for discovery:
 
 ```graphql
 type Agent {
@@ -52,11 +52,11 @@ type Agent {
   source: AgentSource!  # GIT or A2A_EXTERNAL
   tags: [String!]!
   
-  # Source-specific details
-  gitDetails: GitAgentDetails      # Populated for Git agents
-  externalDetails: ExternalAgentDetails  # Populated for A2A agents
+  # Minimal source details
+  repositoryName: String  # For Git agents
+  endpoint: String        # For external agents
   
-  # Analytics (common to all agents)
+  # Analytics
   usageCount: Int!
   lastUsed: DateTime
   averageExecutionTime: Float
@@ -64,23 +64,7 @@ type Agent {
 }
 ```
 
-### MCP Server Access
-
-Instead of using JSON, MCP server configurations are strongly typed:
-
-```graphql
-type MCPServerAccess {
-  serverName: String!
-  accessType: MCPAccessType!  # FULL, SPECIFIC_TOOLS, or NONE
-  allowedTools: [String!]     # Populated when accessType is SPECIFIC_TOOLS
-}
-
-enum MCPAccessType {
-  FULL           # Access to all tools ("*" or null in YAML)
-  SPECIFIC_TOOLS # Access to listed tools only
-  NONE           # No access
-}
-```
+**Note**: Detailed agent configuration (models, MCP servers, allowed agents) remains in the Git repository where it belongs. The API provides only discovery and analytics.
 
 ### Workflow Monitoring
 
@@ -114,6 +98,16 @@ query GetRun {
   }
 }
 ```
+
+### User Roles
+
+Users can have multiple roles within an organization:
+
+- **OWNER**: Full administrative access, can delete organization
+- **ADMIN**: Manage users, repositories, and settings
+- **USER**: Standard access to execute agents and view data
+
+Roles are managed through Permiso RBAC service for fine-grained permissions.
 
 ## Core Operations
 
@@ -182,8 +176,7 @@ mutation CreateServiceAccount {
     email: "integration@partner-corp.com"
     name: "Partner Corp Integration"
     description: "External API access for order processing"
-    type: SERVICE_ACCOUNT
-    role: EXTERNAL_API_CLIENT
+    roles: ["USER"]  # Can be ["OWNER"], ["ADMIN"], or ["USER"]
     allowedAgents: [
       "/agents/ProcessOrder",
       "/agents/CheckOrderStatus",
@@ -195,7 +188,7 @@ mutation CreateServiceAccount {
       id
       email
       type  # SERVICE_ACCOUNT
-      # Note: No kratos_identity_id for service accounts
+      roles  # Array of roles
     }
     apiKey {
       id

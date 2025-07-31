@@ -5,6 +5,20 @@
  * Handles all management operations - NO agent execution
  */
 
-export * from './types.js';
+import { readFileSync } from 'fs';
+import { join } from 'path';
+import { fileURLToPath } from 'url';
+import { dirname } from 'path';
 
-// TODO: Export server creation and configuration functions
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+
+// Re-export the GraphQL schema as a string
+export const schemaPath = join(__dirname, 'schema.graphql');
+
+export function getSchema(): string {
+  return readFileSync(schemaPath, 'utf-8');
+}
+
+// Export types
+export type { GraphQLContext } from './context.js';

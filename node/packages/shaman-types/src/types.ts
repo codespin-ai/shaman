@@ -27,13 +27,11 @@ export interface Organization {
 export interface OrganizationSettings {
   // Agent execution settings
   defaultModel?: string;
-  defaultProviders?: string[];
   maxConcurrentRuns?: number;
   maxRunDuration?: number; // in seconds
   
   // Security settings
   allowExternalAgents?: boolean;
-  requireApprovalForNewAgents?: boolean;
   allowedExternalDomains?: string[];
   
   // Feature flags
@@ -56,7 +54,6 @@ export interface User {
   email: string;
   name: string;
   isActive: boolean;
-  systemRole: 'USER' | 'SYSTEM_ADMIN';
   currentOrgId: string | null;
   lastLoginAt: Date | null;
   createdAt: Date;
@@ -69,12 +66,11 @@ export interface User {
 export interface OrganizationUser {
   orgId: string;
   userId: string;
-  role: OrganizationRole;
-  permissions: string[];
+  roles: string[];  // Array of role names
   joinedAt: Date;
 }
 
-export type OrganizationRole = 'OWNER' | 'ADMIN' | 'DEVELOPER' | 'VIEWER';
+export type StandardRole = 'OWNER' | 'ADMIN' | 'USER';
 
 /**
  * Represents a record in the 'agent_repository' table.
@@ -103,13 +99,9 @@ export interface GitAgent {
   agentRepositoryId: number;
   name: string;
   description: string | null;
-  version: string | null;
   filePath: string;
-  model: string | null;
-  providers: Record<string, unknown> | null;
-  mcpServers: Record<string, unknown> | null;
-  allowedAgents: string[] | null;
   tags: string[] | null;
+  exposed: boolean;
   lastModifiedCommitHash: string | null;
   createdAt: Date;
   updatedAt: Date;
@@ -287,7 +279,7 @@ export interface McpServer {
   endpoint: string;
   isActive: boolean;
   authConfig: Record<string, unknown> | null;
-  allowedRoles: OrganizationRole[];
+  allowedRoles: string[]; // Role names
   allowedUsers: string[]; // User IDs
   healthStatus: string | null;
   lastHealthCheckAt: Date | null;
