@@ -26,6 +26,7 @@ PACKAGES=(
   "shaman-git-resolver"
   "shaman-agents"
   "shaman-a2a-provider"
+  "shaman-a2a-client"
   "shaman-llm-vercel"
   "shaman-tool-router"
   "shaman-agent-executor"

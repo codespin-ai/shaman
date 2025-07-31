@@ -17,11 +17,13 @@
   "license": "MIT",
   "dependencies": {
     "@codespin/shaman-core": "file:../shaman-core",
-    "@codespin/shaman-config": "file:../shaman-config"
+    "@codespin/shaman-config": "file:../shaman-config",
+    "jsonwebtoken": "^9.0.2"
   },
   "devDependencies": {
     "eslint": "^9.32.0",
     "@typescript-eslint/parser": "^8.38.0",
-    "@typescript-eslint/eslint-plugin": "^8.38.0"
+    "@typescript-eslint/eslint-plugin": "^8.38.0",
+    "@types/jsonwebtoken": "^9.0.7"
   }
 }

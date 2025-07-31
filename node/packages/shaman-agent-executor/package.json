@@ -23,6 +23,7 @@
     "@codespin/shaman-tool-router": "file:../shaman-tool-router",
     "@codespin/shaman-llm-core": "file:../shaman-llm-core",
     "@codespin/shaman-db": "file:../shaman-db",
+    "@codespin/shaman-a2a-client": "file:../shaman-a2a-client",
     "js-yaml": "^4.1.0",
     "gray-matter": "^4.0.3",
     "uuid": "^9.0.1"

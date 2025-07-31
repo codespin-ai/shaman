@@ -1,0 +1,30 @@
+{
+  "name": "@codespin/shaman-a2a-client",
+  "version": "0.1.0",
+  "description": "A2A protocol HTTP client for agent-to-agent communication",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "clean": "rm -rf dist",
+    "lint": "eslint src --ext .ts",
+    "lint:fix": "eslint src --ext .ts --fix"
+  },
+  "dependencies": {
+    "@codespin/shaman-types": "file:../shaman-types",
+    "@codespin/shaman-logger": "file:../shaman-logger",
+    "@codespin/shaman-core": "file:../shaman-core",
+    "axios": "^1.7.7",
+    "jsonwebtoken": "^9.0.2"
+  },
+  "devDependencies": {
+    "@types/jsonwebtoken": "^9.0.7",
+    "@types/node": "^22.5.0",
+    "typescript": "^5.5.4"
+  },
+  "files": [
+    "dist"
+  ],
+  "license": "MIT"
+}

@@ -26,6 +26,9 @@ Shaman is a comprehensive backend framework for managing and coordinating AI age
 
 ## Recent Important Changes
 
+- **Two-Server Architecture**: Shaman now requires two servers: `--role public` and `--role internal`
+- **A2A Protocol**: All agent-to-agent communication uses HTTP/A2A protocol (not direct function calls)
+- **New A2A Client**: Added `shaman-a2a-client` package for agent-to-agent HTTP calls
 - **Git Operations**: Now uses native git commands instead of isomorphic-git
 - **Agent Caching**: Git agents are cached by commit hash for performance
 - **Branch Support**: All git operations support branch parameters
@@ -185,19 +188,20 @@ Located in `/node/packages/`, build order matters:
 6. **@codespin/shaman-workflow-core** - Workflow engine abstraction
 7. **@codespin/shaman-db** - Database connection management
 8. **@codespin/shaman-observability** - Metrics and tracing
-9. **@codespin/shaman-security** - Auth, RBAC, rate limiting
+9. **@codespin/shaman-security** - Auth, RBAC, rate limiting (includes JWT)
 10. **@codespin/shaman-external-registry** - External agent registry
 11. **@codespin/shaman-git-resolver** - Git-based agent discovery (with caching)
 12. **@codespin/shaman-agents** - Unified agent resolution from all sources
 13. **@codespin/shaman-a2a-provider** - Expose Git agents via A2A protocol
-14. **@codespin/shaman-llm-vercel** - Vercel AI SDK provider
-15. **@codespin/shaman-tool-router** - Tool execution routing
-16. **@codespin/shaman-agent-executor** - Core agent execution engine
-17. **@codespin/shaman-workflow-bullmq** - BullMQ workflow adapter
-18. **@codespin/shaman-workflow-temporal** - Temporal workflow adapter
-19. **@codespin/shaman-server** - Main GraphQL server
-20. **@codespin/shaman-worker** - Background worker
-21. **@codespin/shaman-cli** - CLI tool
+14. **@codespin/shaman-a2a-client** - HTTP client for A2A agent calls
+15. **@codespin/shaman-llm-vercel** - Vercel AI SDK provider
+16. **@codespin/shaman-tool-router** - Tool execution routing
+17. **@codespin/shaman-agent-executor** - Core agent execution engine
+18. **@codespin/shaman-workflow-bullmq** - BullMQ workflow adapter
+19. **@codespin/shaman-workflow-temporal** - Temporal workflow adapter
+20. **@codespin/shaman-server** - Main GraphQL server
+21. **@codespin/shaman-worker** - Background worker
+22. **@codespin/shaman-cli** - CLI tool
 
 ## Development Workflow
 
@@ -407,19 +411,54 @@ Key functions:
 - Commit hashes stored in `agent_repository.last_sync_commit_hash`
 - Per-file hashes in `git_agent.last_modified_commit_hash`
 
-## A2A Provider
+## Two-Server Architecture
 
+**IMPORTANT**: Shaman uses a two-server deployment model for security and scalability:
+
+### Public Server (`--role public`)
+- Handles external GraphQL API requests
+- Manages authentication via Ory Kratos
+- Performs authorization and rate limiting
+- Makes A2A HTTP calls to internal server for agent execution
+- Exposed to the internet
+
+### Internal Server (`--role internal`)
+- Executes agents in isolated environment
+- Exposes A2A endpoints for agent discovery and execution
+- Validates internal JWT tokens from public server
+- Not accessible from the internet
+- All agent-to-agent calls use A2A protocol (HTTP)
+
+### Starting Servers
+```bash
+# Public server
+node dist/start.js --role public --port 4000
+
+# Internal server  
+node dist/start.js --role internal --port 5000
+```
+
+## A2A Provider & Client
+
+### A2A Provider
 The shaman-a2a-provider module exposes Git agents via the A2A protocol:
 - Express-based HTTP server with A2A endpoints
 - Agent discovery, execution, and health check endpoints
 - Configurable authentication and rate limiting
 - Whitelist/blacklist support for agent exposure
-- Can run standalone or integrate with main server
+- Integrated into main server based on --role
 
 Key endpoints:
 - `GET /a2a/v1/agents` - Discover available agents
 - `POST /a2a/v1/agents/:name/execute` - Execute an agent
 - `GET /a2a/v1/health` - Health check
+
+### A2A Client
+The shaman-a2a-client module enables agent-to-agent communication:
+- HTTP client for A2A protocol
+- Internal JWT token generation
+- Retry logic with exponential backoff
+- Used by agent-executor for all agent calls
 
 ## Agent Executor
 

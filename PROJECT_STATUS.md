@@ -5,6 +5,11 @@ This file is maintained for AI assistants to quickly understand the current stat
 ## Quick Context
 Shaman is a comprehensive backend framework for managing and coordinating AI agents through a federated ecosystem. It's built as a NodeJS/TypeScript monorepo without npm workspaces, using a custom build system.
 
+**CRITICAL ARCHITECTURE**: Shaman uses a two-server deployment model where:
+- **Public Server** (`--role public`): Handles external API requests, authentication
+- **Internal Server** (`--role internal`): Executes agents in isolated environment
+- All agent-to-agent communication uses HTTP/A2A protocol (NOT direct function calls)
+
 ## Current Implementation Status
 
 ### ✅ Completed Core Packages
@@ -22,38 +27,47 @@ Shaman is a comprehensive backend framework for managing and coordinating AI age
 10. **shaman-git-resolver** - Git-based agent discovery with caching
 11. **shaman-external-registry** - External agent registry support
 12. **shaman-agents** - Unified agent resolution
-13. **shaman-a2a-provider** - A2A protocol implementation
-14. **shaman-tool-router** - Tool execution routing
-15. **shaman-agent-executor** - Agent execution engine
-16. **shaman-workflow-temporal** - Temporal workflow adapter
+13. **shaman-a2a-provider** - A2A protocol server implementation
+14. **shaman-a2a-client** - A2A protocol HTTP client for agent-to-agent calls
+15. **shaman-tool-router** - Tool execution routing
+16. **shaman-agent-executor** - Agent execution engine
+17. **shaman-workflow-temporal** - Temporal workflow adapter
 
 ### ✅ Completed Server
-17. **shaman-server** - GraphQL API server with:
+18. **shaman-server** - GraphQL API server with:
     - Express middleware setup
     - Apollo Server configuration (commented out, needs integration)
     - GraphQL schema and resolvers
     - Health endpoints
     - Basic structure for subscriptions (not implemented)
+    - **MISSING**: --role flag support for two-server model
 
 ### ⚠️ Partially Implemented
-18. **shaman-security** - Has structure but needs:
-    - JWT validation implementation
+19. **shaman-security** - Has structure but needs:
+    - JWT validation implementation (only stub exists)
     - RBAC policy enforcement
     - Rate limiting refinement
+    - Internal JWT token generation for A2A calls
     
-19. **shaman-workflow-bullmq** - Has adapter skeleton but needs:
+20. **shaman-workflow-bullmq** - Has adapter skeleton but needs:
     - Queue management
     - Job processing
     - Error handling
 
-20. **shaman-worker** - Has bootstrap but needs:
+21. **shaman-worker** - Has bootstrap but needs:
     - Workflow processing logic
     - Agent execution integration
     - Queue consumers
 
-21. **shaman-cli** - Has command structure but needs:
+22. **shaman-cli** - Has command structure but needs:
     - Command implementations
     - Server API integration
+
+### ❌ Critical Implementation Gaps
+1. **Server Role Support**: No --role flag parsing in server startup
+2. **A2A Integration**: Agent-executor still uses direct function calls instead of A2A client
+3. **JWT Infrastructure**: Only empty stub files exist for JWT functionality
+4. **Server Integration**: A2A provider not integrated into main server
 
 ## Remaining Work Options
 
@@ -130,6 +144,15 @@ When starting a new session:
 4. Reference CODING-STANDARDS.md for implementation patterns
 
 ## Recent Activity Log
+
+- **Latest Changes (Current Session)**:
+  - ✅ Created `@codespin/shaman-a2a-client` package with full implementation
+  - ✅ Added JWT token generation and validation utilities
+  - ✅ Updated build.sh to include new a2a-client package
+  - ✅ Added jsonwebtoken dependencies to security, server, and a2a-client packages
+  - ✅ Updated CLAUDE.md with two-server architecture documentation
+  - ✅ Added A2A provider dependency to server package
+  - ✅ Added A2A client dependency to agent-executor package
 
 - **Major Architecture Change**: ✅ COMPLETED - Migrated from centralized shaman-persistence to decentralized database pattern
   - Created new `@codespin/shaman-db` package for database connection management only
