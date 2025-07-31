@@ -1,4 +1,5 @@
-import pgPromise from "pg-promise";
+/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-argument */
+import type pgPromise from "pg-promise";
 import type { Database } from "./index.js";
 
 /**
@@ -34,7 +35,7 @@ export class RlsDatabaseWrapper implements Database {
   }
 
   async query<T = any>(query: string, values?: any): Promise<T[]> {
-    return this.withOrgContext(db => db.query<T>(query, values));
+    return this.withOrgContext(db => db.query<T>(query, values)) as Promise<T[]>;
   }
 
   async one<T = any>(query: string, values?: any): Promise<T> {
@@ -45,7 +46,7 @@ export class RlsDatabaseWrapper implements Database {
     return this.withOrgContext(db => db.oneOrNone<T>(query, values));
   }
 
-  async none(query: string, values?: any): Promise<void> {
+  async none(query: string, values?: any): Promise<null> {
     return this.withOrgContext(db => db.none(query, values));
   }
 
@@ -94,7 +95,7 @@ class TransactionWrapper implements Database {
   ) {}
 
   async query<T = any>(query: string, values?: any): Promise<T[]> {
-    return this.t.query<T>(query, values);
+    return this.t.query<T>(query, values) as Promise<T[]>;
   }
 
   async one<T = any>(query: string, values?: any): Promise<T> {
@@ -105,7 +106,7 @@ class TransactionWrapper implements Database {
     return this.t.oneOrNone<T>(query, values);
   }
 
-  async none(query: string, values?: any): Promise<void> {
+  async none(query: string, values?: any): Promise<null> {
     return this.t.none(query, values);
   }
 

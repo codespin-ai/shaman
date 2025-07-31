@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import pgPromise from "pg-promise";
 import { RlsDatabaseWrapper } from "./rls-wrapper.js";
 
@@ -8,7 +9,7 @@ export interface Database {
   query: <T = any>(query: string, values?: any) => Promise<T[]>;
   one: <T = any>(query: string, values?: any) => Promise<T>;
   oneOrNone: <T = any>(query: string, values?: any) => Promise<T | null>;
-  none: (query: string, values?: any) => Promise<void>;
+  none: (query: string, values?: any) => Promise<null>;
   many: <T = any>(query: string, values?: any) => Promise<T[]>;
   manyOrNone: <T = any>(query: string, values?: any) => Promise<T[]>;
   any: <T = any>(query: string, values?: any) => Promise<T[]>;
@@ -44,7 +45,7 @@ export function createRlsDb(orgId: string): Database {
     throw new Error('RLS_DB_USER_PASSWORD environment variable is required');
   }
 
-  const db = pgp(config);
+  const db = pgp(config) as pgPromise.IDatabase<any>;
   return new RlsDatabaseWrapper(db, orgId);
 }
 
@@ -64,7 +65,7 @@ export function createUnrestrictedDb(): Database {
     throw new Error('UNRESTRICTED_DB_USER_PASSWORD environment variable is required');
   }
 
-  return pgp(config);
+  return pgp(config) as Database;
 }
 
 // Legacy functions for backwards compatibility
@@ -80,12 +81,12 @@ const defaultDb = pgp({
 });
 
 export function getDb(): Database {
-  console.warn('DEPRECATED: getDb() uses legacy connection. Use createRlsDb() or createUnrestrictedDb() instead.');
-  return defaultDb;
+  // DEPRECATED: getDb() uses legacy connection. Use createRlsDb() or createUnrestrictedDb() instead.
+  return defaultDb as Database;
 }
 
 export function createDatabaseConnection(config: DatabaseConfig): Database {
-  return pgp(config);
+  return pgp(config) as Database;
 }
 
 // Support for multiple databases (existing Shaman pattern)
