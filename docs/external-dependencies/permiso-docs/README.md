@@ -49,16 +49,25 @@ Root entities that provide isolated authorization contexts. All other entities b
 
 ### Users
 
-Represent individuals who need access to resources. Users can:
+Represent individuals or service accounts who need access to resources. 
 
+**User Types:**
+- **HUMAN**: Regular users with Kratos identities who can login via UI
+- **SERVICE_ACCOUNT**: API-only users without Kratos identities, authenticated via API keys
+
+Users can:
 - Belong to one organization
-- Have multiple roles assigned
+- Have multiple roles assigned (including EXTERNAL_API_CLIENT for service accounts)
 - Have direct permissions on resources
 - Have custom properties for filtering
+- Own multiple API keys (with different permissions/expiry)
 
 ### Roles
 
-Collections of permissions that can be assigned to users. Useful for common permission sets like "admin", "editor", "viewer".
+Collections of permissions that can be assigned to users. Common roles include:
+- **ADMIN**: Full access to organization management
+- **USER**: Standard user access
+- **EXTERNAL_API_CLIENT**: Service accounts with API-only access to specific exposed agents
 
 ### Resources
 

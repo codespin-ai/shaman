@@ -176,10 +176,44 @@ query ListOrgUsers {
 }
 ```
 
-### API Key Management
+### API Key Management & Service Accounts
 
 ```graphql
-# Create API key for a user
+# Create service account with API key for external partner
+mutation CreateServiceAccount {
+  createServiceAccount(input: {
+    email: "integration@partner-corp.com"
+    name: "Partner Corp Integration"
+    description: "External API access for order processing"
+    type: SERVICE_ACCOUNT
+    role: EXTERNAL_API_CLIENT
+    allowedAgents: [
+      "/agents/ProcessOrder",
+      "/agents/CheckOrderStatus",
+      "/agents/GetShippingRates"
+    ]
+    apiKeyExpiry: "2025-12-31T23:59:59Z"
+  }) {
+    user {
+      id
+      email
+      type  # SERVICE_ACCOUNT
+      # Note: No kratos_identity_id for service accounts
+    }
+    apiKey {
+      id
+      key  # sk_live_abc123... (shown only once!)
+      keyPrefix
+      expiresAt
+      permissions {
+        resourceId  # /agents/ProcessOrder
+        action      # execute
+      }
+    }
+  }
+}
+
+# Create API key for existing user (human or service account)
 mutation CreateApiKey {
   createApiKey(input: {
     userId: "user-123"

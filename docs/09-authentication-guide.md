@@ -236,26 +236,137 @@ const userContext = {
 
 ## Service Accounts
 
-Service accounts are special users designed for system integrations:
+Service accounts are special users designed for system integrations. **Important: Service accounts do NOT have Kratos identities** - they exist only in Permiso with API key authentication.
 
-### Creating Service Accounts
+### User Types in Permiso
+
+```typescript
+type User = {
+  id: string;
+  email: string;
+  type: 'HUMAN' | 'SERVICE_ACCOUNT';
+  kratos_identity_id?: string;  // Only for HUMAN users
+  organization_id: string;
+  properties: UserProperty[];
+}
+
+// HUMAN users: Have Kratos identity, can login via UI
+// SERVICE_ACCOUNT users: No Kratos identity, API key only
+```
+
+### Creating Service Accounts for External API Access
+
+Organizations can grant external partners controlled access to specific exposed agents:
 
 ```graphql
-mutation CreateServiceAccount {
-  createUser(input: {
-    email: "ci-cd@acme-corp.com"
-    name: "CI/CD Pipeline"
+# Admin creates a service account for external partner
+mutation CreateExternalAPIUser {
+  createServiceAccount(input: {
+    orgId: "acme-corp"
+    email: "partner-system@external-partner.com"
+    name: "External Partner Integration"
+    description: "API access for Partner Corp's order system"
     type: SERVICE_ACCOUNT
-    properties: [
-      {
-        name: "description"
-        value: "Automated deployment pipeline"
-      }
+    allowedAgents: [
+      "/agents/ProcessOrder",      # Can call this exposed agent
+      "/agents/CheckOrderStatus"   # And this one
+      # Cannot call any other agents
     ]
+    apiKeyExpiry: "2025-12-31T23:59:59Z"
   }) {
     user {
       id
       email
+      type  # SERVICE_ACCOUNT
+    }
+    apiKey {
+      id
+      key  # sk_live_abc123... (shown only once!)
+      keyPrefix
+      expiresAt
+      permissions {
+        resourceId  # /agents/ProcessOrder
+        action      # execute
+      }
+    }
+  }
+}
+```
+
+This single API call:
+1. Creates a service account user in Permiso (no Kratos identity)
+2. Assigns the EXTERNAL_API_CLIENT role
+3. Sets permissions for specific exposed agents only
+4. Generates an API key with expiration
+5. Returns the key to share with the external partner
+
+### Managing External API Access
+
+```graphql
+# List all external API users
+query ListExternalAPIUsers {
+  users(
+    filter: {
+      type: SERVICE_ACCOUNT
+      role: EXTERNAL_API_CLIENT
+    }
+  ) {
+    edges {
+      node {
+        id
+        email
+        name
+        createdAt
+        apiKeys {
+          edges {
+            node {
+              keyPrefix
+              status
+              lastUsedAt
+              expiresAt
+              permissions {
+                resourceId
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
+# Revoke access for a partner
+mutation RevokePartnerAccess {
+  # Option 1: Revoke specific API key
+  revokeApiKey(id: "apikey_123") {
+    success
+  }
+  
+  # Option 2: Disable entire service account
+  updateUser(
+    id: "user_partner_123"
+    input: { status: DISABLED }
+  ) {
+    user {
+      status
+    }
+  }
+}
+
+# Update allowed agents for a partner
+mutation UpdatePartnerAgentAccess {
+  updateApiKeyPermissions(
+    apiKeyId: "apikey_123"
+    permissions: [
+      { resourceId: "/agents/ProcessOrder", action: "execute" },
+      { resourceId: "/agents/CheckOrderStatus", action: "execute" },
+      { resourceId: "/agents/GetShippingRates", action: "execute" }  # New!
+    ]
+  ) {
+    apiKey {
+      permissions {
+        resourceId
+      }
     }
   }
 }
@@ -263,11 +374,37 @@ mutation CreateServiceAccount {
 
 ### Service Account Best Practices
 
-1. **Unique Email**: Use a descriptive email like `service-name@org.com`
-2. **Clear Naming**: Name indicates the service's purpose
-3. **Limited Permissions**: Grant only necessary agent access
-4. **Regular Rotation**: Set expiration dates on API keys
-5. **Audit Trail**: All actions are logged with service account identity
+1. **Clear User Type Separation**: 
+   - HUMAN users → Kratos identity + Permiso record
+   - SERVICE_ACCOUNT users → Permiso record only
+
+2. **Descriptive Naming**: Use emails that indicate the external system
+   - ✅ `github-actions@acme-corp.com`
+   - ✅ `salesforce-integration@partner.com`
+   - ❌ `user123@temp.com`
+
+3. **Least Privilege**: Grant access only to required exposed agents
+   - Start with minimal permissions
+   - Add agents as needed
+   - Regular access reviews
+
+4. **API Key Management**:
+   - Set reasonable expiration dates
+   - Monitor usage patterns
+   - Revoke unused keys
+   - Never share keys in plain text
+
+5. **Audit Trail**: All API calls include service account identity
+   ```typescript
+   {
+     userId: "service_partner_integration",
+     userEmail: "integration@partner.com",
+     authMethod: "api-key",
+     apiKeyId: "apikey_123",
+     agent: "ProcessOrder",
+     timestamp: "2024-01-15T10:30:00Z"
+   }
+   ```
 
 ## Security Best Practices
 

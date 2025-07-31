@@ -324,6 +324,59 @@ Workflow → Worker → Internal JWT → Agent Execution
    - Result returned to client
 ```
 
+### Exposed Agent Access Control
+
+Organizations control who can access their exposed agents through service accounts:
+
+```typescript
+// 1. Admin creates service account for external partner
+const serviceAccount = await createServiceAccount({
+  email: "partner@external.com",
+  type: "SERVICE_ACCOUNT",
+  role: "EXTERNAL_API_CLIENT",
+  allowedAgents: [
+    "/agents/ProcessOrder",     // Can call this
+    "/agents/CheckOrderStatus"  // And this
+    // Cannot call any other agents
+  ]
+});
+
+// 2. API key generated with limited permissions
+const apiKey = serviceAccount.apiKey; // sk_live_abc123...
+
+// 3. External partner uses API key
+// ✅ Allowed - agent is in allowedAgents list
+POST /a2a/agents/ProcessOrder
+Authorization: Bearer sk_live_abc123...
+
+// ❌ Denied - agent not in allowedAgents list  
+POST /a2a/agents/ProcessInvoice
+Authorization: Bearer sk_live_abc123...
+// Returns: 403 Forbidden
+
+// 4. Permission check in API Gateway
+async function checkAgentAccess(apiKey: string, agentPath: string) {
+  const validation = await permiso.validateApiKey(apiKey);
+  const user = validation.apiKey.user;
+  
+  // Check if user has permission for this specific agent
+  const hasPermission = user.permissions.some(p => 
+    p.resourceId === agentPath && p.action === "execute"
+  );
+  
+  if (!hasPermission) {
+    throw new ForbiddenError(`API key cannot access agent: ${agentPath}`);
+  }
+}
+```
+
+**Key Points:**
+- Only exposed agents can be called externally
+- Service accounts have NO Kratos identity
+- Permissions are agent-specific, not wildcard
+- All calls are audited with service account identity
+- API keys can be revoked instantly
+
 ### Agent Resolution
 
 ```typescript
