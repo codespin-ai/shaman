@@ -110,6 +110,11 @@ TEMPORAL_NAMESPACE=shaman
 # Git Configuration
 GIT_SYNC_INTERVAL=300000  # 5 minutes
 GIT_CACHE_DIR=/var/cache/shaman/git
+DEFAULT_GIT_TIMEOUT=30000  # Git operation timeout in ms
+GIT_CLONE_DEPTH=1         # Shallow clone for performance
+
+# Security Configuration
+ENCRYPTION_KEY=your-256-bit-key-base64  # Required for Git token encryption
 
 # MCP Server Defaults
 MCP_DEFAULT_TIMEOUT=30000
@@ -468,6 +473,29 @@ INTERNAL_JWT_SECRET=<generated-secret>
 INTERNAL_JWT_ALGORITHM=HS256
 INTERNAL_JWT_EXPIRY=300  # 5 minutes
 ```
+
+### Git Authentication Setup
+
+Organizations must provide credentials for private repositories:
+
+1. Generate a personal access token (PAT) with read-only access
+2. Use the GraphQL `setGitCredentials` mutation
+3. Test access with `testGitCredentials`
+4. Tokens are encrypted and stored securely
+
+```bash
+# Required environment variable for encryption
+ENCRYPTION_KEY=<base64-encoded-256-bit-key>
+
+# Generate encryption key
+openssl rand -base64 32
+```
+
+Supported Git providers:
+- GitHub (personal access tokens or fine-grained tokens)
+- GitLab (personal access tokens)
+- Bitbucket (app passwords)
+- Generic (for self-hosted Git servers)
 
 ## Monitoring and Observability
 

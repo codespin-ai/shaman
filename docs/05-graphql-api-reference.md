@@ -283,8 +283,6 @@ mutation AddRepository {
     gitUrl: "https://github.com/acme/customer-agents.git"
     branch: "main"
     isRoot: true
-    authType: TOKEN
-    authToken: "github_pat_..."
   }) {
     repository {
       id
@@ -312,6 +310,77 @@ mutation SyncRepository {
       }
     }
   }
+}
+```
+
+### Git Credential Management
+
+```graphql
+# Set credentials for a repository
+mutation SetGitCredentials {
+  setGitCredentials(input: {
+    repositoryId: "repo-123"
+    provider: GITHUB
+    token: "github_pat_..."
+    tokenName: "Shaman Read-Only Access"
+  }) {
+    repository {
+      id
+      name
+      hasCredentials
+      lastCredentialUpdate
+    }
+  }
+}
+
+# Test repository access
+mutation TestGitCredentials {
+  testGitCredentials(repositoryId: "repo-123") {
+    success
+    message
+    lastCommitHash
+    branchInfo {
+      name
+      isProtected
+    }
+  }
+}
+
+# Remove credentials
+mutation RemoveGitCredentials {
+  removeGitCredentials(repositoryId: "repo-123") {
+    repository {
+      id
+      hasCredentials
+    }
+  }
+}
+
+# Types for Git credential management
+enum GitProvider {
+  GITHUB
+  GITLAB
+  BITBUCKET
+  GENERIC  # For self-hosted Git
+}
+
+input GitCredentialInput {
+  repositoryId: ID!
+  provider: GitProvider!
+  token: String!
+  tokenName: String
+}
+
+type GitCredentialTestResult {
+  success: Boolean!
+  message: String
+  lastCommitHash: String
+  branchInfo: BranchInfo
+}
+
+type BranchInfo {
+  name: String!
+  isProtected: Boolean!
 }
 ```
 

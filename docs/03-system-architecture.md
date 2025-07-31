@@ -247,6 +247,23 @@ Internal JWT tokens contain:
 }
 ```
 
+### Git Repository Authentication
+
+The system supports universal Git authentication across all providers (GitHub, GitLab, Bitbucket, etc.) using personal access tokens (PATs).
+
+#### Authentication Flow
+1. Customer provides PAT via GraphQL mutation `setGitCredentials`
+2. Token is encrypted at rest using AES-256-GCM
+3. Git operations use HTTPS with token embedded in URL
+4. Tokens are automatically sanitized from all logs
+
+#### Security Considerations
+- Tokens stored in `git_credentials` table with encryption
+- Each repository can have its own credentials
+- Tokens scoped to minimum required permissions (read-only)
+- Automatic token rotation reminders
+- Audit logging for all credential operations
+
 ## Component Architecture
 
 ### Agent Resolution Pipeline

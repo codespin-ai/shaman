@@ -359,3 +359,50 @@ export type AgentCompletion = {
   readonly requiresFollowup: boolean;
   readonly metadata?: Record<string, unknown>;
 };
+
+/**
+ * Git provider types
+ */
+export enum GitProvider {
+  GITHUB = 'github',
+  GITLAB = 'gitlab',
+  BITBUCKET = 'bitbucket',
+  GENERIC = 'generic'
+}
+
+/**
+ * Git credentials for private repository access
+ */
+export interface GitCredential {
+  id: number;
+  repositoryId: number;
+  provider: GitProvider;
+  tokenName?: string;
+  expiresAt?: Date;
+  lastUsedAt?: Date;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+/**
+ * Input for setting Git credentials
+ */
+export interface GitCredentialInput {
+  repositoryId: number;
+  provider: GitProvider;
+  token: string;
+  tokenName?: string;
+}
+
+/**
+ * Result of testing Git credentials
+ */
+export interface GitCredentialTestResult {
+  success: boolean;
+  message?: string;
+  lastCommitHash?: string;
+  branchInfo?: {
+    name: string;
+    isProtected: boolean;
+  };
+}
