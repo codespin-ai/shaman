@@ -1,497 +1,462 @@
+[← Previous: Use Cases & Agent Model](./02-use-cases-and-agent-model.md) | [🏠 Home](./README.md) | [Next: Deployment & Configuration →](./04-deployment-and-configuration.md)
+
+---
+
 # System Architecture
 
-Shaman's architecture is designed for **multi-tenant operation** with **strong isolation** between organizations while maintaining **pluggable components** for infrastructure flexibility.
+Shaman employs a **two-server deployment model** that separates public-facing operations from internal agent execution. All agent-to-agent communication uses the **A2A protocol over HTTP**, ensuring security, auditability, and standards compliance.
 
-## High-Level Architecture
+## Two-Server Architecture
 
 ```
-┌─────────────────────────────────────────────────────────────────┐
-│                        API GATEWAY                              │
-│  ┌─────────────────┐  ┌─────────────────┐  ┌─────────────────┐  │
-│  │   Subdomain     │  │  Ory Kratos     │  │    Permiso      │  │
-│  │    Routing      │  │    (AuthN)      │  │    (AuthZ)      │  │
-│  └─────────────────┘  └─────────────────┘  └─────────────────┘  │
-└─────────────────────────────────┼─────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────────┐
+│                         External World                               │
+│  Browsers, Mobile Apps, External Systems, Partner APIs              │
+└─────────────────────────────────┬───────────────────────────────────┘
+                                  │ HTTPS
+                                  ▼
+┌─────────────────────────────────────────────────────────────────────┐
+│                    PUBLIC SERVER (--role public)                     │
+│                                                                      │
+│  ┌──────────────┐  ┌─────────────────┐  ┌────────────────────────┐ │
+│  │ API Gateway  │  │  GraphQL API    │  │  A2A Public Endpoint   │ │
+│  │ (Auth/Route) │  │  (Management)    │  │  (/a2a/v1/agents/*)   │ │
+│  └──────────────┘  └─────────────────┘  └────────────────────────┘ │
+│                                                                      │
+│  ┌──────────────┐  ┌─────────────────┐  ┌────────────────────────┐ │
+│  │ Ory Kratos   │  │    Permiso      │  │  WebSocket Gateway     │ │
+│  │ (Sessions)   │  │  (RBAC/Users)   │  │  (Live Updates)        │ │
+│  └──────────────┘  └─────────────────┘  └────────────────────────┘ │
+└─────────────────────────────────┬───────────────────────────────────┘
+                                  │ A2A Protocol (HTTPS + JWT)
+                                  ▼
+┌─────────────────────────────────────────────────────────────────────┐
+│                   INTERNAL SERVER (--role internal)                  │
+│                                                                      │
+│  ┌──────────────┐  ┌─────────────────┐  ┌────────────────────────┐ │
+│  │ A2A Internal │  │ Agent Executor  │  │  Workflow Engine       │ │
+│  │  Endpoint    │  │ (LLM + Tools)   │  │  (Temporal/BullMQ)     │ │
+│  └──────────────┘  └─────────────────┘  └────────────────────────┘ │
+│                                                                      │
+│  ┌──────────────┐  ┌─────────────────┐  ┌────────────────────────┐ │
+│  │ Git Agent    │  │  MCP Server     │  │  JWT Token             │ │
+│  │  Resolver    │  │  Manager        │  │  Generator             │ │
+│  └──────────────┘  └─────────────────┘  └────────────────────────┘ │
+└─────────────────────────────────────────────────────────────────────┘
                                   │
-┌─────────────────────────────────▼─────────────────────────────────┐
-│                        SHAMAN SERVER                              │
-│                                                                   │
-│  ┌─────────────────┐  ┌─────────────────┐  ┌─────────────────┐  │
-│  │   GraphQL API   │  │  A2A Endpoint   │  │ Stream Publisher│  │
-│  │  (Management)   │  │ (Exposed Agents) │  │   (WebSocket)   │  │
-│  └─────────────────┘  └─────────────────┘  └─────────────────┘  │
-│                                │                                │
-│  ┌─────────────────────────────▼─────────────────────────────┐  │
-│  │                    AGENT EXECUTOR                         │  │
-│  │  ┌─────────────────┐  ┌─────────────────┐              │  │
-│  │  │  Tool Router    │  │ LLM Provider    │              │  │
-│  │  │  (MCP Protocol) │  │   Abstraction   │              │  │
-│  │  └─────────────────┘  └─────────────────┘              │  │
-│  └─────────────────────────────────────────────────────────┘  │
-└─────────────────────────────────────────────────────────────────┘
-                                  │
-┌─────────────────────────────────▼─────────────────────────────────┐
-│                        SHAMAN WORKER                              │
-│                    (Workflow Orchestration)                       │
-│  ┌─────────────────┐  ┌─────────────────┐  ┌─────────────────┐  │
-│  │ Workflow Engine │  │  JWT Generator   │  │ Agent Resolver  │  │
-│  │    Adapter      │  │  (Internal A2A)  │  │ (Git + External)│  │
-│  └─────────────────┘  └─────────────────┘  └─────────────────┘  │
-└───────────────────────────────────────────────────────────────────┘
-                                  │
-┌─────────────────────────────────▼─────────────────────────────────┐
-│                    PERSISTENCE LAYER                              │
-│                                                                   │
-│  ┌─────────────────┐  ┌─────────────────┐  ┌─────────────────┐  │
-│  │   PostgreSQL    │  │  Message Queue   │  │  Redis Cache    │  │
-│  │   (State)       │  │  (BullMQ/Temporal)│  │  (Sessions)     │  │
-│  └─────────────────┘  └─────────────────┘  └─────────────────┘  │
-└───────────────────────────────────────────────────────────────────┘
+                                  ▼
+┌─────────────────────────────────────────────────────────────────────┐
+│                         INFRASTRUCTURE                               │
+│  ┌──────────────┐  ┌─────────────────┐  ┌────────────────────────┐ │
+│  │ PostgreSQL   │  │ Redis/Message   │  │  Object Storage        │ │
+│  │ (Multi-DB)   │  │    Queue        │  │  (Artifacts)           │ │
+│  └──────────────┘  └─────────────────┘  └────────────────────────┘ │
+└─────────────────────────────────────────────────────────────────────┘
 ```
 
-## Core Components
+## Server Roles and Responsibilities
 
-### 1. API Gateway
+### Public Server (`--role public`)
 
-The **perimeter security layer** that handles all external requests.
+The **public-facing server** that handles all external interactions:
 
-**Key Responsibilities:**
-- Subdomain-based routing (`acme-corp.shaman.ai` → ACME's environment)
-- Dual authentication support:
-  - Session cookies via Ory Kratos (human users)
-  - API keys via Permiso (programmatic access)
-- Authorization checks via Permiso
-- Request forwarding to appropriate Shaman Server instance
-- Rate limiting and DDoS protection
+**Primary Functions:**
+- API Gateway with subdomain-based tenant routing
+- GraphQL API for management operations
+- External A2A endpoint for agent invocations
+- Authentication via Ory Kratos (sessions) and API keys
+- Authorization via Permiso RBAC
+- WebSocket gateway for real-time updates
 
-**Authentication Flows:**
+**Key Characteristics:**
+- Stateless and horizontally scalable
+- Does NOT execute agents directly
+- Forwards agent requests to internal server via A2A
+- Maintains security perimeter
+- Handles all external authentication
 
-*Human Users (Management UI):*
-```
-1. Extract org from subdomain
-2. Validate session cookie with Ory Kratos
-3. Check permissions with Permiso
-4. Forward to GraphQL API with user context
-```
-
-*API Key Users (A2A Calls):*
-```
-1. Extract org from subdomain
-2. Extract API key from Authorization header
-3. Query Permiso: "Which user owns this API key?"
-4. Validate API key is active and not expired
-5. Check user permissions with Permiso
-6. Forward to A2A endpoint with user context
+**Startup Command:**
+```bash
+npm start -- --role public --port 3000
 ```
 
-### 2. Shaman Server
+### Internal Server (`--role internal`)
 
-The **core API service** handling management operations and exposed agent calls.
+The **agent execution server** that runs in a protected environment:
 
-**GraphQL API** (Management):
-- Repository management (add/remove/sync)
-- Organization settings
-- User management (delegated to Permiso)
-- API key management (create/revoke/list)
-- Audit log access
-- Requires Kratos session authentication
+**Primary Functions:**
+- Receives A2A requests from public server
+- Executes agent logic with LLM providers
+- Manages MCP tool connections
+- Orchestrates workflows via pluggable engines
+- Handles agent-to-agent communication via A2A
 
-**A2A Endpoint** (Agent Execution):
-- Receives calls to exposed agents
-- Accepts API key authentication only
-- Creates workflow runs with API key owner context
-- Queues jobs for Shaman Worker
-- Returns execution results
+**Key Characteristics:**
+- Not directly accessible from internet
+- Authenticates via JWT tokens only
+- Can make outbound A2A calls to other agents
+- Manages tool execution via MCP protocol
+- Maintains conversation context
 
-**Key Features:**
-- Multi-tenant aware (org isolation)
-- Maintains local user/org mirrors from Permiso
-- WebSocket streaming for real-time updates
-- Stateless for horizontal scaling
-
-### 3. Shaman Worker
-
-The **workflow orchestration engine** that executes agent DAGs.
-
-**Key Responsibilities:**
-- Picks up jobs from message queue
-- Resolves agents from repositories
-- Generates internal JWT tokens for A2A calls
-- Orchestrates agent execution order
-- Manages parallel execution branches
-- Maintains workflow state
-
-**Internal Security:**
-```typescript
-// Worker generates JWT for internal calls
-const internalToken = {
-  iss: "shaman-worker",
-  aud: "target-agent-name",
-  run_id: "workflow-123",
-  org_id: "acme-corp",
-  exp: Date.now() + 300000 // 5 minutes
-};
+**Startup Command:**
+```bash
+npm start -- --role internal --port 4000
 ```
 
-### 4. Agent Resolution System
+## Communication Flows
 
-Unified agent discovery across multiple sources with intelligent caching.
+### 1. External Agent Invocation
 
-**Resolution Order:**
-1. Check `agents.json` aliases in current repository
-2. Look for agent in same repository
-3. Check external agent registry
-4. Return error if not found
+When an external system calls an exposed agent:
 
-**Git Repository Caching:**
-- Commit-hash based (only sync when changed)
-- Per-file change detection
-- Branch-aware resolution
-- Automatic sync intervals
-
-### 5. Identity & Authorization Services
-
-**Ory Kratos** (Authentication):
-- Handles user login/logout
-- Session management
-- Multi-factor authentication
-- Password recovery
-- Answers: "Who is this user?"
-
-**Permiso** (Authorization & Data):
-- Organization management
-- User profiles and roles
-- Resource-based permissions
-- Answers: "What can this user do?"
-
-**Local Mirrors:**
-```typescript
-// Shaman maintains local copies for performance
-type OrgMirror = {
-  id: string;        // From Permiso
-  permiso_id: string;
-  subdomain: string;
-  name: string;
-  created_at: Date;
-  updated_at: Date;
-};
-
-type UserMirror = {
-  id: string;        // From Permiso
-  permiso_id: string;
-  org_id: string;
-  identity_provider: string;
-  identity_provider_user_id: string;
-};
+```
+1. External System → Public Server
+   POST https://acme.shaman.ai/a2a/v1/agents/ProcessOrder/execute
+   Authorization: Bearer sk_live_abc123...
+   
+2. Public Server:
+   - Validates API key with Permiso
+   - Checks permissions for agent access
+   - Creates workflow run record
+   - Generates internal JWT token
+   
+3. Public Server → Internal Server (A2A)
+   POST https://internal-server:4000/a2a/v1/agents/ProcessOrder/execute
+   Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+   X-Shaman-Context: {"tenantId":"acme","userId":"api-user-123"}
+   
+4. Internal Server:
+   - Validates JWT token
+   - Resolves agent from Git repository
+   - Executes agent with LLM
+   - Returns result via A2A response
+   
+5. Public Server → External System
+   Returns final result with execution metadata
 ```
 
-## Multi-Tenant Architecture
+### 2. Agent-to-Agent Communication
 
-### Isolation Mechanisms
+When one agent needs to call another:
 
-**Network Isolation:**
-- Each org gets unique subdomain
-- Routing at API Gateway level
-- No cross-org network access
-
-**Data Isolation:**
-- Org ID required for all queries
-- Database-level row security
-- Separate agent repositories per org
-
-**Execution Isolation:**
-- Workflows scoped to organization
-- No cross-org agent calls without external A2A
-- Separate message queues per org (optional)
-
-### Repository Management
-
-Each organization can have multiple repositories:
-
-```typescript
-type Repository = {
-  id: string;
-  org_id: string;
-  name: string;
-  git_url: string;
-  branch: string;
-  is_root: boolean;  // Can agents be called without namespace?
-  sync_status: 'pending' | 'syncing' | 'synced' | 'error';
-};
+```
+1. OrderProcessor (Internal Server A) decides to call InventoryChecker
+   
+2. Internal Server A → Internal Server B (A2A)
+   POST https://internal-server-b:4000/a2a/v1/agents/InventoryChecker/execute
+   Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+   X-Shaman-Context: {"parentTaskId":"task-123","depth":2}
+   
+3. Internal Server B:
+   - Validates JWT (issued by workflow engine)
+   - Checks agent exists and is accessible
+   - Executes InventoryChecker
+   - Returns result
+   
+4. OrderProcessor receives result and continues
 ```
 
-**Repository Structure:**
+### 3. External Agent Federation
+
+When an agent needs to call an external agent:
+
 ```
-customer-support-repo/
-├── agents.json           # Aliases and configuration
-├── ProcessInvoice/
-│   └── prompt.md         # Exposed agent
-├── ValidateData/
-│   └── prompt.md         # Private agent
-└── internal/
-    └── AuditCheck/
-        └── prompt.md     # Private agent
+1. TaxCalculator (Internal) needs external rate service
+   
+2. Internal Server → External A2A Service
+   POST https://tax-service.com/a2a/v1/agents/GetTaxRate/execute
+   Authorization: Bearer external_api_key_xyz...
+   
+3. External service processes and returns result
+   
+4. TaxCalculator continues with tax rate data
 ```
 
 ## Security Architecture
 
-### Two-Layer Security Model
+### Three-Layer Security Model
 
-**Layer 1: Perimeter Security (External Calls)**
+**Layer 1: Perimeter Security (Public Server)**
+- API Gateway validates all incoming requests
+- Dual authentication: Kratos sessions + API keys
+- Permiso RBAC for authorization
+- Rate limiting and DDoS protection
+- TLS termination
 
-*Management UI Access:*
-```
-Browser → API Gateway → GraphQL API
-    ↑           ↓            ↓
-Session    Ory Kratos    Permiso
-Cookie     (Identity)    (Permissions)
-```
+**Layer 2: Internal Communication (A2A Protocol)**
+- JWT tokens for all internal calls
+- Short-lived tokens (5-minute expiry)
+- Token includes workflow context, not user data
+- Mutual TLS between servers (optional)
+- Request signing for integrity
 
-*A2A API Access:*
-```
-External System → API Gateway → A2A Endpoint
-       ↑              ↓              ↓
-   API Key        Permiso        Permiso
-                (Key→User)    (Permissions)
-```
+**Layer 3: Agent Execution (Internal Server)**
+- Agents run in isolated contexts
+- No direct access to user tokens
+- Tool access controlled via MCP permissions
+- Audit logging for all operations
+- Resource limits per execution
 
-**Layer 2: Internal Security (Agent-to-Agent)**
+### JWT Token Structure
 
-```
-Workflow → Worker → Internal JWT → Agent Execution
-            ↓                         ↓
-     Generates JWT            Validates JWT
-     (workflow scope)         (no user token)
-```
+Internal JWT tokens contain:
 
-### Token Lifecycle
-
-**Session-based Flow (Human Users):**
-1. User logs in via Kratos UI
-2. Kratos sets session cookie
-3. Gateway validates session with Kratos
-4. Gateway checks permissions with Permiso
-5. Session info used for audit trail
-
-**API Key Flow (Programmatic Access):**
-1. System provides API key in Authorization header
-2. Gateway looks up key owner in Permiso
-3. Gateway validates key is active
-4. Gateway checks owner's permissions
-5. Owner identity used for audit trail
-
-**Internal Token Flow:**
-1. Worker generates short-lived JWT
-2. JWT contains workflow metadata (not user data)
-3. Each agent call gets new JWT
-4. Tokens expire after 5 minutes
-5. Agent infrastructure validates JWT
-
-## Execution Flow
-
-### Exposed Agent Call
-
-```
-1. POST https://acme-corp.shaman.ai/a2a/agents/ProcessInvoice
-   Headers: Authorization: Bearer sk_live_abc123...
-
-2. API Gateway:
-   - Extracts API key from header
-   - Queries Permiso: GET /api-keys/sk_live_abc123
-   - Gets owner: user_id: "service-account-1", org_id: "acme-corp"
-   - Checks user's permission to call ProcessInvoice
-   - Forwards to Shaman Server with user context
-
-3. Shaman Server:
-   - Creates workflow_run record
-   - Queues job for Worker
-   - Returns run_id to client
-
-4. Shaman Worker:
-   - Picks up job
-   - Resolves ProcessInvoice agent
-   - Executes agent with LLM
-   - Agent calls internal agents
-
-5. Internal A2A calls:
-   - Worker generates JWT for each call
-   - Executes ValidateData agent
-   - Returns result to ProcessInvoice
-
-6. Completion:
-   - ProcessInvoice calls complete_agent_execution
-   - Worker updates workflow_run status
-   - Result returned to client
-```
-
-### Exposed Agent Access Control
-
-Organizations control who can access their exposed agents through service accounts:
-
-```typescript
-// 1. Admin creates service account for external partner
-const serviceAccount = await createServiceAccount({
-  email: "partner@external.com",
-  type: "SERVICE_ACCOUNT",
-  role: "EXTERNAL_API_CLIENT",
-  allowedAgents: [
-    "/agents/ProcessOrder",     // Can call this
-    "/agents/CheckOrderStatus"  // And this
-    // Cannot call any other agents
-  ]
-});
-
-// 2. API key generated with limited permissions
-const apiKey = serviceAccount.apiKey; // sk_live_abc123...
-
-// 3. External partner uses API key
-// ✅ Allowed - agent is in allowedAgents list
-POST /a2a/agents/ProcessOrder
-Authorization: Bearer sk_live_abc123...
-
-// ❌ Denied - agent not in allowedAgents list  
-POST /a2a/agents/ProcessInvoice
-Authorization: Bearer sk_live_abc123...
-// Returns: 403 Forbidden
-
-// 4. Permission check in API Gateway
-async function checkAgentAccess(apiKey: string, agentPath: string) {
-  const validation = await permiso.validateApiKey(apiKey);
-  const user = validation.apiKey.user;
-  
-  // Check if user has permission for this specific agent
-  const hasPermission = user.permissions.some(p => 
-    p.resourceId === agentPath && p.action === "execute"
-  );
-  
-  if (!hasPermission) {
-    throw new ForbiddenError(`API key cannot access agent: ${agentPath}`);
-  }
-}
-```
-
-**Key Points:**
-- Only exposed agents can be called externally
-- Service accounts have NO Kratos identity
-- Permissions are agent-specific, not wildcard
-- All calls are audited with service account identity
-- API keys can be revoked instantly
-
-### Agent Resolution
-
-```typescript
-// Agent calls another by name
-call_agent({ agent: "TaxCalculator", task: "..." })
-
-// Resolution process:
-1. Check agents.json:
-   {
-     "TaxCalculator": {
-       "url": "https://tax-service.com/a2a/agents/CalculateTax"
-     }
-   }
-
-2. If found → use URL
-3. If not found → check same repository
-4. If not found → check external registry
-5. If not found → error
-```
-
-## Workflow Engine Adapters
-
-Pluggable workflow engines for different deployment scenarios:
-
-**BullMQ Adapter** (Development):
-```typescript
+```json
 {
-  type: 'bullmq',
-  config: {
-    redis: { host: 'localhost', port: 6379 },
-    queues: { 
-      default: 'shaman-jobs',
-      perOrg: true  // Separate queues per org
+  "iss": "shaman-public-server",
+  "aud": "shaman-internal-server",
+  "exp": 1234567890,
+  "iat": 1234567800,
+  "jti": "unique-request-id",
+  "context": {
+    "tenantId": "acme",
+    "runId": "run-abc123",
+    "parentTaskId": "task-parent-456",
+    "depth": 1,
+    "initiator": {
+      "type": "api_key",
+      "id": "sk_live_abc123",
+      "userId": "user-789"
     }
   }
 }
 ```
 
-**Temporal Adapter** (Production):
-```typescript
-{
-  type: 'temporal',
-  config: {
-    connection: { address: 'temporal.cluster:7233' },
-    namespace: 'shaman-production',
-    taskQueue: 'shaman-workers'
-  }
-}
+## Component Architecture
+
+### Agent Resolution Pipeline
+
+```
+Agent Name → Alias Resolution → Repository Check → Git Sync → Agent Load
+    │              │                   │                │           │
+    └──────────────┴───────────────────┴────────────────┴───────────┘
+                              Resolution Cache
 ```
 
-## Observability
+**Resolution Steps:**
+1. Check `agents.json` for aliases
+2. Search in current repository
+3. Check external agent registry
+4. Sync from Git if needed
+5. Cache by commit hash
 
-### OpenTelemetry Integration
+### Tool Execution via MCP
 
-Every component emits traces:
-- HTTP requests (Gateway → Server)
-- Workflow execution (Worker)
-- Agent calls (with full context)
-- Tool executions
-- LLM interactions
+Agents access tools through MCP servers:
 
-### Audit Trail
-
-Complete record of all actions:
-```typescript
-type AuditEntry = {
-  id: string;
-  org_id: string;
-  user_id: string;      // Original user
-  run_id: string;       // Workflow run
-  action: string;       // 'agent_call', 'tool_execution', etc
-  resource: string;     // Agent or tool name
-  timestamp: Date;
-  metadata: {
-    input?: any;
-    output?: any;
-    error?: any;
-    duration_ms: number;
-  };
-};
 ```
+Agent → Tool Request → MCP Client → Transport → MCP Server → Tool
+  │                        │            │            │          │
+  └────────────────────────┴────────────┴────────────┴──────────┘
+                          Tool Response Pipeline
+```
+
+**MCP Transports:**
+- `stdio`: Local process communication
+- `http+sse`: Remote server communication
+- Future: WebSocket, gRPC
+
+### Workflow Orchestration
+
+The workflow engine manages execution flow:
+
+```
+Workflow Definition → Task Queue → Worker Pool → Agent Execution
+        │                 │            │              │
+        └─────────────────┴────────────┴──────────────┘
+                    Workflow State Machine
+```
+
+**Supported Engines:**
+- **Temporal**: Production-grade with durability
+- **BullMQ**: Redis-based for development
+- **Custom**: Implement adapter interface
+
+## Multi-Tenant Isolation
+
+### Tenant Boundaries
+
+Each organization operates in complete isolation:
+
+```
+┌─────────────────────────────────────────┐
+│          Organization: ACME             │
+│                                         │
+│  Subdomain: acme.shaman.ai            │
+│  Database: tenant_acme_*               │
+│  Agents: acme/repository/*             │
+│  Queue: shaman-acme-jobs               │
+│                                         │
+│  ┌─────────┐  ┌─────────┐  ┌─────────┐ │
+│  │ Users   │  │ Agents  │  │ API Keys│ │
+│  └─────────┘  └─────────┘  └─────────┘ │
+└─────────────────────────────────────────┘
+
+┌─────────────────────────────────────────┐
+│        Organization: TechCorp           │
+│                                         │
+│  Subdomain: techcorp.shaman.ai        │
+│  Database: tenant_techcorp_*          │
+│  Agents: techcorp/repository/*        │
+│  Queue: shaman-techcorp-jobs          │
+│                                         │
+│  ┌─────────┐  ┌─────────┐  ┌─────────┐ │
+│  │ Users   │  │ Agents  │  │ API Keys│ │
+│  └─────────┘  └─────────┘  └─────────┘ │
+└─────────────────────────────────────────┘
+```
+
+### Isolation Enforcement
+
+**Network Level:**
+- Subdomain routing at load balancer
+- Separate internal networks per tenant (optional)
+- API Gateway enforces tenant context
+
+**Data Level:**
+- Tenant ID in all database queries
+- Separate schemas or databases
+- No cross-tenant joins possible
+
+**Execution Level:**
+- Workflow queues scoped by tenant
+- Agent namespaces prevent conflicts
+- Separate MCP tool permissions
 
 ## Scalability Patterns
 
 ### Horizontal Scaling
 
-**API Gateway**: Load balancer with multiple instances
-**Shaman Server**: Stateless, auto-scale based on load
-**Shaman Worker**: Scale workers independently per org
-**Database**: Read replicas for query distribution
+Each component scales independently:
+
+```
+                    Load Balancer
+                         │
+        ┌────────────────┼────────────────┐
+        ▼                ▼                ▼
+   Public-1         Public-2         Public-3
+        │                │                │
+        └────────────────┼────────────────┘
+                         │
+                    Internal LB
+                         │
+        ┌────────────────┼────────────────┐
+        ▼                ▼                ▼
+  Internal-1       Internal-2       Internal-3
+```
+
+**Scaling Strategies:**
+- Public servers: Scale based on API traffic
+- Internal servers: Scale based on agent execution load
+- Database: Read replicas for query distribution
+- Message queue: Partition by tenant
 
 ### Performance Optimizations
 
-**Agent Caching**: Git agents cached by commit hash
-**Connection Pooling**: Reuse database and Redis connections
-**Lazy Loading**: Load agents on-demand, not at startup
-**Streaming**: WebSocket for real-time updates without polling
+**Caching Layers:**
+1. CDN for static assets
+2. Redis for session data
+3. Git agent cache (commit-based)
+4. LLM response cache (optional)
 
-### Multi-Region Deployment
+**Connection Pooling:**
+- Database connections per server
+- HTTP keep-alive for A2A calls
+- MCP server connection reuse
+
+**Async Processing:**
+- Long-running agents use workflow engine
+- WebSocket for real-time updates
+- Batch operations where possible
+
+## Observability
+
+### Distributed Tracing
+
+Every request flows through multiple services:
 
 ```
-Region 1 (US-East)          Region 2 (EU-West)
-├── API Gateway             ├── API Gateway
-├── Shaman Servers          ├── Shaman Servers
-├── Workers                 ├── Workers
-└── Regional DB             └── Regional DB
-         ↓                           ↓
-         └───────── Global DB ───────┘
-              (Multi-region replica)
+[Trace ID: abc123]
+├─ API Gateway (50ms)
+│  └─ Auth Check (10ms)
+├─ Public Server (200ms)
+│  ├─ Permission Check (20ms)
+│  └─ A2A Call (180ms)
+└─ Internal Server (150ms)
+   ├─ Agent Resolution (30ms)
+   ├─ LLM Call (100ms)
+   └─ Tool Execution (20ms)
 ```
 
-This architecture provides:
-- ✅ **Complete tenant isolation**
-- ✅ **Two-layer security model**
-- ✅ **Flexible workflow engines**
-- ✅ **Horizontal scalability**
-- ✅ **Full audit trails**
-- ✅ **Simple agent authoring**
+### Metrics Collection
+
+Key metrics tracked:
+- Request latency by endpoint
+- Agent execution time
+- LLM token usage
+- Tool call frequency
+- Error rates by tenant
+
+### Audit Logging
+
+Complete audit trail:
+```json
+{
+  "timestamp": "2024-03-15T10:00:00Z",
+  "traceId": "abc123",
+  "tenantId": "acme",
+  "userId": "user-456",
+  "action": "agent.execute",
+  "resource": "ProcessOrder",
+  "server": "internal-server-1",
+  "protocol": "a2a",
+  "duration": 350,
+  "status": "success"
+}
+```
+
+## Deployment Topologies
+
+### Development Environment
+
+Simple single-node setup:
+```
+Docker Compose
+├─ postgres:15
+├─ redis:7
+├─ shaman-public:latest (port 3000)
+├─ shaman-internal:latest (port 4000)
+└─ temporal:latest (optional)
+```
+
+### Production Environment
+
+Multi-region, high-availability:
+```
+Region: US-East
+├─ ALB → Public Servers (3x)
+├─ Internal ALB → Internal Servers (5x)
+├─ RDS PostgreSQL (Multi-AZ)
+├─ ElastiCache Redis (Cluster)
+└─ Temporal Cloud
+
+Region: EU-West
+├─ ALB → Public Servers (3x)
+├─ Internal ALB → Internal Servers (5x)
+├─ RDS PostgreSQL (Read Replica)
+├─ ElastiCache Redis (Cluster)
+└─ Temporal Cloud
+```
+
+## Key Architecture Benefits
+
+1. **Security**: Complete separation of concerns with protocol-based communication
+2. **Scalability**: Independent scaling of public and internal tiers
+3. **Standards**: A2A and MCP protocols ensure interoperability
+4. **Auditability**: Every operation tracked through the system
+5. **Flexibility**: Pluggable components for different deployment needs
+6. **Isolation**: True multi-tenant architecture with no shared resources
+
+---
+
+[← Previous: Use Cases & Agent Model](./02-use-cases-and-agent-model.md) | [🏠 Home](./README.md) | [Next: Deployment & Configuration →](./04-deployment-and-configuration.md)
