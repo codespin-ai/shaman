@@ -12,9 +12,10 @@ When you begin working on this project, you MUST:
    - `/README.md` - Project overview and quick start
    - `/node/CODING-STANDARDS.md` - Mandatory coding patterns and conventions
    - `/agents/agent.md` - Agent development guide
-   - `/docs/01-overview-and-concepts.md` - Core concepts
-   - `/docs/02-use-cases-and-agent-model.md` - Agent patterns
-   - `/docs/03-system-architecture.md` - Architecture details
+   - `/docs/01-overview-and-concepts.md` - Core concepts and principles
+   - `/docs/02-use-cases-and-agent-model.md` - Agent patterns and use cases
+   - `/docs/03-system-architecture.md` - Two-server architecture with A2A/MCP
+   - `/docs/04-deployment-and-configuration.md` - Server deployment (--role flag)
    - Any other relevant docs based on the task at hand
 
 Only after reading these documents should you proceed with any implementation or analysis tasks.
@@ -336,8 +337,10 @@ import { executeAgent } from "./agent-runner";
 - Coding standards: `/node/CODING-STANDARDS.md`
 - System documentation: `/docs/` directory
 - Architecture overview: `/docs/03-system-architecture.md`
-- API specification: `/docs/05-graphql-api-spec.md`
+- API specification: `/docs/05-graphql-api-reference.md`
 - **External dependencies**: `/docs/external-dependencies/` - Documentation for services like Permiso (RBAC)
+- **A2A Protocol**: `/docs/external-specs/a2a/` - Agent-to-agent communication spec
+- **MCP Protocol**: `/docs/external-specs/mcp/` - Model Context Protocol spec
 
 ## Testing & Quality
 
