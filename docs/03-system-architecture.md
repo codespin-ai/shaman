@@ -245,7 +245,7 @@ When one agent needs to call another:
 4. OrderProcessor receives result and continues
 ```
 
-**Critical Detail**: The `metadata` field carries the workflow context (runId, parentStepId, depth) through all agent-to-agent calls. This enables Shaman to build the complete execution DAG (Directed Acyclic Graph) across distributed agent invocations.
+**Critical Detail**: The `metadata` field carries the workflow context (runId, parentStepId, depth) through all agent-to-agent calls. This enables Shaman to build the complete execution tree across distributed agent invocations, including cycles from recursive agent calls and bidirectional communication.
 
 ### 3. External Agent Federation
 
@@ -375,14 +375,14 @@ The system supports universal Git authentication across all providers (GitHub, G
 
 ## Workflow Tracking via A2A Metadata
 
-Shaman tracks the complete execution DAG across distributed agents using the A2A protocol's `metadata` field:
+Shaman tracks the complete execution tree (which may contain cycles) across distributed agents using the A2A protocol's `metadata` field:
 
 ### Metadata Structure
 ```json
 {
   "metadata": {
     "shaman:runId": "run-abc123",           // Unique workflow instance ID
-    "shaman:parentStepId": "step-parent-456", // Parent step in the DAG
+    "shaman:parentStepId": "step-parent-456", // Parent step ID
     "shaman:depth": 2,                       // Call depth (for recursion limits)
     "shaman:organizationId": "acme",         // Tenant isolation
     "shaman:initiatorId": "user-789"         // Original caller
@@ -397,7 +397,7 @@ Shaman tracks the complete execution DAG across distributed agents using the A2A
 2. **First Agent**: Receives metadata with runId and no parentStepId
 3. **Agent Calls Agent**: Includes runId and its own stepId as parentStepId
 4. **Response Flow**: Each agent returns results with same metadata
-5. **DAG Construction**: System builds complete execution tree from metadata
+5. **Tree Construction**: System builds complete execution tree from metadata, supporting cycles from recursive calls
 
 #### Option 2: Explicit Run Creation (Advanced Orchestration)
 1. **Create Run**: Client calls GraphQL `createRun` mutation, gets runId

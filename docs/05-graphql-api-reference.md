@@ -70,7 +70,7 @@ type Agent {
 
 Monitor existing workflow runs (execution happens via A2A server).
 
-**Note**: The system builds a complete execution DAG (Directed Acyclic Graph) by tracking parent-child relationships between Steps. This is achieved through the A2A protocol's `metadata` field that carries `runId` and `parentStepId` through all agent calls.
+**Note**: The system builds a complete execution tree by tracking parent-child relationships between Steps. This tree may contain cycles due to recursive agent calls and bidirectional communication. This is achieved through the A2A protocol's `metadata` field that carries `runId` and `parentStepId` through all agent calls.
 
 ```graphql
 query GetRun {
