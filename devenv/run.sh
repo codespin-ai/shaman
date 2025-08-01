@@ -20,17 +20,33 @@ if [ ! -d redisdata ]; then
   mkdir redisdata;
 fi
 
+# Detect if we should use rootless Docker configuration
+# Check if we're running on Linux and not in a container
+if [[ "$OSTYPE" == "linux-gnu"* ]] && [ ! -f /.dockerenv ]; then
+    # Check if Docker is running in rootless mode
+    if docker info 2>/dev/null | grep -q "rootless"; then
+        echo "Detected rootless Docker on Linux, using rootless configuration..."
+        COMPOSE_FILE="docker-compose-rootless.yml"
+    else
+        echo "Using standard Docker configuration..."
+        COMPOSE_FILE="docker-compose.yml"
+    fi
+else
+    # macOS or running inside a container
+    COMPOSE_FILE="docker-compose.yml"
+fi
+
 COMMAND=$1
 
 case $COMMAND in
   verbose)
-      docker compose --verbose up 
+      docker compose -f "$COMPOSE_FILE" --verbose up 
   ;;
   up)
-      docker compose up -d
+      docker compose -f "$COMPOSE_FILE" up -d
   ;;
   down)
-      docker compose down
+      docker compose -f "$COMPOSE_FILE" down
   ;;
   logs)
       if [ -z "$2" ]; then
@@ -38,7 +54,7 @@ case $COMMAND in
         echo "Usage: $0 logs <service_name>"
         exit 1
       fi
-      docker compose logs -f "$2"
+      docker compose -f "$COMPOSE_FILE" logs -f "$2"
   ;;
   *)
     echo "Invalid command: $COMMAND"

@@ -54,6 +54,11 @@ cd shaman
 npm install
 ./build.sh
 
+# Start development environment (PostgreSQL and Redis)
+cd devenv
+./run.sh up
+cd ..
+
 # Set up database
 npm run migrate:latest
 npm run seed:run
