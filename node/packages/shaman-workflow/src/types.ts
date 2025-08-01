@@ -2,41 +2,51 @@
  * Types for workflow engine
  */
 
-import type { WorkflowContext } from '@codespin/shaman-types';
-
 export type WorkflowConfig = {
   redis: {
     host: string;
     port: number;
     password?: string;
+    db?: number;
   };
   queues: {
-    default: string;
-    priority: string;
+    stepExecution: string; // Main queue for executing steps
+    asyncPolling: string;  // Queue for polling async operations
   };
-  workers: {
+  workers?: {
     concurrency: number;
     maxJobsPerWorker: number;
   };
 };
 
-export type JobData = {
-  agentName: string;
-  input: string;
-  context: WorkflowContext;
-  options?: {
-    priority?: number;
-    delay?: number;
-    attempts?: number;
+// Step execution request
+export type StepRequest = {
+  stepId: string;
+  stepType: 'agent' | 'tool';
+  name: string; // Agent name or tool name
+  input: any;
+  context: {
+    runId: string;
+    parentStepId?: string;
+    organizationId: string;
+    depth: number;
   };
 };
 
-export type JobResult = {
+// Async polling request
+export type AsyncPollRequest = {
+  stepId: string;
+  pollType: 'a2a_task' | 'webhook';
+  pollUrl?: string;
+  taskId?: string;
+  nextPollDelay?: number; // MS until next poll
+};
+
+// Step execution result
+export type StepResult = {
   success: boolean;
-  output?: string;
+  output?: any;
   error?: string;
-  metadata?: {
-    executionTime: number;
-    tokensUsed?: number;
-  };
+  duration?: number;
+  shouldRetry?: boolean;
 };

@@ -1,15 +1,15 @@
 /**
  * packages/shaman-a2a-server/src/message-handler.ts
  * 
- * Handles A2A message/send requests
+ * Handles A2A message/send requests and creates workflows
  */
 
 import type { Logger } from '@codespin/shaman-logger';
 import type { Result } from '@codespin/shaman-core';
 import type { AgentsConfig } from '@codespin/shaman-agents';
-import { getAgent } from '@codespin/shaman-agents';
-import type { WorkflowContext } from '@codespin/shaman-types';
-import { v4 as uuidv4 } from 'uuid';
+import type { Database } from '@codespin/shaman-db';
+import type { WorkflowEngine } from '@codespin/shaman-workflow';
+import { generateRunId, generateStepId } from '@codespin/shaman-agent-executor';
 
 import type {
   A2ASendMessageRequest,
@@ -18,17 +18,16 @@ import type {
   A2ATask,
   A2AMessage
 } from './types.js';
-import { canExposeAgent } from './agent-adapter.js';
 
 export type MessageHandlerDependencies = {
   config: A2AProviderConfig;
   agentsConfig: AgentsConfig;
+  db: Database;
+  workflowEngine: WorkflowEngine;
 };
 
 /**
  * Extract agent name from message text
- * This is a simple implementation - in production, you'd use
- * more sophisticated routing based on agent capabilities
  */
 function extractAgentName(message: A2AMessage): string | null {
   // Look for @agent mentions
@@ -43,7 +42,15 @@ function extractAgentName(message: A2AMessage): string | null {
 }
 
 /**
- * Handle message/send request
+ * Extract task from message (remove @agent mention)
+ */
+function extractTask(message: A2AMessage, agentName: string): string {
+  const text = message.parts.find(p => p.kind === 'text')?.text || '';
+  return text.replace(new RegExp(`@${agentName}\\s*`), '').trim();
+}
+
+/**
+ * Handle message/send request - creates workflow
  */
 export async function handleMessageSend(
   request: A2ASendMessageRequest,
@@ -52,6 +59,7 @@ export async function handleMessageSend(
 ): Promise<Result<A2ASendMessageResponse>> {
   try {
     const { message, configuration, metadata } = request;
+    const { db, workflowEngine } = dependencies;
     
     // Extract target agent from message
     const agentName = extractAgentName(message);
@@ -62,33 +70,80 @@ export async function handleMessageSend(
       };
     }
     
-    // Get the agent
-    const agentResult = await getAgent(agentName, dependencies.agentsConfig);
-    if (!agentResult.success || !agentResult.data || agentResult.data.source !== 'git') {
-      return {
-        success: false,
-        error: `Agent ${agentName} not found`
-      };
-    }
+    const task = extractTask(message, agentName);
+    const runId = generateRunId();
+    const contextId = message.contextId || `ctx-${runId}`;
     
-    const gitAgent = agentResult.data.agent;
-    
-    // Check if agent can be exposed
-    if (!canExposeAgent(gitAgent, dependencies.config)) {
-      return {
-        success: false,
-        error: `Agent ${agentName} is not available via A2A`
-      };
-    }
-    
-    // Create task for the message
-    const taskId = `task-${uuidv4()}`;
-    const contextId = message.contextId || `ctx-${uuidv4()}`;
-    
-    // For blocking requests, we would execute the agent and wait
-    // For now, we'll create a task in submitted state
+    // Create Run in PostgreSQL
+    await db.none(`
+      INSERT INTO run (
+        id, organization_id, status, initial_input, 
+        created_by, created_by_type, metadata, created_at
+      ) VALUES (
+        $(id), $(organizationId), 'pending', $(initialInput),
+        $(createdBy), $(createdByType), $(metadata), NOW()
+      )
+    `, {
+      id: runId,
+      organizationId: metadata?.['shaman:organizationId'] || 'default',
+      initialInput: message.parts[0]?.text || '',
+      createdBy: metadata?.['shaman:createdBy'] || 'external',
+      createdByType: 'api_key',
+      metadata: { contextId, ...metadata }
+    });
+
+    // Create initial call_agent tool step
+    const callAgentStepId = generateStepId();
+    await db.none(`
+      INSERT INTO step (
+        id, run_id, parent_step_id, step_type, name,
+        status, input, created_at
+      ) VALUES (
+        $(id), $(runId), NULL, 'tool', 'call_agent',
+        'queued', $(input), NOW()
+      )
+    `, {
+      id: callAgentStepId,
+      runId,
+      input: {
+        agent: agentName,
+        task: task,
+        mode: configuration?.blocking ? 'sync' : 'async'
+      }
+    });
+
+    // Queue the step for execution
+    const jobId = await workflowEngine.queueStep({
+      stepId: callAgentStepId,
+      stepType: 'tool',
+      name: 'call_agent',
+      input: {
+        agent: agentName,
+        task: task,
+        mode: configuration?.blocking ? 'sync' : 'async'
+      },
+      context: {
+        runId,
+        organizationId: metadata?.['shaman:organizationId'] || 'default',
+        depth: 0
+      }
+    });
+
+    // Update step with job ID
+    await db.none(`
+      UPDATE step SET job_id = $(jobId) WHERE id = $(stepId)
+    `, { jobId, stepId: callAgentStepId });
+
+    logger.info('Created workflow', {
+      runId,
+      agentName,
+      stepId: callAgentStepId,
+      jobId
+    });
+
+    // Return task response
     const task: A2ATask = {
-      id: taskId,
+      id: runId,
       contextId,
       status: {
         state: 'submitted',
@@ -103,36 +158,6 @@ export async function handleMessageSend(
       },
       kind: 'task'
     };
-    
-    // TODO: Actually execute the agent via workflow engine
-    // For now, we'll simulate by transitioning to working state
-    if (configuration?.blocking) {
-      // In real implementation, this would:
-      // 1. Create a workflow run
-      // 2. Execute the agent
-      // 3. Wait for completion
-      // 4. Return the completed task
-      
-      logger.info('Would execute agent in blocking mode', {
-        agentName,
-        taskId,
-        contextId
-      });
-      
-      // Simulate completion
-      task.status = {
-        state: 'completed',
-        timestamp: new Date().toISOString(),
-        message: {
-          role: 'agent',
-          parts: [{
-            kind: 'text',
-            text: `Agent ${agentName} received: "${message.parts[0]?.text}". This is a simulated response - actual agent execution not yet implemented.`
-          }],
-          messageId: `msg-${uuidv4()}`
-        }
-      };
-    }
     
     return {
       success: true,
