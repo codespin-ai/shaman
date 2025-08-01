@@ -14,13 +14,17 @@ import type { AgentsConfig } from '@codespin/shaman-agents';
 import type {
   A2AProviderConfig,
   A2ADiscoveryResponse,
-  A2AExecutionRequest,
-  A2AExecutionResponse,
   A2AHealthResponse,
-  A2AAgentCard
+  A2AAgentCard,
+  A2AJsonRpcRequest,
+  A2AJsonRpcResponse,
+  A2ASendMessageRequest,
+  A2ASendMessageResponse,
+  A2ATask,
+  A2AMessage
 } from './types.js';
 import { convertToA2ACard, canExposeAgent } from './agent-adapter.js';
-import { executeAgentForA2A } from './agent-executor.js';
+import { handleMessageSend } from './message-handler.js';
 
 /**
  * Create an Express application configured for A2A protocol
@@ -155,63 +159,112 @@ export function createA2AServer(
   });
   
   /**
-   * POST /agents/:agentName/execute - Execute an agent
+   * POST /message/send - Send a message to the A2A server (JSON-RPC)
    */
-  app.post(`${basePath}/agents/:agentName/execute`, (req: Request, res: Response) => {
+  app.post(`${basePath}/message/send`, (req: Request, res: Response) => {
     void (async () => {
-    try {
-      const { agentName } = req.params;
-      const executionRequest = req.body as A2AExecutionRequest;
-      
-      // Validate request
-      if (!executionRequest.prompt) {
-        return res.status(400).json({
-          error: {
-            code: 'INVALID_REQUEST',
-            message: 'Prompt is required'
-          }
-        });
-      }
-      
-      // Get the agent
-      const agentResult = await getAgent(agentName, agentsConfig);
-      
-      if (!agentResult.success || !agentResult.data || agentResult.data.source !== 'git') {
-        return res.status(404).json({
-          error: {
-            code: 'AGENT_NOT_FOUND',
-            message: `Agent ${agentName} not found`
-          }
-        });
-      }
-      
-      const gitAgent = agentResult.data.agent;
-      
-      // Check if agent can be exposed
-      if (!canExposeAgent(gitAgent, config)) {
-        return res.status(403).json({
-          error: {
-            code: 'AGENT_NOT_EXPOSED',
-            message: `Agent ${agentName} is not available for execution via A2A`
-          }
-        });
-      }
-      
-      // Execute the agent
-      const executionResult = await executeAgentForA2A(gitAgent, executionRequest);
-      
-      const response: A2AExecutionResponse = executionResult;
-      res.json(response);
-    } catch (error) {
       const logger = createLogger('A2AServer');
-      logger.error('Error executing agent:', error);
-      res.status(500).json({
-        error: {
-          code: 'EXECUTION_ERROR',
-          message: 'Failed to execute agent'
+      
+      try {
+        const request = req.body as A2AJsonRpcRequest<A2ASendMessageRequest>;
+        
+        // Validate JSON-RPC request
+        if (request.jsonrpc !== '2.0' || !request.id || request.method !== 'message/send') {
+          return res.json({
+            jsonrpc: '2.0',
+            id: request.id || null,
+            error: {
+              code: -32600,
+              message: 'Invalid Request'
+            }
+          } as A2AJsonRpcResponse);
         }
-      });
-    }
+        
+        // Validate params
+        if (!request.params?.message) {
+          return res.json({
+            jsonrpc: '2.0',
+            id: request.id,
+            error: {
+              code: -32602,
+              message: 'Invalid params: message is required'
+            }
+          } as A2AJsonRpcResponse);
+        }
+        
+        // Handle the message
+        const result = await handleMessageSend(
+          request.params,
+          { config, agentsConfig },
+          logger
+        );
+        
+        if (!result.success) {
+          return res.json({
+            jsonrpc: '2.0',
+            id: request.id,
+            error: {
+              code: -32603,
+              message: 'Internal error',
+              data: result.error
+            }
+          } as A2AJsonRpcResponse);
+        }
+        
+        // Return successful response
+        res.json({
+          jsonrpc: '2.0',
+          id: request.id,
+          result: result.data
+        } as A2AJsonRpcResponse<A2ASendMessageResponse>);
+        
+      } catch (error) {
+        logger.error('Error in message/send:', error);
+        res.json({
+          jsonrpc: '2.0',
+          id: req.body?.id || null,
+          error: {
+            code: -32603,
+            message: 'Internal error'
+          }
+        } as A2AJsonRpcResponse);
+      }
+    })();
+  });
+  
+  /**
+   * POST /tasks/get - Get task status (JSON-RPC)
+   */
+  app.post(`${basePath}/tasks/get`, (req: Request, res: Response) => {
+    void (async () => {
+      const logger = createLogger('A2AServer');
+      
+      try {
+        const request = req.body as A2AJsonRpcRequest<{ id: string }>;
+        
+        // TODO: Implement task retrieval from persistence
+        // For now, return a not found error
+        res.json({
+          jsonrpc: '2.0',
+          id: request.id,
+          error: {
+            code: -32001,
+            message: 'Task not found',
+            data: { taskId: request.params?.id }
+          }
+        } as A2AJsonRpcResponse);
+        
+      } catch (error) {
+        logger.error('Error in tasks/get:', error);
+        res.json({
+          jsonrpc: '2.0',
+          id: req.body?.id || null,
+          error: {
+            code: -32603,
+            message: 'Internal error'
+          }
+        } as A2AJsonRpcResponse);
+      }
     })();
   });
   

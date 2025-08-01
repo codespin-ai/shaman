@@ -134,8 +134,27 @@ When an external system wants to execute an agent:
 
 ```
 1. External System → A2A Server (Public)
-   POST https://acme.shaman.ai/a2a/v1/agents/ProcessOrder/execute
+   POST https://acme.shaman.ai/a2a/v1/message/send
    Authorization: Bearer sk_live_abc123...
+   Content-Type: application/json
+   
+   {
+     "jsonrpc": "2.0",
+     "id": "req-001",
+     "method": "message/send",
+     "params": {
+       "message": {
+         "role": "user",
+         "parts": [{
+           "kind": "text",
+           "text": "@ProcessOrder Process order #12345"
+         }]
+       },
+       "configuration": {
+         "blocking": false
+       }
+     }
+   }
    
 2. A2A Public Server:
    - Validates API key
@@ -147,8 +166,32 @@ When an external system wants to execute an agent:
    - Makes A2A call to internal server
    
 4. Worker → A2A Server (Internal)
-   POST https://internal-a2a:5001/a2a/v1/agents/ProcessOrder/execute
+   POST https://internal-a2a:5001/a2a/v1/message/send
    Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+   Content-Type: application/json
+   
+   {
+     "jsonrpc": "2.0",
+     "id": "req-002",
+     "method": "message/send",
+     "params": {
+       "message": {
+         "role": "user",
+         "parts": [{
+           "kind": "text",
+           "text": "@ProcessOrder Process order #12345"
+         }],
+         "taskId": "task-123"
+       },
+       "configuration": {
+         "blocking": true
+       },
+       "metadata": {
+         "shaman:runId": "run-abc123",
+         "shaman:organizationId": "acme"
+       }
+     }
+   }
    
 5. A2A Internal Server:
    - Validates JWT token
@@ -212,8 +255,24 @@ When an agent needs to call an external agent:
 1. TaxCalculator (Internal) needs external rate service
    
 2. Internal Server → External A2A Service
-   POST https://tax-service.com/a2a/v1/agents/GetTaxRate/execute
+   POST https://tax-service.com/a2a/v1/message/send
    Authorization: Bearer external_api_key_xyz...
+   Content-Type: application/json
+   
+   {
+     "jsonrpc": "2.0",
+     "id": "req-003",
+     "method": "message/send",
+     "params": {
+       "message": {
+         "role": "user",
+         "parts": [{
+           "kind": "text",
+           "text": "@GetTaxRate Calculate tax for ZIP 94105, amount $1000"
+         }]
+       }
+     }
+   }
    
 3. External service processes and returns result
    

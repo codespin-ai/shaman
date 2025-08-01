@@ -477,7 +477,8 @@ The shaman-a2a-server is the execution gateway for all agents:
 
 Key endpoints:
 - `GET /a2a/v1/agents` - Discover available agents
-- `POST /a2a/v1/agents/:name/execute` - Execute an agent
+- `POST /a2a/v1/message/send` - Send message to agents (JSON-RPC)
+- `POST /a2a/v1/tasks/get` - Get task status (JSON-RPC)
 - `GET /a2a/v1/health` - Health check
 
 ### A2A Client

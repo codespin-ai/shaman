@@ -7,12 +7,17 @@ import { createLogger } from '@codespin/shaman-logger';
 import type { Result } from '@codespin/shaman-core';
 import type { WorkflowContext } from '@codespin/shaman-types';
 import { generateInternalJWT } from './jwt.js';
+import { v4 as uuidv4 } from 'uuid';
 import type {
   A2AClientConfig,
-  A2AExecutionRequest,
-  A2AExecutionResponse,
   A2ADiscoveryResponse,
-  A2AAgentCard
+  A2AAgentCard,
+  A2AJsonRpcRequest,
+  A2AJsonRpcResponse,
+  A2ASendMessageRequest,
+  A2ASendMessageResponse,
+  A2AMessage,
+  A2ATask
 } from './types.js';
 
 const logger = createLogger('A2AClient');
@@ -41,25 +46,47 @@ export class A2AClient {
   }
   
   /**
-   * Execute an agent via A2A protocol
+   * Send a message via A2A protocol
    */
-  async executeAgent(
-    agentName: string,
-    request: A2AExecutionRequest,
-    context: WorkflowContext
-  ): Promise<Result<A2AExecutionResponse>> {
+  async sendMessage(
+    message: A2AMessage,
+    context: WorkflowContext,
+    options?: {
+      blocking?: boolean;
+      metadata?: Record<string, unknown>;
+    }
+  ): Promise<Result<A2ASendMessageResponse>> {
     try {
       // Generate JWT token for this request
       const token = generateInternalJWT(context, this.config.jwtSecret);
       
-      logger.debug('Executing agent via A2A', {
-        agentName,
-        contextRunId: context.runId,
-        contextDepth: context.depth
+      const request: A2AJsonRpcRequest<A2ASendMessageRequest> = {
+        jsonrpc: '2.0',
+        id: uuidv4(),
+        method: 'message/send',
+        params: {
+          message,
+          configuration: {
+            blocking: options?.blocking
+          },
+          metadata: {
+            ...options?.metadata,
+            'shaman:runId': context.runId,
+            'shaman:parentStepId': context.parentStepId,
+            'shaman:depth': context.depth,
+            'shaman:organizationId': context.tenantId
+          }
+        }
+      };
+      
+      logger.debug('Sending A2A message', {
+        messageId: message.messageId,
+        contextId: message.contextId,
+        blocking: options?.blocking
       });
       
-      const response = await this.axios.post<A2AExecutionResponse>(
-        `/a2a/v1/agents/${agentName}/execute`,
+      const response = await this.axios.post<A2AJsonRpcResponse<A2ASendMessageResponse>>(
+        '/a2a/v1/message/send',
         request,
         {
           headers: {
@@ -68,26 +95,37 @@ export class A2AClient {
         }
       );
       
-      logger.debug('A2A execution response', {
-        agentName,
-        status: response.data.status,
-        taskId: response.data.taskId
+      // Handle JSON-RPC response
+      if (response.data.error) {
+        logger.error('A2A error response', response.data.error);
+        return {
+          success: false,
+          error: response.data.error.message
+        };
+      }
+      
+      if (!response.data.result) {
+        return {
+          success: false,
+          error: 'No result in response'
+        };
+      }
+      
+      logger.debug('A2A message response', {
+        responseType: 'kind' in response.data.result ? response.data.result.kind : 'unknown'
       });
       
       return {
         success: true,
-        data: response.data
+        data: response.data.result
       };
     } catch (error) {
-      logger.error('A2A execution failed', {
-        agentName,
-        error
-      });
+      logger.error('A2A message send failed', error);
       
       if (axios.isAxiosError(error)) {
         return {
           success: false,
-          error: new Error(`A2A execution failed: ${error.response?.data?.error?.message || error.message}`)
+          error: new Error(`A2A message send failed: ${error.response?.data?.error?.message || error.message}`)
         };
       }
       
@@ -96,6 +134,74 @@ export class A2AClient {
         error: error instanceof Error ? error : new Error('Unknown error')
       };
     }
+  }
+  
+  /**
+   * Execute an agent with a simple text prompt
+   * This is a convenience method that uses message/send under the hood
+   */
+  async executeAgent(
+    agentName: string,
+    prompt: string,
+    context: WorkflowContext,
+    options?: {
+      blocking?: boolean;
+      metadata?: Record<string, unknown>;
+    }
+  ): Promise<Result<A2ATask>> {
+    // Create a message targeting the specific agent
+    const message: A2AMessage = {
+      role: 'user',
+      parts: [{
+        kind: 'text',
+        text: `@${agentName} ${prompt}`
+      }],
+      messageId: uuidv4(),
+      contextId: context.contextId || uuidv4()
+    };
+    
+    const result = await this.sendMessage(message, context, {
+      blocking: options?.blocking ?? true,
+      metadata: options?.metadata
+    });
+    
+    if (!result.success) {
+      return result;
+    }
+    
+    // Ensure we got a task back
+    if ('kind' in result.data && result.data.kind === 'task') {
+      return {
+        success: true,
+        data: result.data
+      };
+    }
+    
+    // If we got a simple message response, wrap it in a task
+    if ('role' in result.data) {
+      const task: A2ATask = {
+        id: uuidv4(),
+        contextId: message.contextId!,
+        status: {
+          state: 'completed',
+          message: result.data as A2AMessage,
+          timestamp: new Date().toISOString()
+        },
+        artifacts: [],
+        history: [message, result.data as A2AMessage],
+        kind: 'task'
+      };
+      
+      return {
+        success: true,
+        data: task
+      };
+    }
+    
+    return {
+      success: false,
+      error: new Error('Unexpected response type from A2A server')
+    };
   }
   
   /**

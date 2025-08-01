@@ -43,8 +43,8 @@ export type AgentExecutorDependencies = {
     updateStep: (id: string, updates: Partial<Step>) => Promise<Step>;
     getStep: (id: string) => Promise<Step | null>;
   };
-  readonly workflowEngine?: {
-    executeAgent: (request: AgentExecutionRequest) => Promise<Result<AgentExecutionResult>>;
+  readonly a2aClient?: {
+    executeAgent: (agentName: string, prompt: string, context: WorkflowContext) => Promise<Result<{ id: string; status: { state: string }; artifacts: unknown[] }>>;
   };
 };
 

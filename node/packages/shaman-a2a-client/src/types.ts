@@ -25,47 +25,101 @@ export type A2AClientConfig = {
 };
 
 /**
- * A2A execution request
+ * A2A Message Part
  */
-export type A2AExecutionRequest = {
-  /** The prompt/input for the agent */
-  prompt: string;
-  
-  /** Optional context to pass */
-  context?: Record<string, unknown>;
-  
-  /** Optional session ID for conversation continuity */
-  sessionId?: string;
-  
-  /** Optional parameters */
-  parameters?: Record<string, unknown>;
+export type A2AMessagePart = {
+  readonly kind: 'text' | 'data' | 'error';
+  readonly text?: string;
+  readonly data?: unknown;
+  readonly error?: {
+    readonly code: string;
+    readonly message: string;
+  };
 };
 
 /**
- * A2A execution response
+ * A2A Message
  */
-export type A2AExecutionResponse = {
-  /** Task ID for tracking */
-  taskId: string;
-  
-  /** Status of the execution */
-  status: 'completed' | 'failed' | 'cancelled' | 'input-required' | 'auth-required';
-  
-  /** Output from the agent */
-  output?: string;
-  
-  /** Error information if failed */
-  error?: {
-    code: string;
-    message: string;
-    details?: unknown;
+export type A2AMessage = {
+  readonly role: 'user' | 'agent' | 'system';
+  readonly parts: A2AMessagePart[];
+  readonly messageId?: string;
+  readonly contextId?: string;
+  readonly taskId?: string;
+};
+
+/**
+ * A2A Task Status
+ */
+export type A2ATaskStatus = {
+  readonly state: 'submitted' | 'working' | 'input-required' | 'auth-required' | 'completed' | 'failed' | 'cancelled' | 'rejected';
+  readonly message?: A2AMessage;
+  readonly timestamp: string;
+};
+
+/**
+ * A2A Artifact
+ */
+export type A2AArtifact = {
+  readonly artifactId: string;
+  readonly name: string;
+  readonly parts: A2AMessagePart[];
+};
+
+/**
+ * A2A Task
+ */
+export type A2ATask = {
+  readonly id: string;
+  readonly contextId: string;
+  readonly status: A2ATaskStatus;
+  readonly artifacts: A2AArtifact[];
+  readonly history: A2AMessage[];
+  readonly metadata?: Record<string, unknown>;
+  readonly kind: 'task';
+};
+
+/**
+ * A2A Send Message Request
+ */
+export type A2ASendMessageRequest = {
+  readonly message: A2AMessage;
+  readonly configuration?: {
+    readonly blocking?: boolean;
+    readonly pushNotificationConfig?: {
+      readonly url: string;
+      readonly token?: string;
+    };
   };
-  
-  /** Metadata about the execution */
-  metadata?: {
-    model?: string;
-    tokensUsed?: number;
-    executionTime?: number;
+  readonly metadata?: Record<string, unknown>;
+};
+
+/**
+ * A2A Send Message Response
+ */
+export type A2ASendMessageResponse = A2ATask | A2AMessage;
+
+/**
+ * A2A JSON-RPC Request
+ */
+export type A2AJsonRpcRequest<T = unknown> = {
+  readonly jsonrpc: '2.0';
+  readonly id: string | number;
+  readonly method: string;
+  readonly params?: T;
+};
+
+/**
+ * A2A JSON-RPC Response
+ */
+export type A2AJsonRpcResponse<T = unknown> = {
+  readonly jsonrpc: '2.0';
+  readonly id: string | number;
+  readonly result?: T;
+  readonly error?: {
+    readonly code: number;
+    readonly message: string;
+    readonly data?: unknown;
   };
 };
 

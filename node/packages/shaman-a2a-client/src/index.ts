@@ -7,8 +7,15 @@
 // Export types
 export type {
   A2AClientConfig,
-  A2AExecutionRequest,
-  A2AExecutionResponse,
+  A2AMessage,
+  A2AMessagePart,
+  A2ATask,
+  A2ATaskStatus,
+  A2AArtifact,
+  A2ASendMessageRequest,
+  A2ASendMessageResponse,
+  A2AJsonRpcRequest,
+  A2AJsonRpcResponse,
   A2ADiscoveryResponse,
   A2AAgentCard,
   InternalJWTPayload

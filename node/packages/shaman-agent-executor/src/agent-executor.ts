@@ -273,20 +273,30 @@ async function executeToolCalls(
         continue;
       }
 
-      // Execute child agent if workflow engine available
-      if (dependencies.workflowEngine) {
-        const childResult = await dependencies.workflowEngine.executeAgent({
-          ...request,
-          agentName: targetAgent,
-          input: toolCall.input as string,
-          parentStepId: request.parentStepId,
-          depth: request.depth + 1
-        });
+      // Execute child agent if a2a client available
+      if (dependencies.a2aClient) {
+        const context: WorkflowContext = {
+          tenantId: request.tenantId,
+          runId: request.runId,
+          parentStepId: request.stepId,
+          depth: request.depth + 1,
+          contextId: request.contextId
+        };
+        
+        const childResult = await dependencies.a2aClient.executeAgent(
+          targetAgent,
+          toolCall.input as string,
+          context
+        );
 
         results.push({
           toolCallId: toolCall.id,
           toolName: toolCall.toolName,
-          result: childResult.success ? childResult.data.output : null,
+          result: childResult.success ? {
+            taskId: childResult.data.id,
+            state: childResult.data.status.state,
+            artifacts: childResult.data.artifacts
+          } : null,
           success: childResult.success,
           error: childResult.success ? undefined : childResult.error.message,
           isAgentCall: true
@@ -297,7 +307,7 @@ async function executeToolCalls(
           toolName: toolCall.toolName,
           result: null,
           success: false,
-          error: 'Workflow engine not available for agent calls',
+          error: 'A2A client not available for agent calls',
           isAgentCall: true
         });
       }
