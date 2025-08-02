@@ -16,14 +16,14 @@
   },
   "license": "MIT",
   "dependencies": {
-    "@codespin/shaman-types": "file:../shaman-types",
     "@codespin/shaman-core": "file:../shaman-core",
+    "@codespin/shaman-types": "file:../shaman-types",
     "js-yaml": "^4.1.0"
   },
   "devDependencies": {
-    "eslint": "^9.32.0",
-    "@typescript-eslint/parser": "^8.38.0",
+    "@types/js-yaml": "^4.0.9",
     "@typescript-eslint/eslint-plugin": "^8.38.0",
-    "@types/js-yaml": "^4.0.5"
+    "@typescript-eslint/parser": "^8.38.0",
+    "eslint": "^9.32.0"
   }
 }

@@ -20,13 +20,13 @@
     "@ai-sdk/openai": "^0.0.40",
     "@codespin/shaman-core": "file:../shaman-core",
     "@codespin/shaman-llm-core": "file:../shaman-llm-core",
-    "ai": "^3.0.0"
+    "ai": "^5.0.0"
   },
   "devDependencies": {
     "@types/json-schema": "^7.0.15",
-    "typescript": "^5.3.3",
-    "eslint": "^9.32.0",
+    "@typescript-eslint/eslint-plugin": "^8.38.0",
     "@typescript-eslint/parser": "^8.38.0",
-    "@typescript-eslint/eslint-plugin": "^8.38.0"
+    "eslint": "^9.32.0",
+    "typescript": "^5.9.2"
   }
 }

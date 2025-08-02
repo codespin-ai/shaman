@@ -13,23 +13,23 @@
     "lint:fix": "eslint src --ext .ts --fix"
   },
   "dependencies": {
-    "@apollo/client": "^3.11.4",
-    "graphql": "^16.9.0",
+    "@apollo/client": "^3.13.9",
+    "graphql": "^16.11.0",
     "node-fetch": "^3.3.2"
   },
   "devDependencies": {
     "@types/chai": "^5.2.2",
     "@types/mocha": "^10.0.10",
     "@types/node": "^20.19.9",
-    "@typescript-eslint/eslint-plugin": "^6.13.2",
-    "@typescript-eslint/parser": "^6.13.2",
+    "@typescript-eslint/eslint-plugin": "^6.21.0",
+    "@typescript-eslint/parser": "^6.21.0",
     "chai": "^5.2.1",
-    "eslint": "^8.55.0",
+    "eslint": "^8.57.1",
     "knex": "^3.1.0",
     "mocha": "^11.7.1",
     "pg": "^8.16.3",
     "ts-node": "^10.9.2",
-    "typescript": "^5.3.3"
+    "typescript": "^5.9.2"
   },
   "engines": {
     "node": ">=18.0.0"

@@ -2,7 +2,7 @@
  * Vercel AI SDK LLM provider implementation
  */
 
-import { generateText, streamText } from 'ai';
+import { generateText, streamText, type LanguageModel, type ModelMessage, type SystemModelMessage, type UserModelMessage, type AssistantModelMessage } from 'ai';
 import { openai } from '@ai-sdk/openai';
 import { anthropic } from '@ai-sdk/anthropic';
 import type { LLMProvider, LLMCompletionRequest, LLMCompletionResponse, LLMStreamChunk, LLMMessage } from '@codespin/shaman-llm-core';
@@ -30,7 +30,7 @@ export function createVercelLLMProvider(config: VercelLLMConfig): LLMProvider {
   /**
    * Create model instance
    */
-  function createModel(modelName: string): ReturnType<typeof openai> | ReturnType<typeof anthropic> {
+  function createModel(modelName: string): LanguageModel {
     const modelConfig = getModelConfig(modelName);
     if (!modelConfig) {
       throw new Error(`Model '${modelName}' not found in configuration`);
@@ -44,7 +44,7 @@ export function createVercelLLMProvider(config: VercelLLMConfig): LLMProvider {
         }
         // Direct model creation with API key in environment
         process.env.OPENAI_API_KEY = apiKey;
-        return openai(modelConfig.modelId);
+        return openai(modelConfig.modelId) as unknown as LanguageModel;
       }
       
       case 'anthropic': {
@@ -54,7 +54,7 @@ export function createVercelLLMProvider(config: VercelLLMConfig): LLMProvider {
         }
         // Direct model creation with API key in environment
         process.env.ANTHROPIC_API_KEY = apiKey;
-        return anthropic(modelConfig.modelId);
+        return anthropic(modelConfig.modelId) as unknown as LanguageModel;
       }
       
       case 'custom': {
@@ -71,49 +71,32 @@ export function createVercelLLMProvider(config: VercelLLMConfig): LLMProvider {
 
   /**
    * Convert LLM messages to Vercel AI SDK format
+   * Note: We skip tool messages as the AI SDK handles tool execution internally
    */
-  function convertMessages(messages: LLMMessage[]): Array<{
-    role: 'system' | 'user' | 'assistant' | 'tool';
-    content: string;
-    toolCalls?: Array<{
-      id: string;
-      type: string;
-      function: {
-        name: string;
-        arguments: string;
-      };
-    }>;
-    toolCallId?: string;
-  }> {
-    return messages.map(msg => {
-      if (msg.role === 'tool') {
+  function convertMessages(messages: LLMMessage[]): ModelMessage[] {
+    return messages
+      .filter(msg => msg.role !== 'tool') // Skip tool messages
+      .map(msg => {
+        if (msg.role === 'system') {
+          return {
+            role: 'system' as const,
+            content: msg.content,
+          } satisfies SystemModelMessage;
+        }
+        
+        if (msg.role === 'user') {
+          return {
+            role: 'user' as const,
+            content: msg.content,
+          } satisfies UserModelMessage;
+        }
+        
+        // Assistant messages
         return {
-          role: 'tool' as const,
+          role: 'assistant' as const,
           content: msg.content,
-          toolCallId: msg.tool_call_id,
-        };
-      }
-      
-      if (msg.tool_calls) {
-        return {
-          role: msg.role,
-          content: msg.content,
-          toolCalls: msg.tool_calls.map(tc => ({
-            id: tc.id,
-            type: tc.type,
-            function: {
-              name: tc.function.name,
-              arguments: tc.function.arguments,
-            }
-          }))
-        };
-      }
-      
-      return {
-        role: msg.role,
-        content: msg.content,
-      };
-    });
+        } satisfies AssistantModelMessage;
+      });
   }
 
   /**
@@ -150,10 +133,10 @@ export function createVercelLLMProvider(config: VercelLLMConfig): LLMProvider {
         // Handle tool calls
         if (request.tools && request.tools.length > 0) {
           const result = await generateText({
-            model: model as Parameters<typeof generateText>[0]['model'],
+            model,
             messages: convertMessages(request.messages),
             temperature: request.temperature ?? modelConfig.defaultTemperature,
-            maxTokens: request.max_tokens ?? modelConfig.defaultMaxTokens,
+            maxOutputTokens: request.max_tokens ?? modelConfig.defaultMaxTokens,
             tools: convertTools(request.tools),
           });
 
@@ -166,23 +149,23 @@ export function createVercelLLMProvider(config: VercelLLMConfig): LLMProvider {
               type: 'function' as const,
               function: {
                 name: tc.toolName,
-                arguments: JSON.stringify(tc.args),
+                arguments: JSON.stringify(tc.input),
               }
             })),
             finish_reason: result.finishReason as 'stop' | 'length' | 'tool_calls',
             usage: result.usage ? {
-              prompt_tokens: result.usage.promptTokens,
-              completion_tokens: result.usage.completionTokens,
-              total_tokens: result.usage.totalTokens,
+              prompt_tokens: result.usage.inputTokens ?? 0,
+              completion_tokens: result.usage.outputTokens ?? 0,
+              total_tokens: result.usage.totalTokens ?? 0,
             } : undefined,
           };
         } else {
           // Regular text generation
           const result = await generateText({
-            model: model as Parameters<typeof generateText>[0]['model'],
+            model,
             messages: convertMessages(request.messages),
             temperature: request.temperature ?? modelConfig.defaultTemperature,
-            maxTokens: request.max_tokens ?? modelConfig.defaultMaxTokens,
+            maxOutputTokens: request.max_tokens ?? modelConfig.defaultMaxTokens,
           });
 
           return {
@@ -191,9 +174,9 @@ export function createVercelLLMProvider(config: VercelLLMConfig): LLMProvider {
             content: result.text,
             finish_reason: result.finishReason as 'stop' | 'length' | 'tool_calls',
             usage: result.usage ? {
-              prompt_tokens: result.usage.promptTokens,
-              completion_tokens: result.usage.completionTokens,
-              total_tokens: result.usage.totalTokens,
+              prompt_tokens: result.usage.inputTokens ?? 0,
+              completion_tokens: result.usage.outputTokens ?? 0,
+              total_tokens: result.usage.totalTokens ?? 0,
             } : undefined,
           };
         }
@@ -208,11 +191,11 @@ export function createVercelLLMProvider(config: VercelLLMConfig): LLMProvider {
         const model = createModel(request.model);
         const modelConfig = getModelConfig(request.model)!;
         
-        const result = await streamText({
-          model: model as Parameters<typeof streamText>[0]['model'],
+        const result = streamText({
+          model,
           messages: convertMessages(request.messages),
           temperature: request.temperature ?? modelConfig.defaultTemperature,
-          maxTokens: request.max_tokens ?? modelConfig.defaultMaxTokens,
+          maxOutputTokens: request.max_tokens ?? modelConfig.defaultMaxTokens,
           tools: request.tools ? convertTools(request.tools) : undefined,
         });
 
@@ -231,11 +214,11 @@ export function createVercelLLMProvider(config: VercelLLMConfig): LLMProvider {
           const lastMessage = finalResult.messages[finalResult.messages.length - 1];
           if ('toolCalls' in lastMessage && (lastMessage as { toolCalls?: unknown[] }).toolCalls) {
             let toolCallIndex = 0;
-            const toolCalls = (lastMessage as { toolCalls: Array<{
+            const toolCalls = (lastMessage as { toolCalls?: Array<{
               toolCallId: string;
               toolName: string;
-              args: unknown;
-            }> }).toolCalls;
+              input: unknown;
+            }> }).toolCalls || [];
             for (const toolCall of toolCalls) {
               yield {
                 type: 'tool_call',
@@ -244,7 +227,7 @@ export function createVercelLLMProvider(config: VercelLLMConfig): LLMProvider {
                   id: toolCall.toolCallId,
                   function: {
                     name: toolCall.toolName,
-                    arguments: JSON.stringify(toolCall.args),
+                    arguments: JSON.stringify(toolCall.input),
                   }
                 }
               };

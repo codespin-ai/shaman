@@ -12,18 +12,18 @@
     "lint:fix": "eslint src --ext .ts --fix"
   },
   "dependencies": {
-    "@codespin/shaman-types": "file:../shaman-types",
-    "@codespin/shaman-logger": "file:../shaman-logger",
-    "@codespin/shaman-core": "file:../shaman-core",
     "@codespin/shaman-a2a-protocol": "file:../shaman-a2a-protocol",
+    "@codespin/shaman-core": "file:../shaman-core",
     "@codespin/shaman-jsonrpc": "file:../shaman-jsonrpc",
-    "axios": "^1.7.7",
+    "@codespin/shaman-logger": "file:../shaman-logger",
+    "@codespin/shaman-types": "file:../shaman-types",
+    "axios": "^1.11.0",
     "jsonwebtoken": "^9.0.2"
   },
   "devDependencies": {
-    "@types/jsonwebtoken": "^9.0.7",
-    "@types/node": "^22.5.0",
-    "typescript": "^5.5.4"
+    "@types/jsonwebtoken": "^9.0.10",
+    "@types/node": "^22.17.0",
+    "typescript": "^5.9.2"
   },
   "files": [
     "dist"

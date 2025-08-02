@@ -19,8 +19,8 @@
     "@codespin/shaman-core": "file:../shaman-core"
   },
   "devDependencies": {
-    "eslint": "^9.32.0",
+    "@typescript-eslint/eslint-plugin": "^8.38.0",
     "@typescript-eslint/parser": "^8.38.0",
-    "@typescript-eslint/eslint-plugin": "^8.38.0"
+    "eslint": "^9.32.0"
   }
 }
