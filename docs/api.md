@@ -28,7 +28,7 @@ Authorization: Bearer {api_key}
     "message": {
       "role": "user",
       "parts": [{
-        "type": "text",
+        "kind": "text",
         "text": "I need help with my order #12345"
       }]
     },
@@ -67,11 +67,30 @@ Authorization: Bearer {api_key}
       "timestamp": "2024-01-01T00:00:10Z"
     },
     "artifacts": [{
-      "type": "text",
+      "kind": "text",
       "name": "response",
       "mimeType": "text/plain",
       "data": "I can help you with order #12345. Let me look that up for you."
     }]
+  }
+}
+```
+
+**Response (Direct Message - for simple responses):**
+```json
+{
+  "jsonrpc": "2.0",
+  "id": "req-001",
+  "result": {
+    "kind": "message",
+    "messageId": "msg-agent-456",
+    "role": "agent",
+    "parts": [{
+      "kind": "text",
+      "text": "I can help you with order #12345. Let me look that up for you."
+    }],
+    "contextId": "ctx_xyz789",
+    "taskId": "task_abc123"
   }
 }
 ```
@@ -109,7 +128,7 @@ Authorization: Bearer {api_key}
         "timestamp": "2024-01-01T00:00:30Z"
       },
       "artifacts": [{
-        "type": "text",
+        "kind": "text",
         "name": "response",
         "mimeType": "text/plain",
         "data": "Order #12345 has been shipped and will arrive tomorrow."
@@ -120,7 +139,7 @@ Authorization: Bearer {api_key}
           "type": "message",
           "message": {
             "role": "user",
-            "parts": [{"type": "text", "text": "I need help with my order #12345"}]
+            "parts": [{"kind": "text", "text": "I need help with my order #12345"}]
           }
         },
         {
@@ -128,14 +147,14 @@ Authorization: Bearer {api_key}
           "type": "message",
           "message": {
             "role": "assistant",
-            "parts": [{"type": "text", "text": "I can help you with order #12345. Let me look that up for you."}]
+            "parts": [{"kind": "text", "text": "I can help you with order #12345. Let me look that up for you."}]
           }
         },
         {
           "timestamp": "2024-01-01T00:00:30Z",
           "type": "artifact",
           "artifact": {
-            "type": "text",
+            "kind": "text",
             "name": "response",
             "mimeType": "text/plain"
           }
@@ -176,7 +195,7 @@ Authorization: Bearer {api_key}
   "jsonrpc": "2.0",
   "id": "req-003",
   "result": {
-    "cancelled": ["task_abc123"],
+    "canceled": ["task_abc123"],
     "notCancelable": []
   }
 }
@@ -201,7 +220,7 @@ Authorization: Bearer {api_key}
     "agentName": "CustomerSupport",
     "message": {
       "role": "user",
-      "parts": [{"type": "text", "text": "Stream my order status updates"}]
+      "parts": [{"kind": "text", "text": "Stream my order status updates"}]
     }
   }
 }
@@ -209,17 +228,21 @@ Authorization: Bearer {api_key}
 
 **SSE Response:**
 ```
-event: task
-data: {"taskId":"task_abc123","contextId":"ctx_xyz789","status":{"state":"working","timestamp":"2024-01-01T00:00:00Z"}}
-
+id: 1704067200000
 event: message
-data: {"role":"assistant","parts":[{"type":"text","text":"Checking your order status..."}]}
+data: {"jsonrpc": "2.0", "id": "req-003", "result": {"kind": "task", "id": "task_abc123", "contextId": "ctx_xyz789", "status": {"state": "submitted", "timestamp": "2024-01-01T00:00:00Z"}, "history": [], "artifacts": []}}
 
-event: artifact
-data: {"type":"text","name":"status","mimeType":"text/plain","data":"Order shipped"}
+id: 1704067201000
+event: message
+data: {"jsonrpc": "2.0", "id": "req-003", "result": {"kind": "status-update", "taskId": "task_abc123", "contextId": "ctx_xyz789", "status": {"state": "working", "message": {"kind": "message", "role": "agent", "messageId": "msg-001", "parts": [{"kind": "text", "text": "Checking your order status..."}], "taskId": "task_abc123", "contextId": "ctx_xyz789"}, "timestamp": "2024-01-01T00:00:01Z"}, "final": false}}
 
-event: done
-data: {"status":{"state":"completed","timestamp":"2024-01-01T00:00:30Z"}}
+id: 1704067202000
+event: message
+data: {"jsonrpc": "2.0", "id": "req-003", "result": {"kind": "artifact-update", "taskId": "task_abc123", "contextId": "ctx_xyz789", "artifact": {"artifactId": "art-001", "name": "status.txt", "parts": [{"kind": "text", "text": "Order shipped"}]}, "append": false, "lastChunk": true}}
+
+id: 1704067203000
+event: message
+data: {"jsonrpc": "2.0", "id": "req-003", "result": {"kind": "status-update", "taskId": "task_abc123", "contextId": "ctx_xyz789", "status": {"state": "completed", "timestamp": "2024-01-01T00:00:30Z"}, "final": true}}
 ```
 
 #### tasks/pushNotificationConfig/set
@@ -236,8 +259,8 @@ Authorization: Bearer {api_key}
   "id": "req-005",
   "method": "tasks/pushNotificationConfig/set",
   "params": {
-    "taskIds": ["task_abc123"],
-    "config": {
+    "taskId": "task_abc123",
+    "pushNotificationConfig": {
       "url": "https://myapp.com/webhooks/a2a",
       "headers": {
         "X-Webhook-Secret": "my-secret-token"
@@ -249,9 +272,20 @@ Authorization: Bearer {api_key}
 
 ### Agent Discovery
 
-#### Well-Known AgentCard
+#### Single Agent Discovery
 
-Discover available agents via the well-known URI.
+Get the AgentCard for this A2A server's primary agent.
+
+```http
+GET /.well-known/agent.json
+```
+
+**Response:**
+Returns the AgentCard for the primary agent at this endpoint.
+
+#### Agent List Discovery
+
+Discover all available agents via the well-known URI.
 
 ```http
 GET /.well-known/a2a/agents
@@ -272,7 +306,7 @@ Authorization: Bearer {api_key}
       "capabilities": {
         "streaming": true,
         "pushNotifications": true,
-        "stateHistory": true
+        "stateTransitionHistory": true
       },
       "skills": [
         {

@@ -104,7 +104,7 @@ Always be polite and helpful.
 ### 4. Call Your Agent
 
 ```bash
-curl -X POST https://localhost:3000/a2a/v1/message/send \
+curl -X POST https://localhost:3000/a2a/v1 \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer YOUR_API_KEY" \
   -d '{
@@ -164,7 +164,7 @@ VALUES ('acme', 'ACME Corp', 'acme');
 
 2. Use subdomain in requests:
 ```bash
-curl https://acme.your-domain.com/a2a/v1/message/send
+curl -X POST https://acme.your-domain.com/a2a/v1
 ```
 
 3. Database automatically filters by organization via RLS

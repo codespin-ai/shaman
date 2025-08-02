@@ -35,7 +35,7 @@ Shaman fully implements the A2A v0.3.0 specification:
 Tasks follow the A2A state machine:
 - Active: `submitted`, `working`
 - Interrupted: `input-required`, `auth-required`
-- Terminal: `completed`, `failed`, `cancelled`, `rejected`
+- Terminal: `completed`, `failed`, `canceled`, `rejected`
 
 ## Workflow Model
 
@@ -240,7 +240,7 @@ POST /a2a/v1
     "message": {
       "role": "user",
       "parts": [{
-        "type": "text",
+        "kind": "text",
         "text": "Help with order #123"
       }]
     }

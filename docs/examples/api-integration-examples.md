@@ -201,7 +201,7 @@ curl -X POST https://acme-corp.shaman.ai/a2a/v1 \
       "message": {
         "role": "user",
         "parts": [{
-          "type": "text",
+          "kind": "text",
           "text": "Process order for customer John Doe (john@example.com) at 123 Main St, San Francisco, CA 94105. Items: WIDGET-001 (qty: 5), GADGET-042 (qty: 2). Shipping: express"
         }]
       }
@@ -532,7 +532,7 @@ After all agents complete:
           "type": "message",
           "message": {
             "role": "user",
-            "parts": [{"type": "text", "text": "Process order for customer John Doe..."}]
+            "parts": [{"kind": "text", "text": "Process order for customer John Doe..."}]
           }
         },
         {
@@ -540,7 +540,7 @@ After all agents complete:
           "type": "message",
           "message": {
             "role": "assistant",
-            "parts": [{"type": "text", "text": "Processing your order. Validating inventory..."}]
+            "parts": [{"kind": "text", "text": "Processing your order. Validating inventory..."}]
           }
         },
         {

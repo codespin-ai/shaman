@@ -156,7 +156,7 @@ Requests cancellation of an ongoing task.
     "id": "task-789",
     "contextId": "ctx-456",
     "status": {
-      "state": "cancelled",
+      "state": "canceled",
       "timestamp": "2024-01-20T10:32:00Z"
     },
     "artifacts": [],

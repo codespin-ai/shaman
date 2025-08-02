@@ -167,7 +167,7 @@ Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
     "message": {
       "role": "user",
       "parts": [{
-        "type": "text",
+        "kind": "text",
         "text": "Process order ORD-2024-001 for customer CUST-123 with items PROD-456 (qty: 2) and PROD-789 (qty: 1) using credit card ending in 1234"
       }]
     },
@@ -193,7 +193,7 @@ Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
     "message": {
       "role": "user",
       "parts": [{
-        "type": "text",
+        "kind": "text",
         "text": "Check inventory for: PROD-456 (quantity: 2) and PROD-789 (quantity: 1)"
       }]
     },
@@ -228,7 +228,7 @@ Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
   "result": {
     "content": [
       {
-        "type": "text",
+        "kind": "text",
         "text": "Query returned 2 rows:\n\nproduct_id | available_quantity\n-----------+------------------\nPROD-456   | 15\nPROD-789   | 3"
       }
     ],
@@ -282,7 +282,7 @@ Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
     "message": {
       "role": "user",
       "parts": [{
-        "type": "text",
+        "kind": "text",
         "text": "Analyze fraud risk for: customer CUST-123, amount $299.97, credit card ending 1234, order ORD-2024-001 with 2 items"
       }]
     },
@@ -327,7 +327,7 @@ Authorization: Bearer fraud-api-key-123
   "result": {
     "content": [
       {
-        "type": "text",
+        "kind": "text",
         "text": "Risk Score: 12/100 (LOW)\nFlags: None\nRecommendation: APPROVE"
       }
     ],
@@ -340,14 +340,13 @@ Authorization: Bearer fraud-api-key-123
 
 **A2A Progress Update (via SSE):**
 ```
+id: 1710504720000
 event: message
-data: {"role":"assistant","parts":[{"type":"text","text":"Inventory verified. Running fraud analysis..."}]}
+data: {"jsonrpc": "2.0", "id": "pub-req-001", "result": {"kind": "status-update", "taskId": "task-456", "contextId": "ctx-789", "status": {"state": "working", "message": {"kind": "message", "role": "agent", "messageId": "msg-002", "parts": [{"kind": "text", "text": "Inventory verified. Running fraud analysis..."}], "taskId": "task-456", "contextId": "ctx-789"}, "timestamp": "2024-03-15T10:32:00Z"}, "final": false}}
 
-event: status
-data: {"state":"working","timestamp":"2024-03-15T10:32:00Z"}
-
+id: 1710504721000
 event: message
-data: {"role":"assistant","parts":[{"type":"text","text":"Fraud check passed. Processing payment..."}]}
+data: {"jsonrpc": "2.0", "id": "pub-req-001", "result": {"kind": "status-update", "taskId": "task-456", "contextId": "ctx-789", "status": {"state": "working", "message": {"kind": "message", "role": "agent", "messageId": "msg-003", "parts": [{"kind": "text", "text": "Fraud check passed. Processing payment..."}], "taskId": "task-456", "contextId": "ctx-789"}, "timestamp": "2024-03-15T10:32:10Z"}, "final": false}}
 ```
 
 ### Step 8: Final Response Chain
@@ -386,7 +385,7 @@ data: {"role":"assistant","parts":[{"type":"text","text":"Fraud check passed. Pr
         "type": "message",
         "message": {
           "role": "user",
-          "parts": [{"type": "text", "text": "Process order ORD-2024-001..."}]
+          "parts": [{"kind": "text", "text": "Process order ORD-2024-001..."}]
         }
       },
       {
@@ -394,7 +393,7 @@ data: {"role":"assistant","parts":[{"type":"text","text":"Fraud check passed. Pr
         "type": "message",
         "message": {
           "role": "assistant",
-          "parts": [{"type": "text", "text": "Processing order. Checking inventory..."}]
+          "parts": [{"kind": "text", "text": "Processing order. Checking inventory..."}]
         }
       },
       {
@@ -454,7 +453,7 @@ data: {"role":"assistant","parts":[{"type":"text","text":"Fraud check passed. Pr
   "result": {
     "content": [
       {
-        "type": "text",
+        "kind": "text",
         "text": "Error: Connection to database failed: ECONNREFUSED"
       }
     ],

@@ -12,10 +12,10 @@ Shaman is an AI agent orchestration framework. It lets you:
 
 ```bash
 # External system calls your agent
-POST https://acme.shaman.ai/a2a/v1/message/send
+POST https://acme.shaman.ai/a2a/v1
 {
   "message": {
-    "parts": [{"text": "@CustomerSupport Process refund for order #123"}]
+    "parts": [{"kind": "text", "text": "@CustomerSupport Process refund for order #123"}]
   }
 }
 

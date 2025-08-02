@@ -2,6 +2,8 @@
 
 This directory contains the A2A protocol specifications that Shaman implements for agent-to-agent communication. These specifications ensure that agents built on Shaman can communicate with other A2A-compliant agents across different platforms and implementations.
 
+The most important document in this directory is probably types.ts. Make sure you read that.
+
 ## Overview
 
 The Agent-to-Agent (A2A) Protocol is an open standard for communication between independent AI agent systems. Shaman implements this protocol to enable:
