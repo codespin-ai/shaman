@@ -2,15 +2,40 @@
 
 ## System Overview
 
-Shaman has two server types:
+Shaman implements the A2A Protocol v0.3.0 for agent-to-agent communication and has two server types:
 - **GraphQL Server**: Management only (users, repos, monitoring)
 - **A2A Server**: All agent execution (public and internal modes)
 
 ```
 External Request → Public A2A → BullMQ → Worker → Internal A2A → Agent
-                      ↓                     ↓           ↓
+    (JSON-RPC)        ↓                     ↓           ↓
                   PostgreSQL            PostgreSQL  PostgreSQL
 ```
+
+## A2A Protocol Implementation
+
+Shaman fully implements the A2A v0.3.0 specification:
+
+### Core Methods
+- `message/send` - Send messages to agents
+- `tasks/get` - Retrieve task status
+- `tasks/cancel` - Cancel running tasks
+
+### Optional Methods
+- `message/stream` - Server-Sent Events for real-time updates
+- `tasks/pushNotificationConfig/set` - Configure webhooks
+- `agent/authenticatedExtendedCard` - Extended agent metadata
+
+### Transport
+- Primary: JSON-RPC 2.0 over HTTP
+- Streaming: Server-Sent Events (SSE)
+- Future: gRPC and HTTP+JSON support
+
+### Task Lifecycle
+Tasks follow the A2A state machine:
+- Active: `submitted`, `working`
+- Interrupted: `input-required`, `auth-required`
+- Terminal: `completed`, `failed`, `cancelled`, `rejected`
 
 ## Workflow Model
 
@@ -77,10 +102,12 @@ All workflows start with a `call_agent` tool step - even external requests. This
 ### Communication
 
 **@codespin/shaman-a2a-server**
-- A2A protocol implementation
-- Public mode: External API gateway
-- Internal mode: Agent execution
+- Full A2A v0.3.0 protocol implementation
+- Public mode: External API gateway with AgentCard discovery
+- Internal mode: Agent execution with JWT auth
 - Creates workflows via message handler
+- Generates AgentCards from agent YAML frontmatter
+- Supports streaming via SSE and webhook notifications
 
 **@codespin/shaman-a2a-client**
 - HTTP client for A2A calls
@@ -200,15 +227,44 @@ CREATE TABLE workflow_data (
 
 ## Execution Flow
 
-### 1. External Request
+### 1. External Request (A2A Protocol)
 ```javascript
-// A2A server receives request
-POST /a2a/v1/message/send
-{ message: { parts: [{ text: "@Agent do something" }] } }
+// A2A server receives JSON-RPC request
+POST /a2a/v1
+{
+  "jsonrpc": "2.0",
+  "id": "req-001",
+  "method": "message/send",
+  "params": {
+    "agentName": "CustomerSupport",
+    "message": {
+      "role": "user",
+      "parts": [{
+        "type": "text",
+        "text": "Help with order #123"
+      }]
+    }
+  }
+}
 
 // Creates in PostgreSQL:
 - Run (id: run_001, status: pending)
+- Task mapping (taskId: task_run_001 -> runId: run_001)
 - Step (id: step_001, type: tool, name: call_agent)
+
+// Returns A2A response:
+{
+  "jsonrpc": "2.0",
+  "id": "req-001",
+  "result": {
+    "taskId": "task_run_001",
+    "contextId": "ctx_abc123",
+    "status": {
+      "state": "submitted",
+      "timestamp": "2024-01-01T00:00:00Z"
+    }
+  }
+}
 
 // Queues in BullMQ:
 - StepRequest { stepId: step_001, type: tool, name: call_agent }
@@ -250,6 +306,14 @@ const response = await a2aClient.sendMessage({
 // Tool returns webhook ID
 if (tool === 'send_to_payment_api') {
   const webhookId = generateId();
+  
+  // Configure A2A push notification
+  await a2aServer.configurePushNotification({
+    taskId: currentTaskId,
+    webhookUrl: `https://acme.shaman.ai/a2a/v1/webhooks/${webhookId}`,
+    headers: { 'X-Webhook-Secret': generateSecret() }
+  });
+  
   await callExternalAPI({ 
     callback: `https://acme.shaman.ai/webhooks/${webhookId}` 
   });
@@ -261,6 +325,7 @@ if (tool === 'send_to_payment_api') {
 // Later, webhook arrives:
 POST /webhooks/:webhookId
 // Finds step by webhook_id, updates status → completed
+// Sends A2A task update to any configured push endpoints
 ```
 
 ## Security Model
@@ -274,6 +339,43 @@ POST /webhooks/:webhookId
 - Every table has `organization_id`
 - RLS policies enforce isolation
 - Separate Redis queues per tenant (optional)
+
+## AgentCard Discovery
+
+Shaman automatically generates AgentCards from agent YAML frontmatter:
+
+```yaml
+# Agent file
+---
+name: CustomerSupport
+description: Handles customer inquiries
+model: gpt-4
+exposed: true
+tools: [workflow_data_read, call_agent]
+---
+```
+
+Becomes:
+
+```json
+{
+  "protocolVersion": "0.3.0",
+  "name": "CustomerSupport",
+  "description": "Handles customer inquiries",
+  "version": "1.0.0",
+  "url": "https://acme.shaman.ai/a2a/v1",
+  "preferredTransport": "JSONRPC",
+  "capabilities": {
+    "streaming": true,
+    "pushNotifications": true,
+    "stateHistory": true
+  }
+}
+```
+
+Discovery endpoints:
+- `/.well-known/a2a/agents` - List all exposed agents
+- `/a2a/v1/agents/{name}` - Individual agent details
 
 ## Deployment
 

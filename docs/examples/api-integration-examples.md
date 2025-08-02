@@ -189,33 +189,22 @@ ACME Corp shares the API key securely with Widgets Inc.
 Widgets Inc submits an order:
 
 ```bash
-curl -X POST https://acme-corp.shaman.ai/a2a/agents/ProcessOrder \
+curl -X POST https://acme-corp.shaman.ai/a2a/v1 \
   -H "Authorization: Bearer sk_live_w1dg3t5_4bc123..." \
   -H "Content-Type: application/json" \
   -d '{
-    "prompt": "Process this order",
-    "context": {
-      "customer": {
-        "name": "John Doe",
-        "email": "john@example.com",
-        "address": {
-          "street": "123 Main St",
-          "city": "San Francisco",
-          "state": "CA",
-          "zip": "94105"
-        }
-      },
-      "items": [
-        {
-          "sku": "WIDGET-001",
-          "quantity": 5
-        },
-        {
-          "sku": "GADGET-042",
-          "quantity": 2
-        }
-      ],
-      "shipping_method": "express"
+    "jsonrpc": "2.0",
+    "id": "widgets-order-001",
+    "method": "message/send",
+    "params": {
+      "agentName": "ProcessOrder",
+      "message": {
+        "role": "user",
+        "parts": [{
+          "type": "text",
+          "text": "Process order for customer John Doe (john@example.com) at 123 Main St, San Francisco, CA 94105. Items: WIDGET-001 (qty: 5), GADGET-042 (qty: 2). Shipping: express"
+        }]
+      }
     }
   }'
 ```
@@ -264,9 +253,17 @@ const hasPermission = validation.apiKey.permissions.some(
 );
 
 if (!hasPermission) {
-  return res.status(403).json({
-    error: "Forbidden",
-    message: "API key does not have permission to execute ProcessOrder"
+  return res.status(200).json({
+    "jsonrpc": "2.0",
+    "id": req.body.id,
+    "error": {
+      "code": -32004,
+      "message": "Unsupported operation",
+      "data": {
+        "agent": "ProcessOrder",
+        "reason": "API key does not have permission to execute this agent"
+      }
+    }
   });
 }
 
@@ -307,11 +304,18 @@ await workflowQueue.add('execute-agent', {
   prompt: req.body.prompt
 });
 
-// 3. Return run ID to caller
-return res.status(202).json({
-  runId: workflowRun.id,
-  status: "accepted",
-  message: "Order processing started"
+// 3. Return task ID to caller
+return res.status(200).json({
+  "jsonrpc": "2.0",
+  "id": req.body.id,
+  "result": {
+    "taskId": `task_${workflowRun.id}`,
+    "contextId": `ctx_${generateId()}`,
+    "status": {
+      "state": "submitted",
+      "timestamp": new Date().toISOString()
+    }
+  }
 });
 ```
 
@@ -357,7 +361,13 @@ ProcessOrder calls internal agents:
 // Tool call 1: Check inventory
 const inventoryCheck = await tools.call_agent({
   agent: "ValidateInventory",
-  task: "Check availability for WIDGET-001 (qty: 5) and GADGET-042 (qty: 2)"
+  message: {
+    role: "user",
+    parts: [{
+      type: "text",
+      text: "Check availability for WIDGET-001 (qty: 5) and GADGET-042 (qty: 2)"
+    }]
+  }
 });
 
 // Worker handles this:
@@ -377,21 +387,59 @@ const internalToken = generateJWT({
 // Tool call 2: Calculate pricing
 const pricing = await tools.call_agent({
   agent: "CalculatePricing",
-  task: "Calculate total for available items with express shipping to CA 94105"
+  message: {
+    role: "user",
+    parts: [{
+      type: "text",
+      text: "Calculate total for available items with express shipping to CA 94105"
+    }]
+  }
 });
 
 // Tool call 3: Calculate tax (external service via alias)
 const tax = await tools.call_agent({
   agent: "TaxCalculator",  // Resolved from agents.json
-  task: "Calculate sales tax for $156.99 in San Francisco, CA 94105"
+  message: {
+    role: "user",
+    parts: [{
+      type: "text",
+      text: "Calculate sales tax for $156.99 in San Francisco, CA 94105"
+    }]
+  }
 });
 
-// This resolves to external call:
-// POST https://tax-service.com/a2a/agents/CalculateSalesTax
-// Authorization: Bearer [acme-corp's API key for tax service]
+// This resolves to external A2A call:
+// POST https://tax-service.com/a2a/v1
+// {
+//   "jsonrpc": "2.0",
+//   "id": "tax-calc-001",
+//   "method": "message/send",
+//   "params": {
+//     "agentName": "CalculateSalesTax",
+//     "message": {...}
+//   }
+// }
 ```
 
-### 7. Audit Trail
+### 7. Task Status Check
+
+Widgets Inc polls for the result:
+
+```bash
+curl -X POST https://acme-corp.shaman.ai/a2a/v1 \
+  -H "Authorization: Bearer sk_live_w1dg3t5_4bc123..." \
+  -H "Content-Type: application/json" \
+  -d '{
+    "jsonrpc": "2.0",
+    "id": "widgets-poll-001",
+    "method": "tasks/get",
+    "params": {
+      "ids": ["task_run_xyz789"]
+    }
+  }'
+```
+
+### 8. Audit Trail
 
 Every action is logged:
 
@@ -403,6 +451,7 @@ Every action is logged:
   userId: "user_widgets_inc",
   userEmail: "api@widgets-inc.com",
   runId: "run_xyz789",
+  taskId: "task_run_xyz789",
   action: "workflow_started",
   resource: "ProcessOrder",
   authMethod: "api-key",
@@ -432,37 +481,75 @@ Every action is logged:
 }
 ```
 
-### 8. Response to Partner
+### 9. Response to Partner
 
 After all agents complete:
 
 ```json
 {
-  "runId": "run_xyz789",
-  "status": "completed",
+  "jsonrpc": "2.0",
+  "id": "widgets-poll-001",
   "result": {
-    "orderId": "ORD-2024-0142",
-    "status": "confirmed",
-    "items": [
-      {
-        "sku": "WIDGET-001",
-        "quantity": 5,
-        "unitPrice": 19.99,
-        "total": 99.95
+    "tasks": [{
+      "id": "task_run_xyz789",
+      "contextId": "ctx_abc123",
+      "status": {
+        "state": "completed",
+        "timestamp": "2024-01-15T10:05:00Z"
       },
-      {
-        "sku": "GADGET-042", 
-        "quantity": 2,
-        "unitPrice": 28.52,
-        "total": 57.04
-      }
-    ],
-    "subtotal": 156.99,
-    "shipping": 15.00,
-    "tax": 14.92,
-    "total": 186.91,
-    "estimatedDelivery": "2024-01-18",
-    "invoiceNumber": "INV-2024-0142"
+      "artifacts": [{
+        "type": "application/json",
+        "name": "order-confirmation",
+        "mimeType": "application/json",
+        "data": {
+          "orderId": "ORD-2024-0142",
+          "status": "confirmed",
+          "items": [
+            {
+              "sku": "WIDGET-001",
+              "quantity": 5,
+              "unitPrice": 19.99,
+              "total": 99.95
+            },
+            {
+              "sku": "GADGET-042", 
+              "quantity": 2,
+              "unitPrice": 28.52,
+              "total": 57.04
+            }
+          ],
+          "subtotal": 156.99,
+          "shipping": 15.00,
+          "tax": 14.92,
+          "total": 186.91,
+          "estimatedDelivery": "2024-01-18",
+          "invoiceNumber": "INV-2024-0142"
+        }
+      }],
+      "history": [
+        {
+          "timestamp": "2024-01-15T10:00:00Z",
+          "type": "message",
+          "message": {
+            "role": "user",
+            "parts": [{"type": "text", "text": "Process order for customer John Doe..."}]
+          }
+        },
+        {
+          "timestamp": "2024-01-15T10:00:05Z",
+          "type": "message",
+          "message": {
+            "role": "assistant",
+            "parts": [{"type": "text", "text": "Processing your order. Validating inventory..."}]
+          }
+        },
+        {
+          "timestamp": "2024-01-15T10:05:00Z",
+          "type": "status",
+          "status": {"state": "completed"}
+        }
+      ]
+    }]
   }
 }
 ```

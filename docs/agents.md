@@ -70,12 +70,15 @@ Built-in tools available to all agents:
 
 **call_agent**
 ```yaml
-# Call another agent
+# Call another agent (A2A protocol)
 - tool: call_agent
   args:
     agent: "PaymentProcessor"
-    task: "Refund $50 to customer"
-    mode: "sync"  # or "async"
+    message:
+      role: "user"
+      parts:
+        - type: "text"
+          text: "Refund $50 to customer"
 ```
 
 ### MCP Tools
@@ -148,11 +151,11 @@ Always provide clear status updates.
 
 ```
 my-agents/
-├── agents.json          # Agent aliases and external mappings
-├── CustomerSupport.md   # Exposed agent
+├── agents.json          # Agent aliases and external A2A mappings
+├── CustomerSupport.md   # Exposed agent (appears in AgentCard)
 ├── internal/
-│   ├── DataValidator.md # Internal agent
-│   └── FraudChecker.md  # Internal agent
+│   ├── DataValidator.md # Internal agent (not in AgentCard)
+│   └── FraudChecker.md  # Internal agent (not in AgentCard)
 └── mcp-servers/
     └── custom-tools/    # Custom MCP server
         ├── package.json
@@ -161,12 +164,18 @@ my-agents/
 
 ### agents.json
 
-Map agent names to URLs for easy reference:
+Map agent names to A2A endpoints for federation:
 
 ```json
 {
   "ExternalValidator": {
-    "url": "https://partner.com/a2a/agents/Validator",
+    "url": "https://partner.com/a2a/v1",
+    "agentName": "Validator",
+    "transport": "JSONRPC",
+    "authentication": {
+      "type": "bearer",
+      "token": "${PARTNER_API_KEY}"
+    },
     "aliases": ["Validator", "ExtValidator"]
   },
   "InternalHelper": {
@@ -181,14 +190,17 @@ Map agent names to URLs for easy reference:
 ### Local Testing
 
 ```bash
-# Use the CLI
-shaman-cli run CustomerSupport "Help with order #123"
+# Use the CLI (sends A2A message)
+shaman-cli agent send CustomerSupport "Help with order #123"
 
-# With specific model
-shaman-cli run CustomerSupport "Help with order #123" --model gpt-4
+# Check task status
+shaman-cli task get task_abc123
+
+# Stream responses
+shaman-cli agent stream CustomerSupport "Help with order #123"
 
 # With mock tools
-shaman-cli run CustomerSupport "Help with order #123" --mock-tools
+shaman-cli agent send CustomerSupport "Help with order #123" --mock-tools
 ```
 
 ### Test Patterns
@@ -284,6 +296,50 @@ Document expected inputs/outputs in the prompt.
 - Validate all inputs
 - Use internal agents for sensitive operations
 
+## A2A Protocol Features
+
+### AgentCard Generation
+
+Agents with `exposed: true` automatically appear in the AgentCard:
+
+```http
+GET /.well-known/a2a/agents
+```
+
+Returns:
+```json
+{
+  "protocolVersion": "0.3.0",
+  "agents": [{
+    "name": "CustomerSupport",
+    "description": "Handles customer inquiries",
+    "version": "1.0.0",
+    "url": "https://your-domain.shaman.ai/a2a/v1",
+    "preferredTransport": "JSONRPC",
+    "capabilities": {
+      "streaming": true,
+      "pushNotifications": true
+    }
+  }]
+}
+```
+
+### Task Management
+
+All agent interactions create tasks with proper lifecycle:
+
+```typescript
+// Agent execution creates task
+const response = await call_agent({
+  agent: "Helper",
+  message: { role: "user", parts: [{type: "text", text: "Help"}] }
+});
+// Returns: { taskId: "task_123", status: { state: "submitted" } }
+
+// Task progresses through states
+// submitted -> working -> completed/failed
+```
+
 ## Debugging
 
 ### Enable Trace Logging
@@ -291,6 +347,7 @@ Document expected inputs/outputs in the prompt.
 ```bash
 export LOG_LEVEL=debug
 export A2A_TRACE_ENABLED=true
+export A2A_LOG_REQUESTS=true  # Log all A2A requests/responses
 ```
 
 ### Common Issues

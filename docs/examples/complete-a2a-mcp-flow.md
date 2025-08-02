@@ -57,29 +57,13 @@ The OrderProcessingAgent orchestrates this workflow, delegating tasks to special
 ---
 name: OrderProcessingAgent
 description: Orchestrates order processing workflow
-url: https://internal.acme.com/a2a/v1
-protocolVersion: "0.3.0"
-preferredTransport: "JSONRPC"
-capabilities:
-  streaming: true
-  progressNotifications: true
-inputSchema:
-  type: object
-  properties:
-    orderId:
-      type: string
-    customerId:
-      type: string
-    items:
-      type: array
-      items:
-        type: object
-        properties:
-          productId: { type: string }
-          quantity: { type: integer }
-    paymentMethod:
-      type: object
-  required: ["orderId", "customerId", "items", "paymentMethod"]
+model: gpt-4
+temperature: 0.3
+exposed: false
+tools:
+  - call_agent
+  - workflow_data_write
+  - workflow_data_read
 ---
 
 You are an order processing orchestrator. When given an order, you must:
@@ -95,8 +79,9 @@ You are an order processing orchestrator. When given an order, you must:
 ---
 name: InventoryAgent
 description: Manages inventory and stock levels
-url: https://internal.acme.com/a2a/v1
-protocolVersion: "0.3.0"
+model: gpt-4
+temperature: 0.1
+exposed: false
 mcpServers:
   database:
     command: "npx"
@@ -106,15 +91,6 @@ mcpServers:
       - "execute_transaction"
     env:
       POSTGRES_SCHEMA: "inventory"
-inputSchema:
-  type: object
-  properties:
-    action:
-      type: string
-      enum: ["check", "reserve", "release"]
-    items:
-      type: array
-  required: ["action", "items"]
 ---
 
 You manage inventory. Use the database tools to check stock levels and manage reservations.
@@ -126,8 +102,9 @@ You manage inventory. Use the database tools to check stock levels and manage re
 ---
 name: FraudDetectionAgent
 description: Analyzes transactions for fraud patterns
-url: https://internal.acme.com/a2a/v1
-protocolVersion: "0.3.0"
+model: gpt-4
+temperature: 0.1
+exposed: false
 mcpServers:
   fraudapi:
     url: "https://fraud-service.internal/mcp"
@@ -138,14 +115,6 @@ mcpServers:
       - "analyze_transaction"
       - "get_risk_score"
       - "check_blacklist"
-inputSchema:
-  type: object
-  properties:
-    customerId: { type: string }
-    amount: { type: number }
-    paymentMethod: { type: object }
-    orderDetails: { type: object }
-  required: ["customerId", "amount"]
 ---
 
 You detect fraudulent transactions. Use the fraud detection tools to analyze orders.
@@ -185,33 +154,24 @@ mutation ProcessOrder {
 
 **A2A Request (Public → Internal):**
 ```http
-POST https://internal.acme.com/a2a/v1/agents/OrderProcessingAgent/execute
+POST https://internal.acme.com/a2a/v1
 Content-Type: application/json
 Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
 
 {
   "jsonrpc": "2.0",
   "id": "pub-req-001",
-  "method": "agent/execute",
+  "method": "message/send",
   "params": {
-    "input": {
-      "orderId": "ORD-2024-001",
-      "customerId": "CUST-123",
-      "items": [
-        { "productId": "PROD-456", "quantity": 2 },
-        { "productId": "PROD-789", "quantity": 1 }
-      ],
-      "paymentMethod": {
-        "type": "credit_card",
-        "last4": "1234",
-        "token": "tok_abc123"
-      }
+    "agentName": "OrderProcessingAgent",
+    "message": {
+      "role": "user",
+      "parts": [{
+        "type": "text",
+        "text": "Process order ORD-2024-001 for customer CUST-123 with items PROD-456 (qty: 2) and PROD-789 (qty: 1) using credit card ending in 1234"
+      }]
     },
-    "context": {
-      "tenantId": "tenant-acme",
-      "userId": "user-456",
-      "sessionId": "sess-789"
-    }
+    "contextId": "ctx-order-001"
   }
 }
 ```
@@ -220,26 +180,24 @@ Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
 
 **A2A Request (Internal → Internal):**
 ```http
-POST https://internal.acme.com/a2a/v1/agents/InventoryAgent/execute
+POST https://internal.acme.com/a2a/v1
 Content-Type: application/json
 Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
 
 {
   "jsonrpc": "2.0",
   "id": "order-inv-001",
-  "method": "agent/execute",
+  "method": "message/send",
   "params": {
-    "input": {
-      "action": "check",
-      "items": [
-        { "productId": "PROD-456", "quantity": 2 },
-        { "productId": "PROD-789", "quantity": 1 }
-      ]
+    "agentName": "InventoryAgent",
+    "message": {
+      "role": "user",
+      "parts": [{
+        "type": "text",
+        "text": "Check inventory for: PROD-456 (quantity: 2) and PROD-789 (quantity: 1)"
+      }]
     },
-    "context": {
-      "parentTaskId": "task-order-001",
-      "tenantId": "tenant-acme"
-    }
+    "contextId": "ctx-order-001"
   }
 }
 ```
@@ -285,14 +243,24 @@ Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
   "jsonrpc": "2.0",
   "id": "order-inv-001",
   "result": {
-    "success": true,
-    "data": {
-      "available": true,
-      "items": [
-        { "productId": "PROD-456", "available": 15, "requested": 2 },
-        { "productId": "PROD-789", "available": 3, "requested": 1 }
-      ]
-    }
+    "taskId": "task_inv_001",
+    "contextId": "ctx-order-001",
+    "status": {
+      "state": "completed",
+      "timestamp": "2024-03-15T10:31:00Z"
+    },
+    "artifacts": [{
+      "type": "application/json",
+      "name": "inventory-check",
+      "mimeType": "application/json",
+      "data": {
+        "available": true,
+        "items": [
+          { "productId": "PROD-456", "available": 15, "requested": 2 },
+          { "productId": "PROD-789", "available": 3, "requested": 1 }
+        ]
+      }
+    }]
   }
 }
 ```
@@ -301,27 +269,24 @@ Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
 
 **A2A Request (Internal → Internal):**
 ```http
-POST https://internal.acme.com/a2a/v1/agents/FraudDetectionAgent/execute
+POST https://internal.acme.com/a2a/v1
 Content-Type: application/json
 Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
 
 {
   "jsonrpc": "2.0",
   "id": "order-fraud-001",
-  "method": "agent/execute",
+  "method": "message/send",
   "params": {
-    "input": {
-      "customerId": "CUST-123",
-      "amount": 299.97,
-      "paymentMethod": {
-        "type": "credit_card",
-        "last4": "1234"
-      },
-      "orderDetails": {
-        "orderId": "ORD-2024-001",
-        "itemCount": 2
-      }
-    }
+    "agentName": "FraudDetectionAgent",
+    "message": {
+      "role": "user",
+      "parts": [{
+        "type": "text",
+        "text": "Analyze fraud risk for: customer CUST-123, amount $299.97, credit card ending 1234, order ORD-2024-001 with 2 items"
+      }]
+    },
+    "contextId": "ctx-order-001"
   }
 }
 ```
@@ -375,9 +340,14 @@ Authorization: Bearer fraud-api-key-123
 
 **A2A Progress Update (via SSE):**
 ```
-event: progress
-data: {"taskId":"task-order-001","progress":{"current":2,"total":4,"message":"Inventory checked, fraud analysis complete"}}
+event: message
+data: {"role":"assistant","parts":[{"type":"text","text":"Inventory verified. Running fraud analysis..."}]}
 
+event: status
+data: {"state":"working","timestamp":"2024-03-15T10:32:00Z"}
+
+event: message
+data: {"role":"assistant","parts":[{"type":"text","text":"Fraud check passed. Processing payment..."}]}
 ```
 
 ### Step 8: Final Response Chain
@@ -388,18 +358,51 @@ data: {"taskId":"task-order-001","progress":{"current":2,"total":4,"message":"In
   "jsonrpc": "2.0",
   "id": "pub-req-001",
   "result": {
-    "success": true,
-    "data": {
-      "orderId": "ORD-2024-001",
-      "status": "processing",
-      "steps": {
-        "inventory": "reserved",
-        "fraud": "approved",
-        "payment": "pending",
-        "fulfillment": "queued"
+    "taskId": "task_order_001",
+    "contextId": "ctx-order-001",
+    "status": {
+      "state": "completed",
+      "timestamp": "2024-03-15T10:35:00Z"
+    },
+    "artifacts": [{
+      "type": "application/json",
+      "name": "order-result",
+      "mimeType": "application/json",
+      "data": {
+        "orderId": "ORD-2024-001",
+        "status": "processing",
+        "steps": {
+          "inventory": "reserved",
+          "fraud": "approved",
+          "payment": "pending",
+          "fulfillment": "queued"
+        },
+        "estimatedDelivery": "2024-03-20"
+      }
+    }],
+    "history": [
+      {
+        "timestamp": "2024-03-15T10:30:00Z",
+        "type": "message",
+        "message": {
+          "role": "user",
+          "parts": [{"type": "text", "text": "Process order ORD-2024-001..."}]
+        }
       },
-      "estimatedDelivery": "2024-03-20"
-    }
+      {
+        "timestamp": "2024-03-15T10:31:00Z",
+        "type": "message",
+        "message": {
+          "role": "assistant",
+          "parts": [{"type": "text", "text": "Processing order. Checking inventory..."}]
+        }
+      },
+      {
+        "timestamp": "2024-03-15T10:35:00Z",
+        "type": "status",
+        "status": {"state": "completed"}
+      }
+    ]
   }
 }
 ```
@@ -466,11 +469,12 @@ data: {"taskId":"task-order-001","progress":{"current":2,"total":4,"message":"In
   "jsonrpc": "2.0",
   "id": "order-inv-001",
   "error": {
-    "code": -32603,
-    "message": "Internal error",
+    "code": -32006,
+    "message": "Invalid agent response",
     "data": {
-      "agentId": "InventoryAgent",
-      "reason": "Database connection failed"
+      "agentName": "InventoryAgent",
+      "details": "Database connection failed",
+      "suggestion": "Check database connectivity and retry"
     }
   }
 }

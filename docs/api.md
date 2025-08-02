@@ -2,14 +2,20 @@
 
 ## A2A API (Agent Execution)
 
+Shaman implements the A2A Protocol v0.3.0 for agent-to-agent communication.
+
 Base URL: `https://{subdomain}.shaman.ai/a2a/v1`
 
-### Send Message
+### Core Methods
 
-Execute an agent with a message.
+All A2A methods use JSON-RPC 2.0 format via HTTP POST.
+
+#### message/send
+
+Send a message to an agent to initiate or continue an interaction.
 
 ```http
-POST /message/send
+POST /a2a/v1
 Content-Type: application/json
 Authorization: Bearer {api_key}
 
@@ -18,29 +24,28 @@ Authorization: Bearer {api_key}
   "id": "req-001",
   "method": "message/send",
   "params": {
+    "agentName": "CustomerSupport",
     "message": {
       "role": "user",
       "parts": [{
-        "kind": "text",
-        "text": "@AgentName Your message here"
+        "type": "text",
+        "text": "I need help with my order #12345"
       }]
     },
-    "configuration": {
-      "blocking": false  // Don't wait for completion
-    }
+    "taskId": "task_abc123",  // Optional: Continue existing task
+    "contextId": "ctx_xyz789"  // Optional: Group related tasks
   }
 }
 ```
 
-**Response:**
+**Response (New Task):**
 ```json
 {
   "jsonrpc": "2.0",
   "id": "req-001",
   "result": {
-    "kind": "task",
-    "id": "run_abc123",
-    "contextId": "ctx_abc123",
+    "taskId": "task_abc123",
+    "contextId": "ctx_xyz789",
     "status": {
       "state": "submitted",
       "timestamp": "2024-01-01T00:00:00Z"
@@ -49,12 +54,34 @@ Authorization: Bearer {api_key}
 }
 ```
 
-### Get Task Status
+**Response (Completed Immediately):**
+```json
+{
+  "jsonrpc": "2.0",
+  "id": "req-001",
+  "result": {
+    "taskId": "task_abc123",
+    "contextId": "ctx_xyz789",
+    "status": {
+      "state": "completed",
+      "timestamp": "2024-01-01T00:00:10Z"
+    },
+    "artifacts": [{
+      "type": "text",
+      "name": "response",
+      "mimeType": "text/plain",
+      "data": "I can help you with order #12345. Let me look that up for you."
+    }]
+  }
+}
+```
 
-Check the status of a running task.
+#### tasks/get
+
+Retrieve the current state of one or more tasks.
 
 ```http
-POST /tasks/get
+POST /a2a/v1
 Content-Type: application/json
 Authorization: Bearer {api_key}
 
@@ -63,32 +90,246 @@ Authorization: Bearer {api_key}
   "id": "req-002",
   "method": "tasks/get",
   "params": {
-    "id": "run_abc123"
+    "ids": ["task_abc123", "task_def456"]
   }
 }
 ```
 
-### Discover Agents
+**Response:**
+```json
+{
+  "jsonrpc": "2.0",
+  "id": "req-002",
+  "result": {
+    "tasks": [{
+      "id": "task_abc123",
+      "contextId": "ctx_xyz789",
+      "status": {
+        "state": "completed",
+        "timestamp": "2024-01-01T00:00:30Z"
+      },
+      "artifacts": [{
+        "type": "text",
+        "name": "response",
+        "mimeType": "text/plain",
+        "data": "Order #12345 has been shipped and will arrive tomorrow."
+      }],
+      "history": [
+        {
+          "timestamp": "2024-01-01T00:00:00Z",
+          "type": "message",
+          "message": {
+            "role": "user",
+            "parts": [{"type": "text", "text": "I need help with my order #12345"}]
+          }
+        },
+        {
+          "timestamp": "2024-01-01T00:00:10Z",
+          "type": "message",
+          "message": {
+            "role": "assistant",
+            "parts": [{"type": "text", "text": "I can help you with order #12345. Let me look that up for you."}]
+          }
+        },
+        {
+          "timestamp": "2024-01-01T00:00:30Z",
+          "type": "artifact",
+          "artifact": {
+            "type": "text",
+            "name": "response",
+            "mimeType": "text/plain"
+          }
+        },
+        {
+          "timestamp": "2024-01-01T00:00:30Z",
+          "type": "status",
+          "status": {"state": "completed"}
+        }
+      ]
+    }]
+  }
+}
+```
 
-List available agents.
+#### tasks/cancel
+
+Cancel one or more ongoing tasks.
 
 ```http
-GET /agents
+POST /a2a/v1
+Content-Type: application/json
+Authorization: Bearer {api_key}
+
+{
+  "jsonrpc": "2.0",
+  "id": "req-003",
+  "method": "tasks/cancel",
+  "params": {
+    "ids": ["task_abc123"]
+  }
+}
+```
+
+**Response:**
+```json
+{
+  "jsonrpc": "2.0",
+  "id": "req-003",
+  "result": {
+    "cancelled": ["task_abc123"],
+    "notCancelable": []
+  }
+}
+```
+
+### Optional Methods
+
+#### message/stream
+
+Stream real-time updates for a task using Server-Sent Events.
+
+```http
+POST /a2a/v1
+Content-Type: application/json
+Authorization: Bearer {api_key}
+
+{
+  "jsonrpc": "2.0",
+  "id": "req-004",
+  "method": "message/stream",
+  "params": {
+    "agentName": "CustomerSupport",
+    "message": {
+      "role": "user",
+      "parts": [{"type": "text", "text": "Stream my order status updates"}]
+    }
+  }
+}
+```
+
+**SSE Response:**
+```
+event: task
+data: {"taskId":"task_abc123","contextId":"ctx_xyz789","status":{"state":"working","timestamp":"2024-01-01T00:00:00Z"}}
+
+event: message
+data: {"role":"assistant","parts":[{"type":"text","text":"Checking your order status..."}]}
+
+event: artifact
+data: {"type":"text","name":"status","mimeType":"text/plain","data":"Order shipped"}
+
+event: done
+data: {"status":{"state":"completed","timestamp":"2024-01-01T00:00:30Z"}}
+```
+
+#### tasks/pushNotificationConfig/set
+
+Configure webhooks for task updates.
+
+```http
+POST /a2a/v1
+Content-Type: application/json
+Authorization: Bearer {api_key}
+
+{
+  "jsonrpc": "2.0",
+  "id": "req-005",
+  "method": "tasks/pushNotificationConfig/set",
+  "params": {
+    "taskIds": ["task_abc123"],
+    "config": {
+      "url": "https://myapp.com/webhooks/a2a",
+      "headers": {
+        "X-Webhook-Secret": "my-secret-token"
+      }
+    }
+  }
+}
+```
+
+### Agent Discovery
+
+#### Well-Known AgentCard
+
+Discover available agents via the well-known URI.
+
+```http
+GET /.well-known/a2a/agents
 Authorization: Bearer {api_key}
 ```
 
 **Response:**
 ```json
 {
+  "protocolVersion": "0.3.0",
   "agents": [
     {
       "name": "CustomerSupport",
-      "description": "Handles customer inquiries",
+      "description": "Handles customer inquiries and support requests",
       "version": "1.0.0",
-      "url": "https://acme.shaman.ai/a2a/v1"
+      "url": "https://acme.shaman.ai/a2a/v1",
+      "preferredTransport": "JSONRPC",
+      "capabilities": {
+        "streaming": true,
+        "pushNotifications": true,
+        "stateHistory": true
+      },
+      "skills": [
+        {
+          "name": "order-tracking",
+          "description": "Track order status and shipping information",
+          "examples": ["Where is my order?", "Track order #12345"]
+        }
+      ],
+      "securitySchemes": {
+        "bearer": {
+          "type": "http",
+          "scheme": "bearer",
+          "description": "API key authentication"
+        }
+      }
     }
-  ],
-  "totalCount": 1
+  ]
+}
+```
+
+#### Individual AgentCard
+
+Get detailed information about a specific agent.
+
+```http
+GET /a2a/v1/agents/{agentName}
+Authorization: Bearer {api_key}
+```
+
+**Response:**
+```json
+{
+  "protocolVersion": "0.3.0",
+  "name": "CustomerSupport",
+  "description": "Handles customer inquiries and support requests",
+  "version": "1.0.0",
+  "url": "https://acme.shaman.ai/a2a/v1",
+  "preferredTransport": "JSONRPC",
+  "capabilities": {
+    "streaming": true,
+    "pushNotifications": true,
+    "stateHistory": true
+  },
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "orderId": {"type": "string", "pattern": "^[A-Z0-9-]+$"},
+      "customerEmail": {"type": "string", "format": "email"}
+    }
+  },
+  "outputSchema": {
+    "type": "object",
+    "properties": {
+      "status": {"type": "string"},
+      "message": {"type": "string"}
+    }
+  }
 }
 ```
 
@@ -253,27 +494,60 @@ X-Webhook-Secret: {configured_secret}
 
 ## Error Responses
 
-### A2A Errors
+### A2A Error Codes
+
+A2A uses standard JSON-RPC 2.0 error codes plus protocol-specific codes:
 
 ```json
 {
   "jsonrpc": "2.0",
   "id": "req-001",
   "error": {
-    "code": -32603,
-    "message": "Internal error",
+    "code": -32001,
+    "message": "Task not found",
     "data": {
-      "details": "Agent not found"
+      "taskId": "task_invalid123",
+      "suggestion": "Verify the task ID or check if it has expired"
     }
   }
 }
 ```
 
-Common error codes:
+**Standard JSON-RPC Errors:**
+- `-32700` - Parse error
 - `-32600` - Invalid request
+- `-32601` - Method not found
 - `-32602` - Invalid params
 - `-32603` - Internal error
-- `-32001` - Task not found
+
+**A2A-Specific Errors:**
+- `-32001` - TaskNotFoundError
+- `-32002` - TaskNotCancelableError
+- `-32003` - PushNotificationNotSupportedError
+- `-32004` - UnsupportedOperationError
+- `-32005` - ContentTypeNotSupportedError
+- `-32006` - InvalidAgentResponseError
+- `-32007` - AuthenticatedExtendedCardNotConfiguredError
+
+### Task State Errors
+
+When a task is in an unexpected state:
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": "req-cancel",
+  "error": {
+    "code": -32002,
+    "message": "Task not cancelable",
+    "data": {
+      "taskId": "task_abc123",
+      "currentState": "completed",
+      "reason": "Task has already reached terminal state"
+    }
+  }
+}
+```
 
 ### GraphQL Errors
 
