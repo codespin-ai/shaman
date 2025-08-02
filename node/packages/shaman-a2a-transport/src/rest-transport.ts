@@ -113,7 +113,7 @@ export class RestTransport implements A2ATransport {
 
     try {
       // Handle through JSON-RPC handler with full context
-      const result = await this.handler.handle(jsonRpcRequest, context as Parameters<typeof this.handler.handle>[1]);
+      const result = await this.handler.handle(jsonRpcRequest, context as unknown as Parameters<typeof this.handler.handle>[1]);
 
       // Check if handler returned a generator (streaming response)
       if (result && typeof result === 'object' && Symbol.asyncIterator in result) {

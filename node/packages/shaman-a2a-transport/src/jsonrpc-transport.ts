@@ -32,9 +32,9 @@ export class JsonRpcTransport implements A2ATransport {
     this.handler.method(name, async (params: unknown, jsonRpcContext: JsonRpcContext) => {
       const a2aContext: A2AMethodContext = {
         ...jsonRpcContext,
-        request: jsonRpcContext.request as Request,
+        request: jsonRpcContext.request as unknown as Request,
         response: jsonRpcContext.response as Response,
-        headers: (jsonRpcContext.request as Request).headers as Record<string, string | string[]>,
+        headers: (jsonRpcContext.request as unknown as Request).headers as Record<string, string | string[]>,
         isInternal: false
       };
       return handler(params, a2aContext);
@@ -75,7 +75,7 @@ export class JsonRpcTransport implements A2ATransport {
       const result = await this.handler.handle(jsonRpcRequest, {
         request: req,
         response: res
-      } as JsonRpcContext);
+      } as unknown as JsonRpcContext);
 
       // Check if handler returned a generator (streaming response)
       if (result && typeof result === 'object' && Symbol.asyncIterator in result) {

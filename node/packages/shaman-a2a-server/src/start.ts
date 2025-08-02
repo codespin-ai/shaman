@@ -24,13 +24,15 @@ program
   .option('--base-url <url>', 'Base URL for A2A endpoints', '')
   .action(async (options) => {
     try {
-      logger.info('Starting A2A server', options as unknown);
+      const typedOptions = options as { role: 'public' | 'internal'; port: number; baseUrl: string };
+      logger.info('Starting A2A server', { 
+        role: typedOptions.role, 
+        port: typedOptions.port, 
+        baseUrl: typedOptions.baseUrl 
+      });
 
       // Load configuration
       const config = loadConfig();
-
-      // Validate required config
-      const typedOptions = options as { role: 'public' | 'internal'; port: number; baseUrl: string };
       if (typedOptions.role === 'internal') {
         if (!config.success) {
           throw new Error('Failed to load configuration');

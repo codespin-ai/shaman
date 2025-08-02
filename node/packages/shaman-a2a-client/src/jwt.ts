@@ -9,7 +9,7 @@ export function generateInternalJWT(
   secret: string,
   expiresIn: string | number = '1h'
 ): string {
-  const options: jwt.SignOptions = { expiresIn };
+  const options: jwt.SignOptions = { expiresIn: expiresIn as jwt.SignOptions['expiresIn'] };
   return jwt.sign(payload, secret, options);
 }
 

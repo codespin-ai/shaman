@@ -41,8 +41,7 @@ export function createStepWorker(config: WorkflowConfig): Worker<StepRequest> {
   const worker = new Worker<StepRequest>(
     config.queues.stepExecution,
     async (job: Job<StepRequest>) => {
-      const { stepId, stepType, name, context } = job.data;
-      const input = job.data.input as unknown;
+      const { stepId, stepType, name, context, input } = job.data;
       const db = createRlsDb(context.organizationId);
 
       logger.info('Processing step', { stepId, stepType, name });
