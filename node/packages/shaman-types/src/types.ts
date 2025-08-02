@@ -99,9 +99,13 @@ export interface GitAgent {
   agentRepositoryId: number;
   name: string;
   description: string | null;
+  version?: string | null;
   filePath: string;
+  model?: string | null;
+  providers?: Record<string, unknown> | null;
+  mcpServers?: Record<string, unknown> | null;
+  allowedAgents?: string[] | null;
   tags: string[] | null;
-  exposed: boolean;
   lastModifiedCommitHash: string | null;
   createdAt: Date;
   updatedAt: Date;

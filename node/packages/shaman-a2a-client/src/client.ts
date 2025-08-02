@@ -1,327 +1,268 @@
-/**
- * A2A HTTP client for agent-to-agent communication
- */
-
-import axios, { AxiosInstance } from 'axios';
+import axios, { AxiosInstance, AxiosError } from 'axios';
 import { createLogger } from '@codespin/shaman-logger';
 import type { Result } from '@codespin/shaman-core';
-import type { WorkflowContext } from '@codespin/shaman-types';
-import { generateInternalJWT } from './jwt.js';
-import { v4 as uuidv4 } from 'uuid';
-import type {
-  A2AClientConfig,
-  A2ADiscoveryResponse,
-  A2AAgentCard,
-  A2AJsonRpcRequest,
-  A2AJsonRpcResponse,
-  A2ASendMessageRequest,
-  A2ASendMessageResponse,
-  A2AMessage,
-  A2ATask
-} from './types.js';
+import type { 
+  JsonRpcRequest, 
+  JsonRpcResponse,
+  JsonRpcError
+} from '@codespin/shaman-jsonrpc';
+import type { 
+  SendMessageRequest, 
+  SendMessageResponse,
+  GetTaskRequest,
+  GetTaskResponse,
+  CancelTaskRequest,
+  CancelTaskResponse,
+  AgentCard,
+  SendStreamingMessageResponse
+} from '@codespin/shaman-a2a-protocol';
+import type { A2AClient, A2AClientConfig } from './types.js';
 
 const logger = createLogger('A2AClient');
 
 /**
- * A2A client for making agent-to-agent calls
+ * A2A protocol HTTP client implementation
  */
-export class A2AClient {
+export class A2AClientImpl implements A2AClient {
   private axios: AxiosInstance;
-  private config: A2AClientConfig;
-  
-  constructor(config: A2AClientConfig) {
-    this.config = config;
+  private requestId = 0;
+
+  constructor(private readonly config: A2AClientConfig) {
+    // Create axios instance
     this.axios = axios.create({
       baseURL: config.baseUrl,
       timeout: config.timeout || 30000,
-      headers: {
-        'Content-Type': 'application/json'
-      }
+      headers: this.buildHeaders()
     });
-    
+
     // Add retry interceptor if configured
     if (config.retry) {
-      this.setupRetryInterceptor();
+      this.addRetryInterceptor();
     }
   }
-  
-  /**
-   * Send a message via A2A protocol
-   */
-  async sendMessage(
-    message: A2AMessage,
-    context: WorkflowContext,
-    options?: {
-      blocking?: boolean;
-      metadata?: Record<string, unknown>;
-    }
-  ): Promise<Result<A2ASendMessageResponse>> {
-    try {
-      // Generate JWT token for this request
-      const token = generateInternalJWT(context, this.config.jwtSecret);
-      
-      const request: A2AJsonRpcRequest<A2ASendMessageRequest> = {
-        jsonrpc: '2.0',
-        id: uuidv4(),
-        method: 'message/send',
-        params: {
-          message,
-          configuration: {
-            blocking: options?.blocking
-          },
-          metadata: {
-            ...options?.metadata,
-            'shaman:runId': context.runId,
-            'shaman:parentStepId': context.parentStepId,
-            'shaman:depth': context.depth,
-            'shaman:organizationId': context.tenantId
-          }
-        }
-      };
-      
-      logger.debug('Sending A2A message', {
-        messageId: message.messageId,
-        contextId: message.contextId,
-        blocking: options?.blocking
-      });
-      
-      const response = await this.axios.post<A2AJsonRpcResponse<A2ASendMessageResponse>>(
-        '/a2a/v1/message/send',
-        request,
-        {
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
-        }
-      );
-      
-      // Handle JSON-RPC response
-      if (response.data.error) {
-        logger.error('A2A error response', response.data.error);
-        return {
-          success: false,
-          error: response.data.error.message
-        };
-      }
-      
-      if (!response.data.result) {
-        return {
-          success: false,
-          error: 'No result in response'
-        };
-      }
-      
-      logger.debug('A2A message response', {
-        responseType: 'kind' in response.data.result ? response.data.result.kind : 'unknown'
-      });
-      
-      return {
-        success: true,
-        data: response.data.result
-      };
-    } catch (error) {
-      logger.error('A2A message send failed', error);
-      
-      if (axios.isAxiosError(error)) {
-        return {
-          success: false,
-          error: new Error(`A2A message send failed: ${error.response?.data?.error?.message || error.message}`)
-        };
-      }
-      
-      return {
-        success: false,
-        error: error instanceof Error ? error : new Error('Unknown error')
-      };
-    }
-  }
-  
-  /**
-   * Execute an agent with a simple text prompt
-   * This is a convenience method that uses message/send under the hood
-   */
-  async executeAgent(
-    agentName: string,
-    prompt: string,
-    context: WorkflowContext,
-    options?: {
-      blocking?: boolean;
-      metadata?: Record<string, unknown>;
-    }
-  ): Promise<Result<A2ATask>> {
-    // Create a message targeting the specific agent
-    const message: A2AMessage = {
-      role: 'user',
-      parts: [{
-        kind: 'text',
-        text: `@${agentName} ${prompt}`
-      }],
-      messageId: uuidv4(),
-      contextId: context.contextId || uuidv4()
+
+  private buildHeaders(): Record<string, string> {
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json'
     };
-    
-    const result = await this.sendMessage(message, context, {
-      blocking: options?.blocking ?? true,
-      metadata: options?.metadata
-    });
-    
-    if (!result.success) {
-      return result;
+
+    if (this.config.apiKey) {
+      headers['X-API-Key'] = this.config.apiKey;
+    } else if (this.config.jwtToken) {
+      headers['Authorization'] = `Bearer ${this.config.jwtToken}`;
     }
-    
-    // Ensure we got a task back
-    if ('kind' in result.data && result.data.kind === 'task') {
-      return {
-        success: true,
-        data: result.data
-      };
-    }
-    
-    // If we got a simple message response, wrap it in a task
-    if ('role' in result.data) {
-      const task: A2ATask = {
-        id: uuidv4(),
-        contextId: message.contextId!,
-        status: {
-          state: 'completed',
-          message: result.data as A2AMessage,
-          timestamp: new Date().toISOString()
-        },
-        artifacts: [],
-        history: [message, result.data as A2AMessage],
-        kind: 'task'
-      };
-      
-      return {
-        success: true,
-        data: task
-      };
-    }
-    
-    return {
-      success: false,
-      error: new Error('Unexpected response type from A2A server')
-    };
+
+    return headers;
   }
-  
-  /**
-   * Discover available agents
-   */
-  async discoverAgents(context: WorkflowContext): Promise<Result<A2ADiscoveryResponse>> {
-    try {
-      const token = generateInternalJWT(context, this.config.jwtSecret);
-      
-      const response = await this.axios.get<A2ADiscoveryResponse>(
-        '/a2a/v1/agents',
-        {
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
-        }
-      );
-      
-      return {
-        success: true,
-        data: response.data
-      };
-    } catch (error) {
-      logger.error('Agent discovery failed', { error });
-      
-      if (axios.isAxiosError(error)) {
-        return {
-          success: false,
-          error: new Error(`Agent discovery failed: ${error.response?.data?.error?.message || error.message}`)
-        };
-      }
-      
-      return {
-        success: false,
-        error: error instanceof Error ? error : new Error('Unknown error')
-      };
-    }
-  }
-  
-  /**
-   * Get details of a specific agent
-   */
-  async getAgent(
-    agentName: string,
-    context: WorkflowContext
-  ): Promise<Result<A2AAgentCard>> {
-    try {
-      const token = generateInternalJWT(context, this.config.jwtSecret);
-      
-      const response = await this.axios.get<A2AAgentCard>(
-        `/a2a/v1/agents/${agentName}`,
-        {
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
-        }
-      );
-      
-      return {
-        success: true,
-        data: response.data
-      };
-    } catch (error) {
-      logger.error('Get agent failed', { agentName, error });
-      
-      if (axios.isAxiosError(error)) {
-        return {
-          success: false,
-          error: new Error(`Get agent failed: ${error.response?.data?.error?.message || error.message}`)
-        };
-      }
-      
-      return {
-        success: false,
-        error: error instanceof Error ? error : new Error('Unknown error')
-      };
-    }
-  }
-  
-  /**
-   * Check health of A2A server
-   */
-  async checkHealth(): Promise<Result<boolean>> {
-    try {
-      const response = await this.axios.get('/a2a/v1/health');
-      return {
-        success: true,
-        data: response.data.status === 'healthy'
-      };
-    } catch (error) {
-      return {
-        success: false,
-        error: error instanceof Error ? error : new Error('Health check failed')
-      };
-    }
-  }
-  
-  /**
-   * Setup retry interceptor
-   */
-  private setupRetryInterceptor(): void {
+
+  private addRetryInterceptor(): void {
+    const { maxAttempts = 3, initialDelay = 1000, maxDelay = 10000 } = this.config.retry!;
+
     this.axios.interceptors.response.use(
-      response => response,
-      async error => {
+      (response) => response,
+      async (error: AxiosError) => {
         const config = error.config;
-        
-        if (!config || !this.config.retry || config.__retryCount >= this.config.retry.maxRetries) {
+        if (!config || !config.headers) {
           return Promise.reject(error);
         }
+
+        const retryCount = (config as any).__retryCount || 0;
         
-        config.__retryCount = config.__retryCount || 0;
-        config.__retryCount += 1;
+        // Don't retry if max attempts reached or non-retryable error
+        if (retryCount >= maxAttempts || !this.isRetryableError(error)) {
+          return Promise.reject(error);
+        }
+
+        // Calculate delay with exponential backoff
+        const delay = Math.min(initialDelay * Math.pow(2, retryCount), maxDelay);
         
-        // Exponential backoff
-        const delay = this.config.retry.retryDelay * Math.pow(2, config.__retryCount - 1);
+        logger.debug(`Retrying request (attempt ${retryCount + 1}/${maxAttempts}) after ${delay}ms`);
         
+        // Increment retry count
+        (config as any).__retryCount = retryCount + 1;
+        
+        // Wait and retry
         await new Promise(resolve => setTimeout(resolve, delay));
-        
         return this.axios(config);
       }
     );
   }
+
+  private isRetryableError(error: AxiosError): boolean {
+    // Network errors
+    if (!error.response) {
+      return true;
+    }
+
+    // Server errors (5xx) and rate limits (429)
+    const status = error.response.status;
+    return status >= 500 || status === 429;
+  }
+
+  private async makeJsonRpcCall<TParams, TResult>(
+    method: string,
+    params: TParams
+  ): Promise<Result<TResult, Error>> {
+    const request: JsonRpcRequest = {
+      jsonrpc: '2.0',
+      id: String(++this.requestId),
+      method,
+      params
+    };
+
+    try {
+      const response = await this.axios.post<JsonRpcResponse>('/', request);
+      const jsonRpcResponse = response.data;
+
+      if ('error' in jsonRpcResponse) {
+        const error = jsonRpcResponse.error as JsonRpcError;
+        return {
+          success: false,
+          error: new Error(`${error.message} (code: ${error.code})`)
+        };
+      }
+
+      return {
+        success: true,
+        data: jsonRpcResponse.result as TResult
+      };
+    } catch (error) {
+      logger.error(`JSON-RPC call failed: ${method}`, error);
+      return {
+        success: false,
+        error: error instanceof Error ? error : new Error(String(error))
+      };
+    }
+  }
+
+  async discover(): Promise<Result<AgentCard, Error>> {
+    try {
+      const response = await this.axios.get<AgentCard>('/.well-known/agent.json');
+      return {
+        success: true,
+        data: response.data
+      };
+    } catch (error) {
+      logger.error('Discovery failed', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error : new Error(String(error))
+      };
+    }
+  }
+
+  async sendMessage(request: SendMessageRequest): Promise<Result<SendMessageResponse, Error>> {
+    return this.makeJsonRpcCall<SendMessageRequest, SendMessageResponse>('message/send', request);
+  }
+
+  async *streamMessage(request: SendMessageRequest): AsyncGenerator<SendStreamingMessageResponse> {
+    const jsonRpcRequest: JsonRpcRequest = {
+      jsonrpc: '2.0',
+      id: String(++this.requestId),
+      method: 'message/stream',
+      params: request
+    };
+
+    try {
+      const response = await this.axios.post('/', jsonRpcRequest, {
+        responseType: 'stream',
+        headers: {
+          ...this.buildHeaders(),
+          'Accept': 'text/event-stream'
+        }
+      });
+
+      const stream = response.data;
+      let buffer = '';
+
+      for await (const chunk of stream) {
+        buffer += chunk.toString();
+        const lines = buffer.split('\n');
+        buffer = lines.pop() || '';
+
+        for (const line of lines) {
+          if (line.startsWith('data: ')) {
+            const data = line.slice(6);
+            try {
+              const jsonRpcResponse = JSON.parse(data) as JsonRpcResponse;
+              if ('result' in jsonRpcResponse) {
+                yield jsonRpcResponse.result as SendStreamingMessageResponse;
+              } else if ('error' in jsonRpcResponse) {
+                const error = jsonRpcResponse.error as JsonRpcError;
+                throw new Error(`${error.message} (code: ${error.code})`);
+              }
+            } catch (parseError) {
+              logger.error('Failed to parse SSE data', parseError);
+            }
+          }
+        }
+      }
+    } catch (error) {
+      logger.error('Stream message failed', error);
+      throw error instanceof Error ? error : new Error(String(error));
+    }
+  }
+
+  async getTask(request: GetTaskRequest): Promise<Result<GetTaskResponse, Error>> {
+    return this.makeJsonRpcCall<GetTaskRequest, GetTaskResponse>('tasks/get', request);
+  }
+
+  async cancelTask(request: CancelTaskRequest): Promise<Result<CancelTaskResponse, Error>> {
+    return this.makeJsonRpcCall<CancelTaskRequest, CancelTaskResponse>('tasks/cancel', request);
+  }
+
+  async *resubscribeTask(request: GetTaskRequest): AsyncGenerator<SendStreamingMessageResponse> {
+    const jsonRpcRequest: JsonRpcRequest = {
+      jsonrpc: '2.0',
+      id: String(++this.requestId),
+      method: 'tasks/resubscribe',
+      params: request
+    };
+
+    try {
+      const response = await this.axios.post('/', jsonRpcRequest, {
+        responseType: 'stream',
+        headers: {
+          ...this.buildHeaders(),
+          'Accept': 'text/event-stream'
+        }
+      });
+
+      const stream = response.data;
+      let buffer = '';
+
+      for await (const chunk of stream) {
+        buffer += chunk.toString();
+        const lines = buffer.split('\n');
+        buffer = lines.pop() || '';
+
+        for (const line of lines) {
+          if (line.startsWith('data: ')) {
+            const data = line.slice(6);
+            try {
+              const jsonRpcResponse = JSON.parse(data) as JsonRpcResponse;
+              if ('result' in jsonRpcResponse) {
+                yield jsonRpcResponse.result as SendStreamingMessageResponse;
+              } else if ('error' in jsonRpcResponse) {
+                const error = jsonRpcResponse.error as JsonRpcError;
+                throw new Error(`${error.message} (code: ${error.code})`);
+              }
+            } catch (parseError) {
+              logger.error('Failed to parse SSE data', parseError);
+            }
+          }
+        }
+      }
+    } catch (error) {
+      logger.error('Resubscribe task failed', error);
+      throw error instanceof Error ? error : new Error(String(error));
+    }
+  }
+}
+
+/**
+ * Create an A2A client instance
+ */
+export function createA2AClient(config: A2AClientConfig): A2AClient {
+  return new A2AClientImpl(config);
 }

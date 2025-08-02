@@ -7,5 +7,4 @@
 export * from './types.js';
 export { createWorkflowEngine } from './engine.js';
 export { createWorker } from './worker.js';
-
-// TODO: Implement workflow engine with BullMQ
+export { startWorkflow, getWorkflowStatus, cancelWorkflow } from './api.js';

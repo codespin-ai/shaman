@@ -153,40 +153,66 @@ async function executeAgent(
   // Create A2A client
   const a2aClient = createA2AClient({
     baseUrl: process.env.INTERNAL_A2A_URL || 'http://localhost:4000',
-    authToken: jwt
+    jwtToken: jwt
   });
 
-  // Send message to agent
-  const response = await a2aClient.sendMessage({
-    agent: agentName,
-    message: input.message || input,
+  // Create message
+  const message: import('@codespin/shaman-a2a-protocol').Message = {
+    kind: 'message',
+    messageId: stepId,
+    role: 'user',
+    parts: [{
+      kind: 'text',
+      text: typeof input === 'string' ? input : JSON.stringify(input)
+    }],
     metadata: {
+      agent: agentName,
       'shaman:runId': context.runId,
       'shaman:stepId': stepId,
       'shaman:parentStepId': context.parentStepId,
       'shaman:organizationId': context.organizationId,
       'shaman:depth': context.depth
     }
+  };
+
+  // Send message to agent
+  const response = await a2aClient.sendMessage({
+    id: stepId,
+    jsonrpc: '2.0',
+    method: 'message/send',
+    params: {
+      message
+    }
   });
 
-  // Handle response based on type
-  if (response.kind === 'message') {
-    return { type: 'message', content: response };
-  } else if (response.kind === 'task') {
-    // Agent returned a task - need to poll
-    const db = createRlsDb(context.organizationId);
-    await db.none(`
-      UPDATE step SET 
-        status = 'waiting',
-        async_id = $(taskId)
-      WHERE id = $(stepId)
-    `, { stepId, taskId: response.id });
-
-    // Queue polling job
-    // TODO: Queue async polling job
-
-    return { type: 'task', taskId: response.id };
+  // Handle response
+  if (!response.success) {
+    throw response.error;
   }
+
+  // Check response type
+  const result = response.data;
+  if ('result' in result && result.result) {
+    const resultData = result.result;
+    if (resultData.kind === 'message') {
+      return { type: 'message', content: resultData };
+    } else if (resultData.kind === 'task') {
+      // Agent returned a task - need to poll
+      const db = createRlsDb(context.organizationId);
+      await db.none(`
+        UPDATE step SET 
+          status = 'waiting',
+          async_id = $(taskId)
+        WHERE id = $(stepId)
+      `, { stepId, taskId: resultData.id });
+
+      // Queue polling job
+      // TODO: Queue async polling job
+
+      return { type: 'task', taskId: resultData.id };
+    }
+  }
+  throw new Error('Unexpected response type');
 }
 
 /**

@@ -15,6 +15,8 @@
     "@codespin/shaman-types": "file:../shaman-types",
     "@codespin/shaman-logger": "file:../shaman-logger",
     "@codespin/shaman-core": "file:../shaman-core",
+    "@codespin/shaman-a2a-protocol": "file:../shaman-a2a-protocol",
+    "@codespin/shaman-jsonrpc": "file:../shaman-jsonrpc",
     "axios": "^1.7.7",
     "jsonwebtoken": "^9.0.2"
   },

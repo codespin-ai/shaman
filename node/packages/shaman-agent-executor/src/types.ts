@@ -2,15 +2,13 @@
  * Agent executor types
  */
 
-import type { 
-  AgentExecutionRequest, 
-  AgentExecutionResult,
-  Result
-} from '@codespin/shaman-workflow-core';
+import type { Result } from '@codespin/shaman-core';
 import type {
   Message,
   ToolCall,
-  Step
+  Step,
+  WorkflowContext,
+  ExecutionState
 } from '@codespin/shaman-types';
 import type { ToolRouter } from '@codespin/shaman-tool-router';
 import type { LLMProvider } from '@codespin/shaman-llm-core';
@@ -46,6 +44,40 @@ export type AgentExecutorDependencies = {
   readonly a2aClient?: {
     executeAgent: (agentName: string, prompt: string, context: WorkflowContext) => Promise<Result<{ id: string; status: { state: string }; artifacts: unknown[] }>>;
   };
+};
+
+/**
+ * Agent execution request
+ */
+export type AgentExecutionRequest = {
+  agentName: string;
+  prompt?: string;
+  input?: string;
+  contextId?: string;
+  contextScope?: 'FULL' | 'NONE';
+  context: WorkflowContext;
+  organizationId: string;
+  runId: string;
+  stepId: string;
+  parentStepId?: string;
+  depth: number;
+  agentSource?: string;
+};
+
+/**
+ * Agent execution result
+ */
+export type AgentExecutionResult = {
+  stepId?: string;
+  output?: unknown;
+  status?: ExecutionState;
+  childStepIds?: string[];
+  metadata?: Record<string, unknown>;
+  messages: Message[];
+  finalResult?: unknown;
+  state: ExecutionState;
+  totalTokens: number;
+  totalCost: number;
 };
 
 /**

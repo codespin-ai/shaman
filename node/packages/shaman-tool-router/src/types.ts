@@ -2,7 +2,7 @@
  * Tool router types
  */
 
-import type { Result } from '@codespin/shaman-workflow-core';
+import type { Result } from '@codespin/shaman-core';
 import type { WorkflowData, AgentSource } from '@codespin/shaman-types';
 
 /**

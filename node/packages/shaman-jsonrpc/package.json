@@ -1,0 +1,29 @@
+{
+  "name": "@codespin/shaman-jsonrpc",
+  "version": "0.0.1",
+  "description": "JSON-RPC 2.0 implementation for Shaman A2A servers",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "sideEffects": false,
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "lint": "eslint src --ext .ts",
+    "lint:fix": "eslint src --ext .ts --fix"
+  },
+  "license": "MIT",
+  "dependencies": {
+    "@codespin/shaman-logger": "file:../shaman-logger",
+    "@codespin/shaman-core": "file:../shaman-core"
+  },
+  "devDependencies": {
+    "typescript": "^5.5.4",
+    "eslint": "^9.32.0",
+    "@typescript-eslint/parser": "^8.38.0",
+    "@typescript-eslint/eslint-plugin": "^8.38.0",
+    "@types/node": "^20.0.0"
+  }
+}

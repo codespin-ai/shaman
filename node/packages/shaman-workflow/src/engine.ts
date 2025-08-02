@@ -71,8 +71,7 @@ export function createWorkflowEngine(config: WorkflowConfig): WorkflowEngine {
         attempts: 10, // More retries for polling
         backoff: {
           type: 'exponential',
-          delay: 5000,
-          maxDelay: 60000 // Max 1 minute between polls
+          delay: 5000
         },
         removeOnComplete: 10,
         removeOnFail: 100,

@@ -24,7 +24,13 @@
     "@codespin/shaman-workflow": "file:../shaman-workflow",
     "@codespin/shaman-types": "file:../shaman-types",
     "@codespin/shaman-git-resolver": "file:../shaman-git-resolver",
-    "@codespin/shaman-llm-vercel": "file:../shaman-llm-vercel"
+    "@codespin/shaman-llm-vercel": "file:../shaman-llm-vercel",
+    "@codespin/shaman-logger": "file:../shaman-logger",
+    "@codespin/shaman-db": "file:../shaman-db",
+    "@codespin/shaman-a2a-client": "file:../shaman-a2a-client",
+    "@codespin/shaman-a2a-protocol": "file:../shaman-a2a-protocol",
+    "@codespin/shaman-agent-executor": "file:../shaman-agent-executor",
+    "bullmq": "^5.31.1"
   },
   "devDependencies": {
     "eslint": "^9.32.0",

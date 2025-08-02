@@ -2,11 +2,7 @@
  * Core agent execution logic
  */
 
-import type { 
-  AgentExecutionRequest, 
-  AgentExecutionResult,
-  Result
-} from '@codespin/shaman-workflow-core';
+import type { Result } from '@codespin/shaman-core';
 import type {
   Message,
   ToolCall,
@@ -18,7 +14,9 @@ import type {
   AgentExecutorDependencies,
   ConversationState,
   LLMCompletionResult,
-  ToolExecutionResult
+  ToolExecutionResult,
+  AgentExecutionRequest,
+  AgentExecutionResult
 } from './types.js';
 import type { LLMProvider, LLMMessage } from '@codespin/shaman-llm-core';
 import { canAgentCall } from './agent-resolver.js';
@@ -71,7 +69,7 @@ export async function executeAgent(
     state.messages.push({
       id: uuidv4(),
       role: 'USER',
-      content: request.input,
+      content: request.input || request.prompt || '',
       sequenceNumber: state.messages.length,
       createdAt: new Date()
     });
@@ -172,7 +170,12 @@ export async function executeAgent(
           totalTokens: state.totalTokens,
           totalCost: state.totalCost,
           model: agent.model
-        }
+        },
+        messages: state.messages,
+        finalResult: finalResult || undefined,
+        state: status,
+        totalTokens: state.totalTokens,
+        totalCost: state.totalCost
       }
     };
   } catch (error) {
@@ -275,18 +278,10 @@ async function executeToolCalls(
 
       // Execute child agent if a2a client available
       if (dependencies.a2aClient) {
-        const context: WorkflowContext = {
-          tenantId: request.tenantId,
-          runId: request.runId,
-          parentStepId: request.stepId,
-          depth: request.depth + 1,
-          contextId: request.contextId
-        };
-        
         const childResult = await dependencies.a2aClient.executeAgent(
           targetAgent,
           toolCall.input as string,
-          context
+          request.context
         );
 
         results.push({
@@ -320,7 +315,7 @@ async function executeToolCalls(
           runId: request.context.runId,
           stepId: request.parentStepId || '',
           agentName: agent.name,
-          agentSource: request.agentSource
+          agentSource: (request.agentSource as any) || 'GIT'
         }
       );
 

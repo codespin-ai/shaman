@@ -1,0 +1,24 @@
+{
+  "name": "@codespin/shaman-a2a-protocol",
+  "version": "0.0.1",
+  "description": "A2A protocol types and interfaces from official SDK v0.2.5",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "sideEffects": false,
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "lint": "eslint src --ext .ts",
+    "lint:fix": "eslint src --ext .ts --fix"
+  },
+  "license": "MIT",
+  "devDependencies": {
+    "typescript": "^5.5.4",
+    "eslint": "^9.32.0",
+    "@typescript-eslint/parser": "^8.38.0",
+    "@typescript-eslint/eslint-plugin": "^8.38.0"
+  }
+}

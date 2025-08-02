@@ -9,12 +9,12 @@ export function mapGitAgentToDb(agent: Omit<GitAgent, 'id' | 'createdAt' | 'upda
     agent_repository_id: agent.agentRepositoryId,
     name: agent.name,
     description: agent.description,
-    version: agent.version,
+    version: agent.version ?? null,
     file_path: agent.filePath,
-    model: agent.model,
-    providers: agent.providers,
-    mcp_servers: agent.mcpServers,
-    allowed_agents: agent.allowedAgents,
+    model: agent.model ?? null,
+    providers: agent.providers ?? null,
+    mcp_servers: agent.mcpServers ?? null,
+    allowed_agents: agent.allowedAgents ?? null,
     tags: agent.tags,
     last_modified_commit_hash: agent.lastModifiedCommitHash
   };

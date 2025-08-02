@@ -18,9 +18,9 @@ generates:
         object: false
         defaultValue: false
       mappers:
-        Organization: "@codespin/shaman-types#Organization"
-        AgentRepository: "@codespin/shaman-types#AgentRepository"
-        GitAgent: "@codespin/shaman-types#GitAgent"
-        Run: "@codespin/shaman-types#Run"
-        Step: "@codespin/shaman-types#Step"
-        GitCredential: "@codespin/shaman-types#GitCredential"
+        Organization: "@codespin/shaman-types#Organization as DomainOrganization"
+        AgentRepository: "@codespin/shaman-types#AgentRepository as DomainAgentRepository"
+        GitAgent: "@codespin/shaman-types#GitAgent as DomainGitAgent"
+        Run: "@codespin/shaman-types#Run as DomainRun"
+        Step: "@codespin/shaman-types#Step as DomainStep"
+        GitCredential: "@codespin/shaman-types#GitCredential as DomainGitCredential"

@@ -1,175 +1,80 @@
-/**
- * Types for A2A client
- */
+import type { Result } from '@codespin/shaman-core';
+import type { 
+  SendMessageRequest, 
+  SendMessageResponse,
+  GetTaskRequest,
+  GetTaskResponse,
+  CancelTaskRequest,
+  CancelTaskResponse,
+  AgentCard,
+  SendStreamingMessageResponse
+} from '@codespin/shaman-a2a-protocol';
 
-import type { WorkflowContext } from '@codespin/shaman-types';
-
 /**
- * Configuration for A2A client
+ * A2A client configuration
  */
-export type A2AClientConfig = {
-  /** Base URL of the internal A2A server */
+export interface A2AClientConfig {
+  /** Base URL of the A2A server */
   baseUrl: string;
   
-  /** JWT secret for signing internal tokens */
-  jwtSecret: string;
+  /** API key for authentication (public servers) */
+  apiKey?: string;
   
-  /** Optional timeout in milliseconds */
+  /** JWT token for authentication (internal servers) */
+  jwtToken?: string;
+  
+  /** Request timeout in milliseconds */
   timeout?: number;
   
-  /** Optional retry configuration */
+  /** Retry configuration */
   retry?: {
-    maxRetries: number;
-    retryDelay: number;
+    maxAttempts?: number;
+    initialDelay?: number;
+    maxDelay?: number;
   };
-};
+}
 
 /**
- * A2A Message Part
+ * A2A client interface
  */
-export type A2AMessagePart = {
-  readonly kind: 'text' | 'data' | 'error';
-  readonly text?: string;
-  readonly data?: unknown;
-  readonly error?: {
-    readonly code: string;
-    readonly message: string;
-  };
-};
-
-/**
- * A2A Message
- */
-export type A2AMessage = {
-  readonly role: 'user' | 'agent' | 'system';
-  readonly parts: A2AMessagePart[];
-  readonly messageId?: string;
-  readonly contextId?: string;
-  readonly taskId?: string;
-};
-
-/**
- * A2A Task Status
- */
-export type A2ATaskStatus = {
-  readonly state: 'submitted' | 'working' | 'input-required' | 'auth-required' | 'completed' | 'failed' | 'cancelled' | 'rejected';
-  readonly message?: A2AMessage;
-  readonly timestamp: string;
-};
-
-/**
- * A2A Artifact
- */
-export type A2AArtifact = {
-  readonly artifactId: string;
-  readonly name: string;
-  readonly parts: A2AMessagePart[];
-};
-
-/**
- * A2A Task
- */
-export type A2ATask = {
-  readonly id: string;
-  readonly contextId: string;
-  readonly status: A2ATaskStatus;
-  readonly artifacts: A2AArtifact[];
-  readonly history: A2AMessage[];
-  readonly metadata?: Record<string, unknown>;
-  readonly kind: 'task';
-};
-
-/**
- * A2A Send Message Request
- */
-export type A2ASendMessageRequest = {
-  readonly message: A2AMessage;
-  readonly configuration?: {
-    readonly blocking?: boolean;
-    readonly pushNotificationConfig?: {
-      readonly url: string;
-      readonly token?: string;
-    };
-  };
-  readonly metadata?: Record<string, unknown>;
-};
-
-/**
- * A2A Send Message Response
- */
-export type A2ASendMessageResponse = A2ATask | A2AMessage;
-
-/**
- * A2A JSON-RPC Request
- */
-export type A2AJsonRpcRequest<T = unknown> = {
-  readonly jsonrpc: '2.0';
-  readonly id: string | number;
-  readonly method: string;
-  readonly params?: T;
-};
-
-/**
- * A2A JSON-RPC Response
- */
-export type A2AJsonRpcResponse<T = unknown> = {
-  readonly jsonrpc: '2.0';
-  readonly id: string | number;
-  readonly result?: T;
-  readonly error?: {
-    readonly code: number;
-    readonly message: string;
-    readonly data?: unknown;
-  };
-};
-
-/**
- * A2A agent discovery response
- */
-export type A2ADiscoveryResponse = {
-  agents: A2AAgentCard[];
-  totalCount: number;
-};
-
-/**
- * A2A agent card
- */
-export type A2AAgentCard = {
-  name: string;
-  description: string;
-  version: string;
-  category?: string;
-  capabilities?: string[];
-  constraints?: string[];
-  inputSchema?: unknown;
-  outputSchema?: unknown;
-  metadata?: Record<string, unknown>;
-  endpoints: {
-    execute: string;
-  };
-};
-
-/**
- * Internal JWT payload for agent-to-agent calls
- */
-export type InternalJWTPayload = {
-  /** Issuer (public server) */
-  iss: string;
+export interface A2AClient {
+  /**
+   * Discover available agents
+   */
+  discover(): Promise<Result<AgentCard, Error>>;
   
-  /** Audience (internal server) */
-  aud: string;
+  /**
+   * Send a message to an agent
+   */
+  sendMessage(request: SendMessageRequest): Promise<Result<SendMessageResponse, Error>>;
   
-  /** Expiration time */
-  exp: number;
+  /**
+   * Send a message and stream responses
+   */
+  streamMessage(request: SendMessageRequest): AsyncGenerator<SendStreamingMessageResponse>;
   
-  /** Issued at */
-  iat: number;
+  /**
+   * Get task status
+   */
+  getTask(request: GetTaskRequest): Promise<Result<GetTaskResponse, Error>>;
   
-  /** Workflow context */
-  context: {
-    tenantId: string;
-    runId: string;
-    parentTaskId?: string;
-    depth: number;
-  };
-};
+  /**
+   * Cancel a task
+   */
+  cancelTask(request: CancelTaskRequest): Promise<Result<CancelTaskResponse, Error>>;
+  
+  /**
+   * Resubscribe to task updates
+   */
+  resubscribeTask(request: GetTaskRequest): AsyncGenerator<SendStreamingMessageResponse>;
+}
+
+/**
+ * JWT payload for internal authentication
+ */
+export interface InternalJWTPayload {
+  organizationId: string;
+  userId?: string;
+  iat?: number;
+  exp?: number;
+}

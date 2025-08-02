@@ -2,7 +2,7 @@
  * Agent resolution logic
  */
 
-import type { Result } from '@codespin/shaman-workflow-core';
+import type { Result } from '@codespin/shaman-core';
 import type { AgentDefinition } from './types.js';
 import matter from 'gray-matter';
 

@@ -1,172 +1,58 @@
-/**
- * packages/shaman-a2a-provider/src/types.ts
- * 
- * A2A protocol type definitions for exposing agents
- */
-
-import type { GitAgent } from '@codespin/shaman-types';
+import type { AgentCard } from '@codespin/shaman-a2a-protocol';
+import type { Result } from '@codespin/shaman-core';
 
 /**
- * A2A Agent Card - Public metadata about an agent
+ * A2A server configuration
  */
-export type A2AAgentCard = {
-  readonly name: string;
-  readonly description: string;
-  readonly version?: string;
-  readonly capabilities?: string[];
-  readonly tags?: string[];
-  readonly endpoint: string;
-};
+export interface A2AServerConfig {
+  /** Server role: 'public' for external requests, 'internal' for internal only */
+  role: 'public' | 'internal';
+  
+  /** Port to listen on */
+  port: number;
+  
+  /** Base URL for A2A endpoints (default: empty string) */
+  baseUrl?: string;
+  
+  /** JWT secret for internal authentication */
+  jwtSecret?: string;
+  
+  /** API key validation function for public endpoints */
+  validateApiKey?: (apiKey: string) => Promise<Result<{ organizationId: string }, Error>>;
+  
+  /** Organization ID for internal server */
+  organizationId?: string;
+  
+  /** Agent card provider */
+  getAgentCard: () => Promise<AgentCard>;
+}
 
 /**
- * A2A Agent Discovery Response
+ * Authentication result
  */
-export type A2ADiscoveryResponse = {
-  readonly agents: A2AAgentCard[];
-  readonly totalCount: number;
-  readonly nextPage?: string;
-};
+export interface AuthResult {
+  organizationId: string;
+  userId?: string;
+  isInternal: boolean;
+}
 
 /**
- * A2A Message Part
+ * Task execution request
  */
-export type A2AMessagePart = {
-  readonly kind: 'text' | 'data' | 'error';
-  readonly text?: string;
-  readonly data?: unknown;
-  readonly error?: {
-    readonly code: string;
-    readonly message: string;
-  };
-};
+export interface TaskExecutionRequest {
+  taskId: string;
+  agent: string;
+  input: unknown;
+  contextId?: string;
+  organizationId: string;
+  userId?: string;
+}
 
 /**
- * A2A Message
+ * Server instance
  */
-export type A2AMessage = {
-  readonly role: 'user' | 'agent' | 'system';
-  readonly parts: A2AMessagePart[];
-  readonly messageId?: string;
-  readonly contextId?: string;
-  readonly taskId?: string;
-};
-
-/**
- * A2A Task Status
- */
-export type A2ATaskStatus = {
-  readonly state: 'submitted' | 'working' | 'input-required' | 'auth-required' | 'completed' | 'failed' | 'cancelled' | 'rejected';
-  readonly message?: A2AMessage;
-  readonly timestamp: string;
-};
-
-/**
- * A2A Artifact
- */
-export type A2AArtifact = {
-  readonly artifactId: string;
-  readonly name: string;
-  readonly parts: A2AMessagePart[];
-};
-
-/**
- * A2A Task
- */
-export type A2ATask = {
-  readonly id: string;
-  readonly contextId: string;
-  readonly status: A2ATaskStatus;
-  readonly artifacts: A2AArtifact[];
-  readonly history: A2AMessage[];
-  readonly metadata?: Record<string, unknown>;
-  readonly kind: 'task';
-};
-
-/**
- * A2A Send Message Request
- */
-export type A2ASendMessageRequest = {
-  readonly message: A2AMessage;
-  readonly configuration?: {
-    readonly blocking?: boolean;
-    readonly pushNotificationConfig?: {
-      readonly url: string;
-      readonly token?: string;
-    };
-  };
-  readonly metadata?: Record<string, unknown>;
-};
-
-/**
- * A2A Send Message Response
- */
-export type A2ASendMessageResponse = A2ATask | A2AMessage;
-
-/**
- * A2A JSON-RPC Request
- */
-export type A2AJsonRpcRequest<T = unknown> = {
-  readonly jsonrpc: '2.0';
-  readonly id: string | number;
-  readonly method: string;
-  readonly params?: T;
-};
-
-/**
- * A2A JSON-RPC Response
- */
-export type A2AJsonRpcResponse<T = unknown> = {
-  readonly jsonrpc: '2.0';
-  readonly id: string | number;
-  readonly result?: T;
-  readonly error?: {
-    readonly code: number;
-    readonly message: string;
-    readonly data?: unknown;
-  };
-};
-
-/**
- * A2A Health Check Response
- */
-export type A2AHealthResponse = {
-  readonly status: 'healthy' | 'degraded' | 'unhealthy';
-  readonly version: string;
-  readonly uptime: number;
-  readonly checks: {
-    readonly database: boolean;
-    readonly agents: boolean;
-    readonly workflow?: boolean;
-  };
-};
-
-/**
- * Configuration for A2A provider
- */
-export type A2AProviderConfig = {
-  readonly port?: number;
-  readonly basePath?: string;
-  readonly authentication?: {
-    readonly type: 'none' | 'bearer' | 'api-key';
-    readonly validateToken?: (token: string) => Promise<boolean>;
-  };
-  readonly rateLimiting?: {
-    readonly enabled: boolean;
-    readonly maxRequests: number;
-    readonly windowMs: number;
-  };
-  readonly allowedAgents?: string[]; // Whitelist of agents to expose (required for any agents to be exposed)
-  readonly metadata?: {
-    readonly organizationName?: string;
-    readonly contactEmail?: string;
-    readonly documentation?: string;
-  };
-};
-
-/**
- * Internal type for converting GitAgent to A2A format
- */
-export type AgentAdapter = {
-  toA2ACard: (agent: GitAgent, baseUrl: string) => A2AAgentCard;
-  canExposeAgent: (agent: GitAgent, config: A2AProviderConfig) => boolean;
-};
+export interface A2AServerInstance {
+  start(): Promise<void>;
+  stop(): Promise<void>;
+  getUrl(): string;
+}
