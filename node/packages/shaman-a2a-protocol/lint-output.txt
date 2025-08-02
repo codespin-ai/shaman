@@ -1,0 +1,4 @@
+
+> @codespin/shaman-a2a-protocol@0.0.1 lint
+> eslint src --ext .ts 2
+

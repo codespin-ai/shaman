@@ -1,4 +1,5 @@
-import { JsonRpcError, JSON_RPC_ERROR_CODES, A2A_ERROR_CODES } from './types.js';
+import type { JsonRpcError} from './types.js';
+import { JSON_RPC_ERROR_CODES, A2A_ERROR_CODES } from './types.js';
 
 export class JsonRpcErrorClass extends Error implements JsonRpcError {
   readonly code: number;

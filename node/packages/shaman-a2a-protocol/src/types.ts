@@ -4,6 +4,9 @@
  * The A2A specification facilitates interoperability between AI agents and clients.
  */
 
+/* eslint-disable @typescript-eslint/no-explicit-any */
+/* eslint-disable @typescript-eslint/no-empty-object-type */
+
 // --8<-- [start:AgentProvider]
 /**
  * Represents the service provider of an agent.

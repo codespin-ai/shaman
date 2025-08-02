@@ -8,30 +8,47 @@
 // Re-export all types from the canonical types file
 export * from './types.js';
 
+import type { TextPart, FilePart, DataPart, Message, Task } from './types.js';
+
 // Convenience type guards
-export function isTextPart(part: any): part is import('./types.js').TextPart {
-  return part && part.kind === 'text';
+export function isTextPart(part: unknown): part is TextPart {
+  return part !== null && 
+    typeof part === 'object' && 
+    'kind' in part && 
+    part.kind === 'text';
 }
 
-export function isFilePart(part: any): part is import('./types.js').FilePart {
-  return part && part.kind === 'file';
+export function isFilePart(part: unknown): part is FilePart {
+  return part !== null && 
+    typeof part === 'object' && 
+    'kind' in part && 
+    part.kind === 'file';
 }
 
-export function isDataPart(part: any): part is import('./types.js').DataPart {
-  return part && part.kind === 'data';
+export function isDataPart(part: unknown): part is DataPart {
+  return part !== null && 
+    typeof part === 'object' && 
+    'kind' in part && 
+    part.kind === 'data';
 }
 
-export function isMessage(obj: any): obj is import('./types.js').Message {
-  return obj && 
+export function isMessage(obj: unknown): obj is Message {
+  return obj !== null && 
     typeof obj === 'object' &&
+    'role' in obj &&
+    'parts' in obj &&
     (obj.role === 'user' || obj.role === 'agent') &&
     Array.isArray(obj.parts);
 }
 
-export function isTask(obj: any): obj is import('./types.js').Task {
-  return obj && 
+export function isTask(obj: unknown): obj is Task {
+  return obj !== null && 
     typeof obj === 'object' &&
+    'id' in obj &&
+    'status' in obj &&
     typeof obj.id === 'string' &&
-    obj.status && 
+    typeof obj.status === 'object' && 
+    obj.status !== null &&
+    'state' in obj.status &&
     typeof obj.status.state === 'string';
 }

@@ -1,6 +1,6 @@
 import { createLogger } from '@codespin/shaman-logger';
 import type { Result } from '@codespin/shaman-core';
-import {
+import type {
   JsonRpcRequest,
   JsonRpcResponse,
   JsonRpcSuccessResponse,
@@ -10,7 +10,8 @@ import {
   JsonRpcBatchResponse,
   JsonRpcMethodHandler,
   JsonRpcContext,
-  JsonRpcMiddleware,
+  JsonRpcMiddleware} from './types.js';
+import {
   JSON_RPC_ERROR_CODES,
 } from './types.js';
 
@@ -123,7 +124,6 @@ export class JsonRpcHandler {
 
     try {
       // Apply middlewares
-      let response: JsonRpcResponse;
       const executeMethod = async (): Promise<JsonRpcResponse> => {
         const handler = this.methods.get(request.method)!;
         const result = await handler(request.params, context);
@@ -138,7 +138,7 @@ export class JsonRpcHandler {
         chain = () => middleware(request, context, next);
       }
 
-      response = await chain();
+      const response = await chain();
 
       // Don't return response for notifications (no id)
       if (request.id === undefined) {
@@ -235,8 +235,8 @@ export class JsonRpcHandler {
       error !== null &&
       'code' in error &&
       'message' in error &&
-      typeof (error as any).code === 'number' &&
-      typeof (error as any).message === 'string'
+      typeof (error as { code: unknown }).code === 'number' &&
+      typeof (error as { message: unknown }).message === 'string'
     );
   }
 }
