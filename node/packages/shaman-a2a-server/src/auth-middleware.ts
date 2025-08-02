@@ -5,12 +5,9 @@ import type { A2AServerConfig, AuthResult } from './types.js';
 
 const logger = createLogger('A2AAuthMiddleware');
 
-declare global {
-  namespace Express {
-    interface Request {
-      auth?: AuthResult;
-    }
-  }
+// Extend Request interface to include auth
+export interface AuthenticatedRequest extends Request {
+  auth?: AuthResult;
 }
 
 /**
@@ -18,6 +15,7 @@ declare global {
  */
 export function createAuthMiddleware(config: A2AServerConfig) {
   return async (req: Request, res: Response, next: NextFunction) => {
+    const authReq = req as AuthenticatedRequest;
     try {
       // Internal server with JWT auth
       if (config.role === 'internal') {
@@ -38,9 +36,9 @@ export function createAuthMiddleware(config: A2AServerConfig) {
         const token = authHeader.substring(7);
         
         try {
-          const decoded = jwt.verify(token, config.jwtSecret!) as any;
+          const decoded = jwt.verify(token, config.jwtSecret!) as { organizationId?: string; userId?: string };
           
-          req.auth = {
+          authReq.auth = {
             organizationId: decoded.organizationId || config.organizationId!,
             userId: decoded.userId,
             isInternal: true
@@ -102,7 +100,7 @@ export function createAuthMiddleware(config: A2AServerConfig) {
           return;
         }
 
-        req.auth = {
+        authReq.auth = {
           organizationId: result.data.organizationId,
           isInternal: false
         };

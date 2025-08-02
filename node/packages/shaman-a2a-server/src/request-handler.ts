@@ -48,7 +48,7 @@ export class A2ARequestHandler {
       // Create task execution request
       const taskRequest: TaskExecutionRequest = {
         taskId,
-        agent: params.message.metadata?.agent || 'default',
+        agent: (params.message.metadata?.agent as string | undefined) || 'default',
         input: params.message,
         contextId: params.message.contextId,
         organizationId: context.organizationId!,

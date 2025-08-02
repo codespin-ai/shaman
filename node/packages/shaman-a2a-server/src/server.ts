@@ -1,11 +1,15 @@
-import express, { Express } from 'express';
-import { createServer, Server } from 'http';
+import express from 'express';
+import type { Express } from 'express';
+import { createServer } from 'http';
+import type { Server } from 'http';
 import { JsonRpcTransport, createSSEWriter, streamAsyncGenerator, formatJsonRpcSSEEvent } from '@codespin/shaman-a2a-transport';
 import { createLogger } from '@codespin/shaman-logger';
 import { A2ARequestHandler } from './request-handler.js';
 import { createAuthMiddleware } from './auth-middleware.js';
+import type { AuthenticatedRequest } from './auth-middleware.js';
 import type { A2AServerConfig, A2AServerInstance } from './types.js';
 import type { A2AMethodContext } from '@codespin/shaman-a2a-transport';
+import type { MessageSendParams, TaskQueryParams, TaskIdParams } from '@codespin/shaman-a2a-protocol';
 
 const logger = createLogger('A2AServer');
 
@@ -24,11 +28,14 @@ export class A2AServer implements A2AServerInstance {
     
     // Create transport with context extraction
     this.transport = new JsonRpcTransport({
-      extractContext: (req) => ({
-        organizationId: req.auth?.organizationId,
-        userId: req.auth?.userId,
-        isInternal: req.auth?.isInternal || false
-      })
+      extractContext: (req) => {
+        const authReq = req as AuthenticatedRequest;
+        return {
+          organizationId: authReq.auth?.organizationId,
+          userId: authReq.auth?.userId,
+          isInternal: authReq.auth?.isInternal || false
+        };
+      }
     });
 
     this.setupRoutes();
@@ -42,22 +49,26 @@ export class A2AServer implements A2AServerInstance {
     router.use(express.json());
     
     // Agent discovery endpoint (no auth required)
-    router.get('/.well-known/agent.json', async (req, res) => {
-      try {
-        const agentCard = await this.requestHandler.getAgentCard();
-        res.json(agentCard);
-      } catch (error) {
-        logger.error('Error fetching agent card:', error);
-        res.status(500).json({ error: 'Failed to retrieve agent card' });
-      }
+    router.get('/.well-known/agent.json', (req, res) => {
+      void (async () => {
+        try {
+          const agentCard = await this.requestHandler.getAgentCard();
+          res.json(agentCard);
+        } catch (error) {
+          logger.error('Error fetching agent card:', error);
+          res.status(500).json({ error: 'Failed to retrieve agent card' });
+        }
+      })();
     });
 
     // Auth middleware for all other routes
-    router.use(createAuthMiddleware(this.config));
+    router.use((req, res, next) => {
+      void Promise.resolve(createAuthMiddleware(this.config)(req, res, next));
+    });
 
     // Main JSON-RPC endpoint
-    router.post('/', async (req, res) => {
-      await this.transport.handle(req, res);
+    router.post('/', (req, res) => {
+      void this.transport.handle(req, res);
     });
 
     // Mount router
@@ -71,12 +82,12 @@ export class A2AServer implements A2AServerInstance {
 
   private registerMethods(): void {
     // Register all A2A methods
-    this.transport.method('message/send', async (params, context) => {
-      return this.requestHandler.sendMessage(params, context);
+    this.transport.method('message/send', async (params: unknown, context: A2AMethodContext) => {
+      return this.requestHandler.sendMessage(params as MessageSendParams, context);
     });
 
-    this.transport.method('message/stream', async (params, context: A2AMethodContext) => {
-      const generator = this.requestHandler.streamMessage(params, context);
+    this.transport.method('message/stream', async (params: unknown, context: A2AMethodContext) => {
+      const generator = this.requestHandler.streamMessage(params as MessageSendParams, context);
       
       // Set up SSE response
       const writer = createSSEWriter(context.response);
@@ -87,7 +98,7 @@ export class A2AServer implements A2AServerInstance {
         writer,
         (response) => formatJsonRpcSSEEvent({
           jsonrpc: '2.0',
-          id: context.request.body?.id || null,
+          id: (context.request.body as { id?: string | number })?.id || null,
           result: response
         })
       );
@@ -95,16 +106,16 @@ export class A2AServer implements A2AServerInstance {
       return generator; // Signal that response is handled
     });
 
-    this.transport.method('tasks/get', async (params, context) => {
-      return this.requestHandler.getTask(params, context);
+    this.transport.method('tasks/get', async (params: unknown, context: A2AMethodContext) => {
+      return this.requestHandler.getTask(params as TaskQueryParams, context);
     });
 
-    this.transport.method('tasks/cancel', async (params, context) => {
-      return this.requestHandler.cancelTask(params, context);
+    this.transport.method('tasks/cancel', async (params: unknown, context: A2AMethodContext) => {
+      return this.requestHandler.cancelTask(params as TaskIdParams, context);
     });
 
-    this.transport.method('tasks/resubscribe', async (params, context: A2AMethodContext) => {
-      const generator = this.requestHandler.resubscribeTask(params, context);
+    this.transport.method('tasks/resubscribe', async (params: unknown, context: A2AMethodContext) => {
+      const generator = this.requestHandler.resubscribeTask(params as TaskIdParams, context);
       
       // Set up SSE response
       const writer = createSSEWriter(context.response);
@@ -115,7 +126,7 @@ export class A2AServer implements A2AServerInstance {
         writer,
         (response) => formatJsonRpcSSEEvent({
           jsonrpc: '2.0',
-          id: context.request.body?.id || null,
+          id: (context.request.body as { id?: string | number })?.id || null,
           result: response
         })
       );
@@ -147,7 +158,7 @@ export class A2AServer implements A2AServerInstance {
           resolve();
         });
       } catch (error) {
-        reject(error);
+        reject(error instanceof Error ? error : new Error(String(error)));
       }
     });
   }

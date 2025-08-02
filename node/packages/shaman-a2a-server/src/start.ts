@@ -4,7 +4,7 @@ import { Command } from 'commander';
 import { createA2AServer } from './server.js';
 import { loadConfig } from '@codespin/shaman-config';
 import { createLogger } from '@codespin/shaman-logger';
-import { resolveAgent } from '@codespin/shaman-agents';
+// import { resolveAgent } from '@codespin/shaman-agents';
 import type { AgentCard } from '@codespin/shaman-a2a-protocol';
 
 const logger = createLogger('A2AServerCLI');
@@ -24,13 +24,14 @@ program
   .option('--base-url <url>', 'Base URL for A2A endpoints', '')
   .action(async (options) => {
     try {
-      logger.info('Starting A2A server', options);
+      logger.info('Starting A2A server', options as unknown);
 
       // Load configuration
-      const config = await loadConfig();
+      const config = loadConfig();
 
       // Validate required config
-      if (options.role === 'internal') {
+      const typedOptions = options as { role: 'public' | 'internal'; port: number; baseUrl: string };
+      if (typedOptions.role === 'internal') {
         if (!config.success) {
           throw new Error('Failed to load configuration');
         }
@@ -46,7 +47,7 @@ program
         // For MVP, return a static agent card
         return {
           protocolVersion: '0.3.0',
-          url: `http://localhost:${options.port}${options.baseUrl}`,
+          url: `http://localhost:${typedOptions.port}${typedOptions.baseUrl}`,
           name: 'Shaman A2A Server',
           description: 'Federated AI agent execution platform',
           version: '0.2.5',
@@ -67,13 +68,13 @@ program
 
       // Create server
       const server = createA2AServer({
-        role: options.role,
-        port: options.port,
-        baseUrl: options.baseUrl,
-        jwtSecret: options.role === 'internal' ? process.env.JWT_SECRET || 'dev-secret' : undefined,
-        organizationId: options.role === 'internal' ? process.env.ORGANIZATION_ID || 'default' : undefined,
+        role: typedOptions.role,
+        port: typedOptions.port,
+        baseUrl: typedOptions.baseUrl,
+        jwtSecret: typedOptions.role === 'internal' ? process.env.JWT_SECRET || 'dev-secret' : undefined,
+        organizationId: typedOptions.role === 'internal' ? process.env.ORGANIZATION_ID || 'default' : undefined,
         getAgentCard,
-        validateApiKey: options.role === 'public' 
+        validateApiKey: typedOptions.role === 'public' 
           ? async (apiKey: string) => {
               // MVP: Accept any API key and use default org
               if (!apiKey) {
@@ -91,16 +92,20 @@ program
       await server.start();
 
       // Handle shutdown
-      process.on('SIGINT', async () => {
-        logger.info('Shutting down server...');
-        await server.stop();
-        process.exit(0);
+      process.on('SIGINT', () => {
+        void (async () => {
+          logger.info('Shutting down server...');
+          await server.stop();
+          process.exit(0);
+        })();
       });
 
-      process.on('SIGTERM', async () => {
-        logger.info('Shutting down server...');
-        await server.stop();
-        process.exit(0);
+      process.on('SIGTERM', () => {
+        void (async () => {
+          logger.info('Shutting down server...');
+          await server.stop();
+          process.exit(0);
+        })();
       });
 
     } catch (error) {
