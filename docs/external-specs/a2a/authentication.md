@@ -50,7 +50,7 @@ Client obtains credentials through provider-specific process:
 Client includes credentials in HTTP headers:
 
 ```http
-POST /a2a/v1/message/send HTTP/1.1
+POST / HTTP/1.1
 Host: api.example.com
 Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
 Content-Type: application/json

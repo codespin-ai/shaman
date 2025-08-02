@@ -71,9 +71,11 @@ Sends a message to an agent to initiate or continue an interaction.
         "text": "Order #12345 has been processed successfully"
       }
     ],
+    "kind": "message",
     "messageId": "msg-agent-456",
+    "role": "agent",
     "contextId": "ctx-456",
-    "kind": "message"
+    "taskId": "task-789"
   }
 }
 ```
@@ -175,14 +177,30 @@ Requires `capabilities.streaming: true` in AgentCard.
 
 **Response:** HTTP 200 with `Content-Type: text/event-stream`
 
+Each SSE event has:
+- `event: message` (optional, defaults to "message")
+- `data: <json>` containing the JSON-RPC response
+- `id: <timestamp>` (optional event ID)
+
 ```
-data: {"jsonrpc": "2.0", "id": "req-004", "result": {"id": "task-789", "status": {"state": "submitted"}, "kind": "task"}}
+id: 1704067200000
+event: message
+data: {"jsonrpc": "2.0", "id": "req-004", "result": {"kind": "task", "id": "task-789", "contextId": "ctx-456", "status": {"state": "submitted", "timestamp": "2024-01-20T10:30:00Z"}, "history": [], "artifacts": []}}
 
-data: {"jsonrpc": "2.0", "id": "req-004", "result": {"taskId": "task-789", "status": {"state": "working"}, "kind": "status-update"}}
+id: 1704067201000
+event: message
+data: {"jsonrpc": "2.0", "id": "req-004", "result": {"kind": "status-update", "taskId": "task-789", "contextId": "ctx-456", "status": {"state": "working", "message": {"kind": "message", "role": "agent", "messageId": "msg-001", "parts": [{"kind": "text", "text": "Processing your request..."}], "taskId": "task-789", "contextId": "ctx-456"}, "timestamp": "2024-01-20T10:30:01Z"}, "final": false}}
 
-data: {"jsonrpc": "2.0", "id": "req-004", "result": {"taskId": "task-789", "artifact": {"artifactId": "a-001", "parts": [{"kind": "text", "text": "Processing..."}]}, "append": false, "kind": "artifact-update"}}
+id: 1704067202000
+event: message
+data: {"jsonrpc": "2.0", "id": "req-004", "result": {"kind": "artifact-update", "taskId": "task-789", "contextId": "ctx-456", "artifact": {"artifactId": "a-001", "name": "result.txt", "parts": [{"kind": "text", "text": "Processing..."}]}, "append": false, "lastChunk": true}}
 
-data: {"jsonrpc": "2.0", "id": "req-004", "result": {"taskId": "task-789", "status": {"state": "completed"}, "final": true, "kind": "status-update"}}
+id: 1704067203000
+event: message
+data: {"jsonrpc": "2.0", "id": "req-004", "result": {"kind": "status-update", "taskId": "task-789", "contextId": "ctx-456", "status": {"state": "completed", "timestamp": "2024-01-20T10:30:03Z"}, "final": true}}
+
+event: error
+data: {"jsonrpc": "2.0", "id": "req-004", "error": {"code": -32603, "message": "Internal error", "data": {"details": "Stream terminated unexpectedly"}}}
 ```
 
 ### 5. tasks/resubscribe
@@ -217,13 +235,24 @@ Requires `capabilities.pushNotifications: true`.
   "method": "tasks/pushNotificationConfig/set",
   "params": {
     "taskId": "task-789",
-    "config": {
+    "pushNotificationConfig": {
       "url": "https://client.com/webhook",
-      "token": "webhook-secret",
-      "authentication": {
-        "schemes": ["Bearer"]
+      "headers": {
+        "Authorization": "Bearer webhook-secret",
+        "X-Custom-Header": "value"
       }
     }
+  }
+}
+```
+
+**Response:**
+```json
+{
+  "jsonrpc": "2.0",
+  "id": "req-006",
+  "result": {
+    "success": true
   }
 }
 ```
@@ -263,9 +292,77 @@ Requires `supportsAuthenticatedExtendedCard: true`.
 | `tasks/cancel` | `CancelTask` | `POST /v1/tasks/{id}:cancel` |
 | `tasks/resubscribe` | `TaskSubscription` | `POST /v1/tasks/{id}:subscribe` |
 
+## Event Types in Streaming
+
+When using `message/stream` or `tasks/resubscribe`, the following event types can be returned:
+
+### Task Event
+Initial task creation or full task state:
+```json
+{
+  "kind": "task",
+  "id": "task-789",
+  "contextId": "ctx-456",
+  "status": { "state": "submitted", "timestamp": "..." },
+  "history": [...],
+  "artifacts": [...]
+}
+```
+
+### Status Update Event
+Task status changes:
+```json
+{
+  "kind": "status-update",
+  "taskId": "task-789",
+  "contextId": "ctx-456",
+  "status": {
+    "state": "working",
+    "message": { /* Optional message object */ },
+    "timestamp": "..."
+  },
+  "final": false  // true when this is the last update
+}
+```
+
+### Artifact Update Event
+New or updated artifacts:
+```json
+{
+  "kind": "artifact-update",
+  "taskId": "task-789",
+  "contextId": "ctx-456",
+  "artifact": {
+    "artifactId": "art-001",
+    "name": "result.txt",
+    "parts": [
+      { "kind": "text", "text": "Content..." }
+    ]
+  },
+  "append": false,    // Whether to append to existing artifact
+  "lastChunk": true   // Whether this is the final chunk
+}
+```
+
+### Direct Message Event
+For simple responses without task creation:
+```json
+{
+  "kind": "message",
+  "messageId": "msg-456",
+  "role": "agent",
+  "parts": [...],
+  "contextId": "ctx-456"
+}
+```
+
 ## Implementation Notes
 
 1. **Authentication**: Handled at HTTP transport layer, not in JSON-RPC payload
-2. **Content-Type**: Must be `application/json` for JSON-RPC
-3. **Error Handling**: Use standard A2A error codes
-4. **Metadata**: All methods support optional metadata fields
+2. **Content-Type**: Must be `application/json` for JSON-RPC requests
+3. **Streaming Content-Type**: Must be `text/event-stream` for SSE responses
+4. **Error Handling**: Use standard A2A error codes
+5. **Metadata**: All methods support optional metadata fields
+6. **Message Parts**: Always use `"kind"` not `"type"` for part types
+7. **State Names**: Use lowercase (e.g., "canceled" not "cancelled")
+8. **Required Fields**: All result objects must include `"kind"` field

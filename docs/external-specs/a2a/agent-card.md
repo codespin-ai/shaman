@@ -185,7 +185,7 @@ Supported transport values:
 
 AgentCards can be discovered through:
 
-1. **Well-Known URI**: `https://{domain}/.well-known/agent-card.json`
+1. **Well-Known URI**: `https://{domain}/.well-known/agent.json`
 2. **Direct Configuration**: Pre-configured URLs
 3. **Registries**: Agent catalogs or directories
 4. **Authenticated Endpoint**: Via `agent/authenticatedExtendedCard` method

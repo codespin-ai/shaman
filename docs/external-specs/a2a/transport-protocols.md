@@ -9,9 +9,14 @@ A2A supports multiple transport protocols for agent communication. Agents MUST i
 The primary and most common transport protocol.
 
 **Characteristics:**
-- Uses HTTP POST requests
+- Uses HTTP POST requests to a single endpoint
 - Content-Type: `application/json`
 - Follows JSON-RPC 2.0 specification
+- Single endpoint handles all methods via JSON-RPC routing
+
+**Endpoint Pattern:**
+- All requests go to: `POST /` (at the configured base URL)
+- Example: If base URL is `/a2a/v1`, then endpoint is `POST /a2a/v1/`
 
 **Request Format:**
 ```json
@@ -168,6 +173,16 @@ rpc SendStreamingMessage(SendMessageRequest) returns (stream StreamResponse);
 3. Fall back to alternative transports from `additionalInterfaces`
 4. Implement retry logic with different transports on failure
 
+### Discovery Endpoints
+
+All transports should provide agent discovery:
+
+**JSON-RPC/HTTP Discovery:**
+- `GET /.well-known/agent.json` - Returns the AgentCard for this agent
+- `GET /.well-known/a2a/agents` - Returns list of available agents (optional)
+
+Note: Discovery endpoints are always HTTP GET, regardless of the main transport.
+
 ### Implementation Requirements
 
 When supporting multiple transports, agents MUST:
@@ -176,6 +191,7 @@ When supporting multiple transports, agents MUST:
 2. **Return equivalent results** for same requests
 3. **Use consistent error codes** mapped appropriately
 4. **Support same authentication** schemes
+5. **Expose discovery endpoints** via HTTP GET
 
 ## Authentication
 

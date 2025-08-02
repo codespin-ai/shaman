@@ -38,8 +38,8 @@ Tasks are the fundamental unit of work in A2A. This document describes task stat
 - Error details in status message
 - **Task CANNOT be restarted**
 
-**cancelled**
-- Task was cancelled before completion
+**canceled**
+- Task was canceled before completion
 - May be client-initiated or agent-initiated
 - **Task CANNOT be restarted**
 
@@ -68,7 +68,7 @@ Tasks are the fundamental unit of work in A2A. This document describes task stat
               │     └──────┬──────┘     │
               │            │            │
     ┌─────────▼─┐   ┌──────▼──────┐   ┌▼─────────┐   ┌─────────┐
-    │ completed │   │   failed    │   │cancelled │   │rejected │
+    │ completed │   │   failed    │   │canceled │   │rejected │
     └───────────┘   └─────────────┘   └──────────┘   └─────────┘
          Terminal States (Cannot be restarted)
 ```
