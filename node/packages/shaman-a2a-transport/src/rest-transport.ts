@@ -1,7 +1,8 @@
 import type { Request, Response } from 'express';
 import { createLogger } from '@codespin/shaman-logger';
 import type { A2ATransport, A2AMethodContext, A2AMethodRegistry } from './types.js';
-import { JsonRpcHandler, JsonRpcErrorClass, methodNotFound } from '@codespin/shaman-jsonrpc';
+import { JsonRpcHandler } from '@codespin/shaman-jsonrpc';
+import type { JsonRpcErrorClass } from '@codespin/shaman-jsonrpc';
 import type { JsonRpcRequest } from '@codespin/shaman-jsonrpc';
 
 const logger = createLogger('RestTransport');
@@ -34,7 +35,7 @@ export class RestTransport implements A2ATransport {
         method: 'POST',
         path: /^\/a2a\/v1\/message\/send$/,
         jsonRpcMethod: 'message/send',
-        extractParams: (req) => req.body
+        extractParams: (req) => req.body as unknown
       },
       {
         method: 'GET',
@@ -65,7 +66,7 @@ export class RestTransport implements A2ATransport {
     handler: A2AMethodRegistry[K]
   ): this {
     // Wrap the handler to convert context types
-    this.handler.method(name, async (params: any, jsonRpcContext: any) => {
+    this.handler.method(name, async (params: unknown, jsonRpcContext: unknown) => {
       const a2aContext = jsonRpcContext as A2AMethodContext;
       return handler(params, a2aContext);
     });
@@ -112,7 +113,7 @@ export class RestTransport implements A2ATransport {
 
     try {
       // Handle through JSON-RPC handler with full context
-      const result = await this.handler.handle(jsonRpcRequest, context as any);
+      const result = await this.handler.handle(jsonRpcRequest, context as Parameters<typeof this.handler.handle>[1]);
 
       // Check if handler returned a generator (streaming response)
       if (result && typeof result === 'object' && Symbol.asyncIterator in result) {

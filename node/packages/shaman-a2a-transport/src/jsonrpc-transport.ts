@@ -1,5 +1,6 @@
 import type { Request, Response } from 'express';
-import { JsonRpcHandler, JsonRpcErrorClass, parseError, internalError } from '@codespin/shaman-jsonrpc';
+import { JsonRpcHandler, JsonRpcErrorClass, parseError } from '@codespin/shaman-jsonrpc';
+import type { JsonRpcRequest, JsonRpcContext } from '@codespin/shaman-jsonrpc';
 import { createLogger } from '@codespin/shaman-logger';
 import type { A2ATransport, A2AMethodContext, A2AMethodRegistry } from './types.js';
 
@@ -28,8 +29,14 @@ export class JsonRpcTransport implements A2ATransport {
     handler: A2AMethodRegistry[K]
   ): this {
     // Wrap the handler to convert context types
-    this.handler.method(name, async (params: any, jsonRpcContext: any) => {
-      const a2aContext = jsonRpcContext as A2AMethodContext;
+    this.handler.method(name, async (params: unknown, jsonRpcContext: JsonRpcContext) => {
+      const a2aContext: A2AMethodContext = {
+        ...jsonRpcContext,
+        request: jsonRpcContext.request as Request,
+        response: jsonRpcContext.response as Response,
+        headers: (jsonRpcContext.request as Request).headers as Record<string, string | string[]>,
+        isInternal: false
+      };
       return handler(params, a2aContext);
     });
     return this;
@@ -48,7 +55,7 @@ export class JsonRpcTransport implements A2ATransport {
     }
 
     // Create context for method handlers
-    const context: A2AMethodContext = {
+    const _context: A2AMethodContext = {
       request: req,
       response: res,
       headers: req.headers as Record<string, string | string[]>,
@@ -58,14 +65,17 @@ export class JsonRpcTransport implements A2ATransport {
 
     try {
       // Parse JSON-RPC request
-      const jsonRpcRequest = req.body;
+      const jsonRpcRequest = req.body as unknown as JsonRpcRequest;
       
       if (!jsonRpcRequest || typeof jsonRpcRequest !== 'object') {
         throw parseError('Request body must be a JSON object');
       }
 
       // Handle the request with full context
-      const result = await this.handler.handle(jsonRpcRequest, context as any);
+      const result = await this.handler.handle(jsonRpcRequest, {
+        request: req,
+        response: res
+      } as JsonRpcContext);
 
       // Check if handler returned a generator (streaming response)
       if (result && typeof result === 'object' && Symbol.asyncIterator in result) {
@@ -82,7 +92,7 @@ export class JsonRpcTransport implements A2ATransport {
       if (error instanceof JsonRpcErrorClass) {
         res.status(400).json({
           jsonrpc: '2.0',
-          id: req.body?.id || null,
+          id: (req.body as unknown as JsonRpcRequest | undefined)?.id || null,
           error: {
             code: error.code,
             message: error.message,
@@ -92,8 +102,11 @@ export class JsonRpcTransport implements A2ATransport {
       } else {
         res.status(500).json({
           jsonrpc: '2.0',
-          id: req.body?.id || null,
-          error: internalError('Internal server error')
+          id: (req.body as unknown as JsonRpcRequest | undefined)?.id || null,
+          error: {
+            code: -32603,
+            message: 'Internal server error'
+          }
         });
       }
     }

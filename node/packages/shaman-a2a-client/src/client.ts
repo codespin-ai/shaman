@@ -1,10 +1,10 @@
-import axios, { AxiosInstance, AxiosError } from 'axios';
+import axios from 'axios';
+import type { AxiosInstance, AxiosError } from 'axios';
 import { createLogger } from '@codespin/shaman-logger';
 import type { Result } from '@codespin/shaman-core';
 import type { 
   JsonRpcRequest, 
-  JsonRpcResponse,
-  JsonRpcError
+  JsonRpcResponse
 } from '@codespin/shaman-jsonrpc';
 import type { 
   SendMessageRequest, 
@@ -66,7 +66,7 @@ export class A2AClientImpl implements A2AClient {
           return Promise.reject(error);
         }
 
-        const retryCount = (config as any).__retryCount || 0;
+        const retryCount = (config as { __retryCount?: number }).__retryCount || 0;
         
         // Don't retry if max attempts reached or non-retryable error
         if (retryCount >= maxAttempts || !this.isRetryableError(error)) {
@@ -79,7 +79,7 @@ export class A2AClientImpl implements A2AClient {
         logger.debug(`Retrying request (attempt ${retryCount + 1}/${maxAttempts}) after ${delay}ms`);
         
         // Increment retry count
-        (config as any).__retryCount = retryCount + 1;
+        (config as { __retryCount?: number }).__retryCount = retryCount + 1;
         
         // Wait and retry
         await new Promise(resolve => setTimeout(resolve, delay));
@@ -115,7 +115,7 @@ export class A2AClientImpl implements A2AClient {
       const jsonRpcResponse = response.data;
 
       if ('error' in jsonRpcResponse) {
-        const error = jsonRpcResponse.error as JsonRpcError;
+        const error = jsonRpcResponse.error;
         return {
           success: false,
           error: new Error(`${error.message} (code: ${error.code})`)
@@ -124,7 +124,7 @@ export class A2AClientImpl implements A2AClient {
 
       return {
         success: true,
-        data: jsonRpcResponse.result as TResult
+        data: (jsonRpcResponse as { result: TResult }).result
       };
     } catch (error) {
       logger.error(`JSON-RPC call failed: ${method}`, error);
@@ -172,11 +172,11 @@ export class A2AClientImpl implements A2AClient {
         }
       });
 
-      const stream = response.data;
+      const stream = response.data as AsyncIterable<Buffer>;
       let buffer = '';
 
       for await (const chunk of stream) {
-        buffer += chunk.toString();
+        buffer += (chunk).toString();
         const lines = buffer.split('\n');
         buffer = lines.pop() || '';
 
@@ -186,9 +186,9 @@ export class A2AClientImpl implements A2AClient {
             try {
               const jsonRpcResponse = JSON.parse(data) as JsonRpcResponse;
               if ('result' in jsonRpcResponse) {
-                yield jsonRpcResponse.result as SendStreamingMessageResponse;
+                yield (jsonRpcResponse as { result: SendStreamingMessageResponse }).result;
               } else if ('error' in jsonRpcResponse) {
-                const error = jsonRpcResponse.error as JsonRpcError;
+                const error = jsonRpcResponse.error;
                 throw new Error(`${error.message} (code: ${error.code})`);
               }
             } catch (parseError) {
@@ -228,11 +228,11 @@ export class A2AClientImpl implements A2AClient {
         }
       });
 
-      const stream = response.data;
+      const stream = response.data as AsyncIterable<Buffer>;
       let buffer = '';
 
       for await (const chunk of stream) {
-        buffer += chunk.toString();
+        buffer += (chunk).toString();
         const lines = buffer.split('\n');
         buffer = lines.pop() || '';
 
@@ -242,9 +242,9 @@ export class A2AClientImpl implements A2AClient {
             try {
               const jsonRpcResponse = JSON.parse(data) as JsonRpcResponse;
               if ('result' in jsonRpcResponse) {
-                yield jsonRpcResponse.result as SendStreamingMessageResponse;
+                yield (jsonRpcResponse as { result: SendStreamingMessageResponse }).result;
               } else if ('error' in jsonRpcResponse) {
-                const error = jsonRpcResponse.error as JsonRpcError;
+                const error = jsonRpcResponse.error;
                 throw new Error(`${error.message} (code: ${error.code})`);
               }
             } catch (parseError) {
