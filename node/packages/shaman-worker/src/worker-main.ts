@@ -2,12 +2,14 @@
  * Worker process that executes workflow steps
  */
 
-import { Worker, Job } from 'bullmq';
+import { Worker } from 'bullmq';
+import type { Job } from 'bullmq';
 import { createLogger } from '@codespin/shaman-logger';
-import { createRlsDb, createUnrestrictedDb } from '@codespin/shaman-db';
+import { createRlsDb } from '@codespin/shaman-db';
 import { createA2AClient } from '@codespin/shaman-a2a-client';
 import { generateStepId } from '@codespin/shaman-agent-executor';
-import type { StepRequest, AsyncPollRequest, WorkflowConfig } from '@codespin/shaman-workflow';
+import type { StepRequest, WorkflowConfig } from '@codespin/shaman-workflow';
+import type { Message } from '@codespin/shaman-a2a-protocol';
 
 const logger = createLogger('Worker');
 
@@ -21,14 +23,14 @@ const toolHandlers: Record<string, ToolHandler> = {
 
 type ToolHandler = (
   stepId: string,
-  input: any,
+  input: unknown,
   context: StepRequest['context']
-) => Promise<any>;
+) => Promise<unknown>;
 
 /**
  * Main worker for executing steps
  */
-export function createStepWorker(config: WorkflowConfig) {
+export function createStepWorker(config: WorkflowConfig): Worker<StepRequest> {
   const connection = {
     host: config.redis.host,
     port: config.redis.port,
@@ -39,7 +41,8 @@ export function createStepWorker(config: WorkflowConfig) {
   const worker = new Worker<StepRequest>(
     config.queues.stepExecution,
     async (job: Job<StepRequest>) => {
-      const { stepId, stepType, name, input, context } = job.data;
+      const { stepId, stepType, name, context } = job.data;
+      const input = job.data.input as unknown;
       const db = createRlsDb(context.organizationId);
 
       logger.info('Processing step', { stepId, stepType, name });
@@ -61,14 +64,14 @@ export function createStepWorker(config: WorkflowConfig) {
           WHERE id = $(runId) AND status = 'pending'
         `, { runId: context.runId });
 
-        let result: any;
+        let result: unknown;
 
         if (stepType === 'agent') {
           result = await executeAgent(stepId, name, input, context);
         } else if (stepType === 'tool') {
           result = await executeTool(stepId, name, input, context);
         } else {
-          throw new Error(`Unknown step type: ${stepType}`);
+          throw new Error(`Unknown step type: ${stepType as string}`);
         }
 
         // Update step as completed
@@ -81,13 +84,13 @@ export function createStepWorker(config: WorkflowConfig) {
           WHERE id = $(stepId)
         `, { 
           stepId,
-          output: result
+          output: result as Record<string, unknown>
         });
 
         // Check if all steps are complete
         await checkRunCompletion(context.runId, context.organizationId);
 
-        return { success: true, output: result };
+        return { success: true, output: result as Record<string, unknown> };
 
       } catch (error) {
         logger.error('Step execution failed', { stepId, error });
@@ -139,9 +142,9 @@ export function createStepWorker(config: WorkflowConfig) {
 async function executeAgent(
   stepId: string,
   agentName: string,
-  input: any,
+  input: unknown,
   context: StepRequest['context']
-): Promise<any> {
+): Promise<unknown> {
   // Generate JWT for internal A2A call
   const jwt = generateInternalJWT({
     runId: context.runId,
@@ -157,7 +160,7 @@ async function executeAgent(
   });
 
   // Create message
-  const message: import('@codespin/shaman-a2a-protocol').Message = {
+  const message: Message = {
     kind: 'message',
     messageId: stepId,
     role: 'user',
@@ -221,9 +224,9 @@ async function executeAgent(
 async function executeTool(
   stepId: string,
   toolName: string,
-  input: any,
+  input: unknown,
   context: StepRequest['context']
-): Promise<any> {
+): Promise<unknown> {
   const handler = toolHandlers[toolName];
   
   if (!handler) {
@@ -238,10 +241,10 @@ async function executeTool(
  */
 async function handleCallAgentTool(
   stepId: string,
-  input: any,
+  input: unknown,
   context: StepRequest['context']
-): Promise<any> {
-  const { agent, task, mode = 'sync' } = input;
+): Promise<unknown> {
+  const { agent, task, mode = 'sync' } = input as { agent: string; task: string; mode?: string };
   const db = createRlsDb(context.organizationId);
 
   // Create new agent step
@@ -259,7 +262,7 @@ async function handleCallAgentTool(
     runId: context.runId,
     parentStepId: context.parentStepId, // Link to original agent, not the tool
     name: agent,
-    input: { message: task }
+    input: { message: task } as Record<string, unknown>
   });
 
   // Queue the agent step
@@ -287,10 +290,10 @@ async function handleCallAgentTool(
  */
 async function handleWorkflowDataWrite(
   stepId: string,
-  input: any,
+  input: unknown,
   context: StepRequest['context']
-): Promise<any> {
-  const { key, value } = input;
+): Promise<unknown> {
+  const { key, value } = input as { key: string; value: unknown };
   const db = createRlsDb(context.organizationId);
 
   // Get agent name from step
@@ -316,7 +319,7 @@ async function handleWorkflowDataWrite(
   `, {
     runId: context.runId,
     key,
-    value,
+    value: value as Record<string, unknown>,
     agentName: parentStep.name,
     stepId: context.parentStepId
   });
@@ -329,13 +332,13 @@ async function handleWorkflowDataWrite(
  */
 async function handleWorkflowDataRead(
   stepId: string,
-  input: any,
+  input: unknown,
   context: StepRequest['context']
-): Promise<any> {
-  const { key } = input;
+): Promise<unknown> {
+  const { key } = input as { key: string };
   const db = createRlsDb(context.organizationId);
 
-  const data = await db.oneOrNone<{ value: any }>(
+  const data = await db.oneOrNone<{ value: unknown }>(
     'SELECT value FROM workflow_data WHERE run_id = $(runId) AND key = $(key)',
     { runId: context.runId, key }
   );
@@ -382,7 +385,7 @@ async function checkRunCompletion(runId: string, organizationId: string): Promis
  * Generate internal JWT token
  * TODO: Move to shaman-security package
  */
-function generateInternalJWT(context: any): string {
+function generateInternalJWT(context: Record<string, unknown>): string {
   // Placeholder - should use proper JWT library
   return 'jwt_' + Buffer.from(JSON.stringify(context)).toString('base64');
 }

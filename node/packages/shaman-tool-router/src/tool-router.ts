@@ -69,7 +69,7 @@ export function createToolRouter(
         const tools = await dependencies.mcpClient.listTools(server);
         if (!tools.success) continue;
 
-        const tool = tools.data.find((t: any) => t.name === toolName);
+        const tool = tools.data.find((t) => t.name === toolName);
         if (tool) {
           return { success: true, data: tool };
         }
@@ -131,7 +131,7 @@ export function createToolRouter(
           const tools = await dependencies.mcpClient.listTools(server);
           if (!tools.success) continue;
 
-          const tool = tools.data.find((t: any) => t.name === toolName);
+          const tool = tools.data.find((t) => t.name === toolName);
           if (tool) {
             const result = await dependencies.mcpClient.callTool(server, toolName, args);
             return {

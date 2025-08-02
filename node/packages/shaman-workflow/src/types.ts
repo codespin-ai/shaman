@@ -24,7 +24,7 @@ export type StepRequest = {
   stepId: string;
   stepType: 'agent' | 'tool';
   name: string; // Agent name or tool name
-  input: any;
+  input: unknown;
   context: {
     runId: string;
     parentStepId?: string;
@@ -45,7 +45,7 @@ export type AsyncPollRequest = {
 // Step execution result
 export type StepResult = {
   success: boolean;
-  output?: any;
+  output?: unknown;
   error?: string;
   duration?: number;
   shouldRetry?: boolean;

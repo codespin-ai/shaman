@@ -27,7 +27,7 @@ export async function startWorkflow(options: WorkflowOptions): Promise<Result<{ 
 /**
  * Get workflow status
  */
-export async function getWorkflowStatus(id: string, organizationId: string): Promise<Result<WorkflowStatus, Error>> {
+export async function getWorkflowStatus(id: string, _organizationId: string): Promise<Result<WorkflowStatus, Error>> {
   // TODO: Implement with BullMQ
   return {
     success: true,
@@ -41,7 +41,7 @@ export async function getWorkflowStatus(id: string, organizationId: string): Pro
 /**
  * Cancel a workflow
  */
-export async function cancelWorkflow(id: string, organizationId: string): Promise<Result<void, Error>> {
+export async function cancelWorkflow(_id: string, _organizationId: string): Promise<Result<void, Error>> {
   // TODO: Implement with BullMQ
   return {
     success: true,

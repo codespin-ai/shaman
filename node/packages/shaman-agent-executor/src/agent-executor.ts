@@ -315,7 +315,7 @@ async function executeToolCalls(
           runId: request.context.runId,
           stepId: request.parentStepId || '',
           agentName: agent.name,
-          agentSource: (request.agentSource as any) || 'GIT'
+          agentSource: 'GIT'
         }
       );
 

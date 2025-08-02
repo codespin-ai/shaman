@@ -2,7 +2,8 @@
  * BullMQ workflow engine
  */
 
-import { Queue, QueueEvents, JobsOptions } from 'bullmq';
+import { Queue } from 'bullmq';
+import type { JobsOptions } from 'bullmq';
 import { createLogger } from '@codespin/shaman-logger';
 import type { WorkflowConfig, StepRequest, AsyncPollRequest } from './types.js';
 
