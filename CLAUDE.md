@@ -529,3 +529,13 @@ The tool-router provides built-in platform tools for workflow data management:
 - `workflow_data_list` - List all stored data with metadata
 
 All workflow data is immutable and tracked by agent/step for full auditability.
+
+## Important Development Note
+
+**This is a super early stage product**. Claude Code is free to:
+- Completely discard and rewrite existing implementations without worrying about migration
+- Remove any existing code that doesn't align with new requirements
+- Make breaking changes without gradual rollout or backward compatibility
+- Start fresh with any component or subsystem
+
+There is no need to preserve existing functionality if a better approach is available. Focus on building the right solution rather than maintaining compatibility with early prototypes.
