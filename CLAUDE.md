@@ -7,7 +7,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 When you begin working on this project, you MUST:
 
 1. **Read this entire CLAUDE.md file** to understand the project structure and conventions
-2. **Read PROJECT_STATUS.md** - This file tracks the current implementation progress, what's completed, what's in progress, and what needs to be done next. This is specifically maintained for AI assistants to quickly understand where the project stands.
+2. **Read PROJECT_STATUS.md** - **CRITICAL**: This file contains the current A2A protocol implementation plan with all technical details needed to implement the SDK v0.2.5 compliance updates. It includes SDK findings, package decisions, and the complete implementation roadmap.
 3. **Read the key documentation files** in this order:
    - `/README.md` - Project overview and quick start
    - `/node/CODING-STANDARDS.md` - Mandatory coding patterns and conventions
