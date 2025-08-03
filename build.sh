@@ -31,7 +31,6 @@ PACKAGES=(
   "shaman-llm-vercel"
   "shaman-tool-router"
   "shaman-agent-executor"
-  "shaman-workflow"
   "shaman-a2a-server"
   "shaman-gql-server"
   "shaman-worker"

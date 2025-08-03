@@ -36,7 +36,50 @@ PERMISO_ENDPOINT=http://localhost:5001/graphql
 PERMISO_API_KEY=your-secret-api-key
 ```
 
-### 2. [Other Services] (to be added as needed)
+### 2. Foreman - Workflow Orchestration Engine
+
+- **Type**: REST API service
+- **Port**: 3000 (default)
+- **Protocol**: REST/HTTP
+- **NPM Package**: `@codespin/foreman-client`
+- **Purpose**: Handles all workflow orchestration, task management, and run data storage for Shaman
+
+#### Documentation:
+- **[README](./foreman-docs/README.md)** - Complete overview, setup, and usage
+- **[API Reference](./foreman-docs/api-reference.md)** - REST API endpoints specification
+- **[API Guide](./foreman-docs/api.md)** - Common workflows and examples
+- **[Database Schema](./foreman-docs/database.md)** - Database design and architecture
+
+#### Integration with Shaman:
+- All workflow and task management delegated to Foreman
+- Shaman creates runs and tasks via Foreman API
+- Task execution results stored in Foreman's run data
+- Queue-agnostic design (BullMQ, SQS, etc.)
+- Multi-tenant support with organization isolation
+
+#### Key Features:
+- Multi-tenant runs and task management
+- Key-value storage with tags for inter-task communication
+- PostgreSQL as source of truth (queues only store IDs)
+- Status tracking and execution history
+- Support for hierarchical tasks
+
+#### Environment Variables:
+```bash
+FOREMAN_ENDPOINT=http://localhost:3000
+FOREMAN_API_KEY=fmn_prod_your_api_key_here  # Format: fmn_[env]_[orgId]_[random]
+SHAMAN_TASK_QUEUE=shaman:tasks              # Optional: Override default queue name
+SHAMAN_RESULT_QUEUE=shaman:results          # Optional: Override default queue name
+```
+
+#### Client Usage:
+The `@codespin/foreman-client` package provides:
+- Initialize once with `initializeForemanClient()`
+- All functions return Result types for explicit error handling
+- Queue names can be overridden for multi-tenant deployments
+- Client handles all Redis/BullMQ operations internally
+
+### 3. [Other Services] (to be added as needed)
 
 ## Integration Guidelines
 

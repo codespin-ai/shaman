@@ -148,7 +148,7 @@ Maintain the current 3-server architecture:
 21. **shaman-worker** - Job processor (bootstrap only) ⚠️
 22. **shaman-cli** - CLI tool (structure only) ⚠️
 
-### API Servers (2 packages) - FUNCTIONAL ✅
+### API Servers (2 packages) - WORKING ✅
 23. **shaman-gql-server** - GraphQL management API
 24. **shaman-integration-tests** - Integration test suite
 

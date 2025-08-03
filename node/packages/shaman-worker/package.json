@@ -12,29 +12,21 @@
   "license": "MIT",
   "scripts": {
     "build": "tsc",
+    "start": "node dist/start.js",
     "lint": "eslint src --ext .ts",
     "lint:fix": "eslint src --ext .ts --fix"
   },
   "dependencies": {
     "@codespin/shaman-a2a-client": "file:../shaman-a2a-client",
     "@codespin/shaman-a2a-protocol": "file:../shaman-a2a-protocol",
-    "@codespin/shaman-agent-executor": "file:../shaman-agent-executor",
-    "@codespin/shaman-config": "file:../shaman-config",
-    "@codespin/shaman-core": "file:../shaman-core",
-    "@codespin/shaman-db": "file:../shaman-db",
-    "@codespin/shaman-git-resolver": "file:../shaman-git-resolver",
-    "@codespin/shaman-llm-core": "file:../shaman-llm-core",
-    "@codespin/shaman-llm-vercel": "file:../shaman-llm-vercel",
     "@codespin/shaman-logger": "file:../shaman-logger",
-    "@codespin/shaman-observability": "file:../shaman-observability",
-    "@codespin/shaman-tool-router": "file:../shaman-tool-router",
-    "@codespin/shaman-types": "file:../shaman-types",
-    "@codespin/shaman-workflow": "file:../shaman-workflow",
-    "bullmq": "^5.56.9"
+    "@codespin/shaman-security": "file:../shaman-security",
+    "@codespin/foreman-client": "^0.0.2"
   },
   "devDependencies": {
     "@typescript-eslint/eslint-plugin": "^8.38.0",
     "@typescript-eslint/parser": "^8.38.0",
-    "eslint": "^9.32.0"
+    "eslint": "^9.32.0",
+    "typescript": "^5.9.2"
   }
 }

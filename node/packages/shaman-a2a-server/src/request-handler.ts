@@ -9,7 +9,14 @@ import type {
 } from '@codespin/shaman-a2a-protocol';
 import type { A2AMethodContext } from '@codespin/shaman-a2a-transport';
 import { createLogger } from '@codespin/shaman-logger';
-import { startRun, getRunStatus, cancelRun } from '@codespin/shaman-workflow';
+import { 
+  createRun, 
+  createTask, 
+  getRun, 
+  updateRun,
+  type ForemanConfig,
+  type Run
+} from '@codespin/foreman-client';
 import { v4 as uuidv4 } from 'uuid';
 import type { A2AServerConfig, TaskExecutionRequest } from './types.js';
 import { taskNotFound, taskNotCancelable, internalError } from '@codespin/shaman-jsonrpc';
@@ -20,7 +27,15 @@ const logger = createLogger('A2ARequestHandler');
  * Request handler for A2A protocol methods
  */
 export class A2ARequestHandler {
-  constructor(private readonly config: A2AServerConfig) {}
+  private foremanConfig: ForemanConfig;
+
+  constructor(private readonly config: A2AServerConfig) {
+    // Get Foreman config from environment
+    this.foremanConfig = {
+      endpoint: process.env.FOREMAN_ENDPOINT || 'http://localhost:3000',
+      apiKey: process.env.FOREMAN_API_KEY || 'fmn_dev_default_key'
+    };
+  }
 
   /**
    * Get agent card for discovery
@@ -55,18 +70,47 @@ export class A2ARequestHandler {
         userId: context.userId
       };
 
-      // Start run
-      const result = await startRun({
-        id: taskId,
-        name: 'agent-execution',
-        data: taskRequest,
-        organizationId: context.organizationId!
+      // Create a run in Foreman
+      const runResult = await createRun(this.foremanConfig, {
+        inputData: {
+          agentName: taskRequest.agent,
+          input: taskRequest.input,
+          organizationId: context.organizationId!
+        },
+        metadata: {
+          taskId,
+          contextId: taskRequest.contextId,
+          userId: taskRequest.userId,
+          source: 'shaman-a2a',
+          organizationId: context.organizationId!
+        }
       });
 
-      if (!result.success) {
-        logger.error('Failed to start run', result.error);
+      if (!runResult.success) {
+        throw internalError(`Failed to create run: ${runResult.error.message}`);
+      }
+
+      const run: Run = runResult.data;
+
+      // Create initial task for agent execution
+      const taskResult = await createTask(this.foremanConfig, {
+        runId: run.id,
+        type: 'agent-execution',
+        inputData: {
+          agentName: taskRequest.agent,
+          input: taskRequest.input
+        },
+        metadata: {
+          organizationId: context.organizationId!
+        }
+      });
+
+      if (!taskResult.success) {
+        logger.error('Failed to create task', taskResult.error);
         throw internalError('Failed to start task');
       }
+
+      // Task created successfully
 
       const task: Task = {
         kind: 'task',
@@ -141,19 +185,24 @@ export class A2ARequestHandler {
     });
 
     try {
-      const status = await getRunStatus(params.id, context.organizationId!);
+      // Look up the run using the task ID (stored in metadata)
+      // For MVP, we'll need to implement a lookup mechanism
+      // This is a limitation of the current design - we need to map task IDs to run IDs
+      const runResult = await getRun(this.foremanConfig, params.id);
       
-      if (!status.success) {
+      if (!runResult.success) {
         throw taskNotFound(params.id);
       }
 
-      const run = status.data;
+      const run: Run = runResult.data;
       
       // Map run status to task state
       let taskState: TaskState;
       switch (run.status) {
-        case 'waiting':
-        case 'active':
+        case 'pending':
+          taskState = TaskState.Submitted;
+          break;
+        case 'running':
           taskState = TaskState.Working;
           break;
         case 'completed':
@@ -161,6 +210,9 @@ export class A2ARequestHandler {
           break;
         case 'failed':
           taskState = TaskState.Failed;
+          break;
+        case 'cancelled':
+          taskState = TaskState.Canceled;
           break;
         default:
           taskState = TaskState.Submitted;
@@ -197,23 +249,25 @@ export class A2ARequestHandler {
 
     try {
       // Get current status first
-      const status = await getRunStatus(params.id, context.organizationId!);
+      const runResult = await getRun(this.foremanConfig, params.id);
       
-      if (!status.success) {
+      if (!runResult.success) {
         throw taskNotFound(params.id);
       }
 
-      const run = status.data;
+      const run: Run = runResult.data;
       
       // Check if task can be canceled
-      if (run.status === 'completed' || run.status === 'failed') {
+      if (run.status === 'completed' || run.status === 'failed' || run.status === 'cancelled') {
         throw taskNotCancelable(params.id, run.status);
       }
 
-      // Cancel the run
-      const result = await cancelRun(params.id, context.organizationId!);
+      // Cancel the run by updating its status
+      const updateResult = await updateRun(this.foremanConfig, params.id, {
+        status: 'cancelled'
+      });
       
-      if (!result.success) {
+      if (!updateResult.success) {
         throw internalError('Failed to cancel task');
       }
 

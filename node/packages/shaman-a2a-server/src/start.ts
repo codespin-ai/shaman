@@ -4,6 +4,7 @@ import { Command } from 'commander';
 import { createA2AServer } from './server.js';
 import { loadConfig } from '@codespin/shaman-config';
 import { createLogger } from '@codespin/shaman-logger';
+// Foreman client is initialized in request-handler
 // import { resolveAgent } from '@codespin/shaman-agents';
 import type { AgentCard } from '@codespin/shaman-a2a-protocol';
 
@@ -43,6 +44,11 @@ program
         // Public server needs API key validation
         // For MVP, we'll use a simple static check
       }
+
+      // Foreman configuration is handled in request-handler
+      // Just log the endpoint for visibility
+      const foremanEndpoint = process.env.FOREMAN_ENDPOINT || 'http://localhost:3000';
+      logger.info('Using Foreman endpoint', { endpoint: foremanEndpoint });
 
       // Create agent card provider
       async function getAgentCard(): Promise<AgentCard> {

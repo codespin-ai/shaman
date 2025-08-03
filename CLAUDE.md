@@ -29,9 +29,11 @@ Shaman is a comprehensive backend framework for managing and coordinating AI age
 - **Server Split**: Shaman now has two separate servers: `shaman-gql-server` (management) and `shaman-a2a-server` (execution)
 - **A2A Server Roles**: The A2A server supports `--role public` and `--role internal` for different deployment scenarios
 - **No GraphQL Execution**: GraphQL server is purely for management - all agent execution goes through A2A
-- **Unified Workflow**: Single `shaman-workflow` package using BullMQ (removed abstraction layer)
+- **Workflow Orchestration**: All workflow management delegated to Foreman external service (no internal workflow code)
+- **Foreman Direct Integration**: Uses @codespin/foreman-client directly without wrapper, with configurable queue names
 - **A2A Protocol**: All agent-to-agent communication uses HTTP/A2A protocol (not direct function calls)
 - **New A2A Client**: Added `shaman-a2a-client` package for agent-to-agent HTTP calls
+- **Foreman Integration**: All runs, tasks, and run data handled by Foreman REST API
 - **Git Operations**: Now uses native git commands instead of isomorphic-git
 - **Agent Caching**: Git agents are cached by commit hash for performance
 - **Branch Support**: All git operations support branch parameters
@@ -194,10 +196,10 @@ Located in `/node/packages/`, build order matters:
 10. **@codespin/shaman-git-resolver** - Git-based agent discovery (with caching)
 11. **@codespin/shaman-agents** - Unified agent resolution from all sources
 12. **@codespin/shaman-a2a-client** - HTTP client for A2A agent calls
-13. **@codespin/shaman-llm-vercel** - Vercel AI SDK provider
-14. **@codespin/shaman-tool-router** - Tool execution routing
-15. **@codespin/shaman-agent-executor** - Core agent execution engine
-16. **@codespin/shaman-workflow** - Workflow engine using BullMQ
+13. **@codespin/foreman-client** - Integration with Foreman workflow engine (external package)
+14. **@codespin/shaman-llm-vercel** - Vercel AI SDK provider
+15. **@codespin/shaman-tool-router** - Tool execution routing
+16. **@codespin/shaman-agent-executor** - Core agent execution engine
 17. **@codespin/shaman-a2a-server** - A2A protocol server (public/internal roles)
 18. **@codespin/shaman-gql-server** - GraphQL management API
 19. **@codespin/shaman-worker** - Background worker for job processing
@@ -234,6 +236,14 @@ For additional databases, use the same pattern:
 - `[DBNAME]_DB_NAME`
 - `[DBNAME]_DB_USER`
 - `[DBNAME]_DB_PASSWORD`
+
+External service configuration:
+- `FOREMAN_ENDPOINT` - Foreman REST API endpoint (default: http://localhost:3000)
+- `FOREMAN_API_KEY` - API key for Foreman authentication (format: `fmn_[env]_[orgId]_[random]`)
+- `SHAMAN_TASK_QUEUE` - Optional: Override Foreman task queue name (default: 'shaman:tasks')
+- `SHAMAN_RESULT_QUEUE` - Optional: Override Foreman result queue name (default: 'shaman:results')
+- `PERMISO_ENDPOINT` - Permiso GraphQL endpoint (default: http://localhost:5001/graphql)
+- `PERMISO_API_KEY` - Optional API key for Permiso
 
 ## Code Patterns
 
@@ -365,7 +375,9 @@ import { executeAgent } from "./agent-runner";
 - System documentation: `/docs/` directory
 - Architecture overview: `/docs/03-system-architecture.md`
 - API specification: `/docs/05-graphql-api-reference.md`
-- **External dependencies**: `/docs/external-dependencies/` - Documentation for services like Permiso (RBAC)
+- **External dependencies**: `/docs/external-dependencies/` - Documentation for external services:
+  - **Permiso**: RBAC and authorization service
+  - **Foreman**: Workflow orchestration engine (handles all runs, tasks, and run data)
 - **A2A Protocol**: `/docs/external-specs/a2a/` - Agent-to-agent communication spec
 - **MCP Protocol**: `/docs/external-specs/mcp/` - Model Context Protocol spec
 
@@ -528,7 +540,74 @@ The tool-router provides built-in platform tools for workflow data management:
 - `run_data_query` - Search data by patterns
 - `run_data_list` - List all stored data with metadata
 
-All workflow data is immutable and tracked by agent/step for full auditability.
+All workflow data is stored in Foreman and tracked by agent/step for full auditability.
+
+## Foreman Integration
+
+Shaman uses Foreman as an external service for all workflow orchestration:
+
+### Initialization
+```typescript
+// In shaman-a2a-server/src/start.ts
+import { initializeForemanClient } from '@codespin/foreman-client';
+
+await initializeForemanClient({
+  endpoint: process.env.FOREMAN_ENDPOINT || 'http://localhost:3000',
+  apiKey: process.env.FOREMAN_API_KEY || 'fmn_dev_default_key',
+  timeout: 30000,
+  queues: {
+    taskQueue: process.env.SHAMAN_TASK_QUEUE || 'shaman:tasks',
+    resultQueue: process.env.SHAMAN_RESULT_QUEUE || 'shaman:results'
+  }
+});
+```
+
+### Creating Workflow Runs
+```typescript
+import { createRun, createTask } from '@codespin/foreman-client';
+
+// Create a run
+const runResult = await createRun(config, {
+  inputData: {
+    agentName: 'my-agent',
+    input: { message: 'Hello' }
+  },
+  metadata: { 
+    source: 'a2a',
+    organizationId: 'org-123' 
+  }
+});
+
+if (runResult.success) {
+  // Create initial task
+  const taskResult = await createTask(config, {
+    runId: runResult.data.id,
+    type: 'agent-execution',
+    inputData: {
+      agentName: 'my-agent',
+      input: { message: 'Hello' }
+    }
+  });
+}
+```
+
+### Storing and Querying Run Data
+```typescript
+import { createRunData, queryRunData } from '@codespin/foreman-client';
+
+// Store data with tags
+const storeResult = await createRunData(config, 'run-123', {
+  taskId: 'task-456',
+  key: 'agent-response',
+  value: { result: 'success' },
+  tags: ['response', 'agent:my-agent']
+});
+
+// Query data
+const queryResult = await queryRunData(config, 'run-123', {
+  tags: ['response'],
+  limit: 10
+});
 
 ## Important Development Note
 

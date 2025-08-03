@@ -133,6 +133,32 @@ services:
       timeout: 5s
       retries: 5
 
+  # Foreman - Workflow Orchestration Engine
+  foreman:
+    image: ghcr.io/codespin-ai/foreman:latest
+    ports:
+      - "3001:3000"  # Map to 3001 to avoid conflict with default Foreman port
+    environment:
+      - FOREMAN_DB_HOST=postgres
+      - FOREMAN_DB_PORT=5432
+      - FOREMAN_DB_NAME=foreman
+      - FOREMAN_DB_USER=foreman
+      - FOREMAN_DB_PASSWORD=foreman
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - NODE_ENV=development
+      - LOG_LEVEL=debug
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
   # Mailslurper (for development email testing)
   mailslurper:
     image: oryd/mailslurper:latest-smtps
@@ -167,6 +193,9 @@ services:
       # Permiso
       - PERMISO_URL=http://permiso:5001/graphql
       - PERMISO_API_KEY=${PERMISO_API_KEY:-}
+      # Foreman
+      - FOREMAN_ENDPOINT=http://foreman:3000
+      - FOREMAN_API_KEY=${FOREMAN_API_KEY:-fmn_dev_default_key}
       # Server config
       - NODE_ENV=development
       - LOG_LEVEL=debug
@@ -179,6 +208,8 @@ services:
       kratos:
         condition: service_healthy
       permiso:
+        condition: service_healthy
+      foreman:
         condition: service_healthy
     volumes:
       - ./config.yaml:/app/config.yaml:ro

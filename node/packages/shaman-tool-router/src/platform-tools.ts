@@ -2,7 +2,7 @@
  * Platform tool implementations
  */
 
-import type { RunData } from '@codespin/shaman-types';
+// Platform tools use the persistence layer abstraction instead of direct Foreman calls
 import type {
   ToolHandler,
   PlatformToolSchemas,
@@ -37,16 +37,15 @@ function createRunDataWriteHandler(
 ): ToolHandler<PlatformToolSchemas['run_data_write'], void> {
   return async (input, context) => {
     try {
-      const workflowData: Omit<RunData, 'id' | 'createdAt'> = {
+      // Use persistence layer to store data
+      await deps.persistenceLayer.createRunData({
         runId: context.runId,
         key: input.key,
         value: input.value,
         createdByStepId: context.stepId,
         createdByAgentName: context.agentName,
         createdByAgentSource: context.agentSource
-      };
-
-      await deps.persistenceLayer.createRunData(workflowData);
+      });
       
       return { success: true, data: undefined };
     } catch (error) {
@@ -66,6 +65,7 @@ function createRunDataReadHandler(
 ): ToolHandler<PlatformToolSchemas['run_data_read'], PlatformToolResults['run_data_read']> {
   return async (input, context) => {
     try {
+      // Use persistence layer to read data
       const data = await deps.persistenceLayer.getRunData(
         context.runId,
         input.key
@@ -113,7 +113,8 @@ function createRunDataListHandler(
 ): ToolHandler<PlatformToolSchemas['run_data_list'], PlatformToolResults['run_data_list']> {
   return async (input, context) => {
     try {
-      const keys = await deps.persistenceLayer.listRunDataKeys(
+      // Use persistence layer to list data
+      const data = await deps.persistenceLayer.listRunDataKeys(
         context.runId,
         {
           agentName: input.filterByAgent,
@@ -122,9 +123,9 @@ function createRunDataListHandler(
       );
       
       // Apply limit if specified
-      const limitedKeys = input.limit ? keys.slice(0, input.limit) : keys;
+      const limitedData = input.limit ? data.slice(0, input.limit) : data;
       
-      return { success: true, data: limitedKeys };
+      return { success: true, data: limitedData };
     } catch (error) {
       return {
         success: false,

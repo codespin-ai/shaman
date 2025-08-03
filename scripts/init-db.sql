@@ -15,6 +15,11 @@ CREATE USER shaman WITH PASSWORD 'shaman';
 CREATE DATABASE shaman;
 GRANT ALL PRIVILEGES ON DATABASE shaman TO shaman;
 
+-- Foreman database
+CREATE USER foreman WITH PASSWORD 'foreman';
+CREATE DATABASE foreman;
+GRANT ALL PRIVILEGES ON DATABASE foreman TO foreman;
+
 -- Grant schema permissions (PostgreSQL 15+)
 \c kratos
 GRANT ALL ON SCHEMA public TO kratos;
@@ -24,3 +29,6 @@ GRANT ALL ON SCHEMA public TO permiso;
 
 \c shaman
 GRANT ALL ON SCHEMA public TO shaman;
+
+\c foreman
+GRANT ALL ON SCHEMA public TO foreman;
