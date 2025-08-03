@@ -7,7 +7,7 @@ import type {
   Message,
   ToolCall,
   Step,
-  WorkflowContext,
+  RunContext,
   ExecutionState
 } from '@codespin/shaman-types';
 import type { ToolRouter } from '@codespin/shaman-tool-router';
@@ -42,7 +42,7 @@ export type AgentExecutorDependencies = {
     getStep: (id: string) => Promise<Step | null>;
   };
   readonly a2aClient?: {
-    executeAgent: (agentName: string, prompt: string, context: WorkflowContext) => Promise<Result<{ id: string; status: { state: string }; artifacts: unknown[] }>>;
+    executeAgent: (agentName: string, prompt: string, context: RunContext) => Promise<Result<{ id: string; status: { state: string }; artifacts: unknown[] }>>;
   };
 };
 
@@ -55,7 +55,7 @@ export type AgentExecutionRequest = {
   input?: string;
   contextId?: string;
   contextScope?: 'FULL' | 'NONE';
-  context: WorkflowContext;
+  context: RunContext;
   organizationId: string;
   runId: string;
   stepId: string;

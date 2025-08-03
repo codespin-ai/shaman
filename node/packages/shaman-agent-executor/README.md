@@ -82,7 +82,7 @@ The executor maintains conversation state including:
 ### Tool Execution
 
 Tools are executed through the tool router with support for:
-- Platform tools (`workflow_data_*`)
+- Platform tools (`run_data_*`)
 - MCP server tools
 - Agent calls (delegated to workflow engine)
 
@@ -178,8 +178,8 @@ model: gpt-4
 temperature: 0.7
 maxIterations: 10
 tools:
-  - workflow_data_write
-  - workflow_data_read
+  - run_data_write
+  - run_data_read
 allowedAgentCalls:
   - helper-agent
   - validator-agent

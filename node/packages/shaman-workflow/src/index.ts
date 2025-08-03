@@ -7,4 +7,4 @@
 export * from './types.js';
 export { createWorkflowEngine } from './engine.js';
 export { createWorker } from './worker.js';
-export { startWorkflow, getWorkflowStatus, cancelWorkflow } from './api.js';
+export { startRun, getRunStatus, cancelRun } from './api.js';

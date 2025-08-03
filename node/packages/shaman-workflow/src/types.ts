@@ -1,5 +1,5 @@
 /**
- * Types for workflow engine
+ * Types for the workflow engine that orchestrates runs
  */
 
 export type WorkflowConfig = {
@@ -19,8 +19,8 @@ export type WorkflowConfig = {
   };
 };
 
-// Step execution request
-export type StepRequest = {
+// Task execution request
+export type TaskRequest = {
   stepId: string;
   stepType: 'agent' | 'tool';
   name: string; // Agent name or tool name
@@ -42,8 +42,8 @@ export type AsyncPollRequest = {
   nextPollDelay?: number; // MS until next poll
 };
 
-// Step execution result
-export type StepResult = {
+// Task execution result
+export type TaskResult = {
   success: boolean;
   output?: unknown;
   error?: string;

@@ -214,9 +214,9 @@ export type ToolCall = {
 };
 
 /**
- * Workflow context for sharing data between agents
+ * Run context for sharing data between agents
  */
-export type WorkflowContext = {
+export type RunContext = {
   readonly runId: string;
   readonly memory: Map<string, unknown>;
   readonly results: {
@@ -226,9 +226,9 @@ export type WorkflowContext = {
 };
 
 /**
- * Immutable workflow data entry
+ * Immutable run data entry
  */
-export type WorkflowData = {
+export type RunData = {
   readonly id: string;
   readonly runId: string;
   readonly key: string;

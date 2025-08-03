@@ -523,10 +523,10 @@ Features:
 ## Platform Tools
 
 The tool-router provides built-in platform tools for workflow data management:
-- `workflow_data_write` - Store data for agent collaboration
-- `workflow_data_read` - Retrieve specific data by key
-- `workflow_data_query` - Search data by patterns
-- `workflow_data_list` - List all stored data with metadata
+- `run_data_write` - Store data for agent collaboration
+- `run_data_read` - Retrieve specific data by key
+- `run_data_query` - Search data by patterns
+- `run_data_list` - List all stored data with metadata
 
 All workflow data is immutable and tracked by agent/step for full auditability.
 

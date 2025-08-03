@@ -19,8 +19,8 @@ model: gpt-4
 temperature: 0.7
 exposed: true  # Must be true to appear in AgentCard
 tools:
-  - workflow_data_read
-  - workflow_data_write
+  - run_data_read
+  - run_data_write
   - call_agent
 tags: ["support", "customer-service"]
 ---

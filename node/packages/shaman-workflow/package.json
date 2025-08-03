@@ -1,7 +1,7 @@
 {
   "name": "@codespin/shaman-workflow",
   "version": "0.0.1",
-  "description": "Workflow engine for Shaman using BullMQ",
+  "description": "Workflow engine that orchestrates runs in Shaman using BullMQ",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",

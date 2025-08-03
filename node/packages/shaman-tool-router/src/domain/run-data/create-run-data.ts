@@ -1,23 +1,23 @@
-import type { WorkflowData } from '@codespin/shaman-types';
+import type { RunData } from '@codespin/shaman-types';
 import type { Database } from '@codespin/shaman-db';
 import { v4 as uuidv4 } from 'uuid';
-import { mapWorkflowDataFromDb } from './mappers/map-workflow-data-from-db.js';
-import { mapWorkflowDataToDb } from './mappers/map-workflow-data-to-db.js';
-import type { WorkflowDataDbRow } from './types.js';
+import { mapRunDataFromDb } from './mappers/map-run-data-from-db.js';
+import { mapRunDataToDb } from './mappers/map-run-data-to-db.js';
+import type { RunDataDbRow } from './types.js';
 
 /**
- * Create a workflow data entry
+ * Create a run data entry
  */
-export async function createWorkflowData(
+export async function createRunData(
   db: Database,
-  data: Omit<WorkflowData, 'id' | 'createdAt'>
-): Promise<WorkflowData> {
+  data: Omit<RunData, 'id' | 'createdAt'>
+): Promise<RunData> {
   const id = uuidv4();
   const createdAt = new Date();
-  const dbData = mapWorkflowDataToDb(data);
+  const dbData = mapRunDataToDb(data);
   
-  const result = await db.one<WorkflowDataDbRow>(
-    `INSERT INTO workflow_data 
+  const result = await db.one<RunDataDbRow>(
+    `INSERT INTO run_data 
      (id, run_id, key, value, created_by_step_id, created_by_agent_name, created_by_agent_source, created_at)
      VALUES ($(id), $(run_id), $(key), $(value), $(created_by_step_id), $(created_by_agent_name), $(created_by_agent_source), $(created_at))
      RETURNING *`,
@@ -33,5 +33,5 @@ export async function createWorkflowData(
     }
   );
   
-  return mapWorkflowDataFromDb(result);
+  return mapRunDataFromDb(result);
 }

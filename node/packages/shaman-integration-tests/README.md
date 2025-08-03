@@ -25,7 +25,7 @@ shaman-integration-tests/
 Before tests can be enabled and run, the following components must be implemented in Shaman:
 
 ### 1. GraphQL Schema (`shaman-gql-server/src/schema.graphql`)
-- Define types for AgentRepository, GitAgent, Run, Step, WorkflowData
+- Define types for AgentRepository, GitAgent, Run, Step, RunData
 - Define queries for listing and fetching entities
 - Define mutations for management operations (NO execution)
 
@@ -191,7 +191,7 @@ SHAMAN_DB_PASSWORD=postgres   # Default: postgres
 - [ ] Error handling and recovery
 
 ### Data Management
-- [ ] Workflow data storage and retrieval
+- [ ] Run data storage and retrieval
 - [ ] Data immutability
 - [ ] Query patterns (by key, agent, time range)
 

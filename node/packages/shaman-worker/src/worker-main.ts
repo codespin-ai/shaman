@@ -1,5 +1,5 @@
 /**
- * Worker process that executes workflow steps
+ * Worker process that executes run steps
  */
 
 import { Worker } from 'bullmq';
@@ -8,7 +8,7 @@ import { createLogger } from '@codespin/shaman-logger';
 import { createRlsDb } from '@codespin/shaman-db';
 import { createA2AClient } from '@codespin/shaman-a2a-client';
 import { generateStepId } from '@codespin/shaman-agent-executor';
-import type { StepRequest, WorkflowConfig } from '@codespin/shaman-workflow';
+import type { TaskRequest, WorkflowConfig } from '@codespin/shaman-workflow';
 import type { Message } from '@codespin/shaman-a2a-protocol';
 
 const logger = createLogger('Worker');
@@ -16,21 +16,21 @@ const logger = createLogger('Worker');
 // Tool handlers registry
 const toolHandlers: Record<string, ToolHandler> = {
   'call_agent': handleCallAgentTool,
-  'workflow_data_write': handleWorkflowDataWrite,
-  'workflow_data_read': handleWorkflowDataRead,
+  'run_data_write': handleRunDataWrite,
+  'run_data_read': handleRunDataRead,
   // Add more tool handlers here
 };
 
 type ToolHandler = (
   stepId: string,
   input: unknown,
-  context: StepRequest['context']
+  context: TaskRequest['context']
 ) => Promise<unknown>;
 
 /**
  * Main worker for executing steps
  */
-export function createStepWorker(config: WorkflowConfig): Worker<StepRequest> {
+export function createStepWorker(config: WorkflowConfig): Worker<TaskRequest> {
   const connection = {
     host: config.redis.host,
     port: config.redis.port,
@@ -38,9 +38,9 @@ export function createStepWorker(config: WorkflowConfig): Worker<StepRequest> {
     db: config.redis.db
   };
 
-  const worker = new Worker<StepRequest>(
+  const worker = new Worker<TaskRequest>(
     config.queues.stepExecution,
-    async (job: Job<StepRequest>) => {
+    async (job: Job<TaskRequest>) => {
       const { stepId, stepType, name, context, input } = job.data;
       const db = createRlsDb(context.organizationId);
 
@@ -142,7 +142,7 @@ async function executeAgent(
   stepId: string,
   agentName: string,
   input: unknown,
-  context: StepRequest['context']
+  context: TaskRequest['context']
 ): Promise<unknown> {
   // Generate JWT for internal A2A call
   const jwt = generateInternalJWT({
@@ -224,7 +224,7 @@ async function executeTool(
   stepId: string,
   toolName: string,
   input: unknown,
-  context: StepRequest['context']
+  context: TaskRequest['context']
 ): Promise<unknown> {
   const handler = toolHandlers[toolName];
   
@@ -241,7 +241,7 @@ async function executeTool(
 async function handleCallAgentTool(
   stepId: string,
   input: unknown,
-  context: StepRequest['context']
+  context: TaskRequest['context']
 ): Promise<unknown> {
   const { agent, task, mode = 'sync' } = input as { agent: string; task: string; mode?: string };
   const db = createRlsDb(context.organizationId);
@@ -285,12 +285,12 @@ async function handleCallAgentTool(
 }
 
 /**
- * Handle workflow_data_write tool
+ * Handle run_data_write tool
  */
-async function handleWorkflowDataWrite(
+async function handleRunDataWrite(
   stepId: string,
   input: unknown,
-  context: StepRequest['context']
+  context: TaskRequest['context']
 ): Promise<unknown> {
   const { key, value } = input as { key: string; value: unknown };
   const db = createRlsDb(context.organizationId);
@@ -308,7 +308,7 @@ async function handleWorkflowDataWrite(
   );
 
   await db.none(`
-    INSERT INTO workflow_data (
+    INSERT INTO run_data (
       run_id, key, value, created_by_agent_name, created_by_step_id
     ) VALUES (
       $(runId), $(key), $(value), $(agentName), $(stepId)
@@ -327,18 +327,18 @@ async function handleWorkflowDataWrite(
 }
 
 /**
- * Handle workflow_data_read tool
+ * Handle run_data_read tool
  */
-async function handleWorkflowDataRead(
+async function handleRunDataRead(
   stepId: string,
   input: unknown,
-  context: StepRequest['context']
+  context: TaskRequest['context']
 ): Promise<unknown> {
   const { key } = input as { key: string };
   const db = createRlsDb(context.organizationId);
 
   const data = await db.oneOrNone<{ value: unknown }>(
-    'SELECT value FROM workflow_data WHERE run_id = $(runId) AND key = $(key)',
+    'SELECT value FROM run_data WHERE run_id = $(runId) AND key = $(key)',
     { runId: context.runId, key }
   );
 

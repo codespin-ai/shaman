@@ -154,7 +154,7 @@ describe.skip('Workflow Runs', () => {
     });
   });
 
-  describe('workflowData', () => {
+  describe('runData', () => {
     it('should store and retrieve workflow data', async () => {
       // Create a run and step
       const setupMutation = gql`
@@ -186,8 +186,8 @@ describe.skip('Workflow Runs', () => {
 
       // Store workflow data
       const storeMutation = gql`
-        mutation StoreWorkflowData($input: StoreWorkflowDataInput!) {
-          storeWorkflowData(input: $input) {
+        mutation StoreRunData($input: StoreRunDataInput!) {
+          storeRunData(input: $input) {
             id
             key
             value
@@ -212,14 +212,14 @@ describe.skip('Workflow Runs', () => {
         }
       });
 
-      const storedData = storeResult.data?.storeWorkflowData;
+      const storedData = storeResult.data?.storeRunData;
       expect(storedData?.key).to.equal('analyzed_entities');
       expect(storedData?.value.users).to.have.members(['user1', 'user2']);
 
       // Query workflow data
       const query = gql`
-        query GetWorkflowData($runId: ID!, $key: String!) {
-          workflowData(runId: $runId, key: $key) {
+        query GetRunData($runId: ID!, $key: String!) {
+          runData(runId: $runId, key: $key) {
             id
             key
             value
@@ -234,7 +234,7 @@ describe.skip('Workflow Runs', () => {
         key: 'analyzed_entities'
       });
 
-      const retrievedData = queryResult.data?.workflowData;
+      const retrievedData = queryResult.data?.runData;
       expect(retrievedData).to.have.lengthOf(1);
       expect(retrievedData[0].value).to.deep.equal(storedData?.value);
     });

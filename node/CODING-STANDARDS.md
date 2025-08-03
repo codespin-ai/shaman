@@ -401,13 +401,13 @@ Always use named parameters in SQL queries for clarity and safety. Use pg-promis
 
 ```typescript
 // ✅ Good - Named parameters
-export async function createWorkflowData(
-  data: WorkflowDataInput,
+export async function createRunData(
+  data: RunDataInput,
   db: Database
-): Promise<Result<WorkflowData, DatabaseError>> {
+): Promise<Result<RunData, DatabaseError>> {
   try {
     const result = await db.one(
-      `INSERT INTO workflow_data 
+      `INSERT INTO run_data 
        (run_id, key, value, created_by_agent_name, created_by_agent_source, created_by_step_id)
        VALUES ($(runId), $(key), $(value), $(agentName), $(agentSource), $(stepId))
        RETURNING *`,
@@ -427,20 +427,20 @@ export async function createWorkflowData(
 }
 
 // ❌ Bad - Positional parameters
-export async function createWorkflowData(data: WorkflowDataInput, db: Database) {
+export async function createRunData(data: RunDataInput, db: Database) {
   const result = await db.query(
-    `INSERT INTO workflow_data VALUES ($1, $2, $3, $4, $5, $6)`,
+    `INSERT INTO run_data VALUES ($1, $2, $3, $4, $5, $6)`,
     [data.runId, data.key, data.value, data.agentName, data.agentSource, data.stepId]
   );
 }
 
 // ✅ Good - Complex queries with named parameters
-export async function findWorkflowDataByAgent(
-  filters: WorkflowDataFilters,
+export async function findRunDataByAgent(
+  filters: RunDataFilters,
   db: Database
-): Promise<Result<WorkflowData[], DatabaseError>> {
+): Promise<Result<RunData[], DatabaseError>> {
   const query = `
-    SELECT * FROM workflow_data 
+    SELECT * FROM run_data 
     WHERE run_id = $(runId)
       AND created_by_agent_name = $(agentName)
       ${filters.afterDate ? 'AND created_at > $(afterDate)' : ''}
@@ -755,8 +755,8 @@ export function createPlatformToolHandlers(
   dependencies: ToolRouterDependencies
 ): PlatformToolHandlers {
   return {
-    workflow_data_write: async (input, context) => {
-      const data = await dependencies.persistenceLayer.createWorkflowData({
+    run_data_write: async (input, context) => {
+      const data = await dependencies.persistenceLayer.createRunData({
         runId: context.runId,
         key: input.key,
         value: input.value,
@@ -768,8 +768,8 @@ export function createPlatformToolHandlers(
       return { success: true, data: undefined };
     },
     
-    workflow_data_read: async (input, context) => {
-      const data = await dependencies.persistenceLayer.getWorkflowData(
+    run_data_read: async (input, context) => {
+      const data = await dependencies.persistenceLayer.getRunData(
         context.runId,
         input.key
       );

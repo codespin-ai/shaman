@@ -156,8 +156,8 @@ description: An example agent
 model: gpt-4
 temperature: 0.7
 tools:
-  - workflow_data_write
-  - workflow_data_read
+  - run_data_write
+  - run_data_read
 ---
 
 You are an example agent that helps users...

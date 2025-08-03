@@ -9,7 +9,7 @@ import type {
 } from '@codespin/shaman-a2a-protocol';
 import type { A2AMethodContext } from '@codespin/shaman-a2a-transport';
 import { createLogger } from '@codespin/shaman-logger';
-import { startWorkflow, getWorkflowStatus, cancelWorkflow } from '@codespin/shaman-workflow';
+import { startRun, getRunStatus, cancelRun } from '@codespin/shaman-workflow';
 import { v4 as uuidv4 } from 'uuid';
 import type { A2AServerConfig, TaskExecutionRequest } from './types.js';
 import { taskNotFound, taskNotCancelable, internalError } from '@codespin/shaman-jsonrpc';
@@ -55,8 +55,8 @@ export class A2ARequestHandler {
         userId: context.userId
       };
 
-      // Start workflow
-      const result = await startWorkflow({
+      // Start run
+      const result = await startRun({
         id: taskId,
         name: 'agent-execution',
         data: taskRequest,
@@ -64,7 +64,7 @@ export class A2ARequestHandler {
       });
 
       if (!result.success) {
-        logger.error('Failed to start workflow', result.error);
+        logger.error('Failed to start run', result.error);
         throw internalError('Failed to start task');
       }
 
@@ -98,7 +98,7 @@ export class A2ARequestHandler {
     });
 
     // For MVP, we'll return a simple acknowledgment
-    // Real implementation would stream workflow updates
+    // Real implementation would stream run updates
     const taskId = uuidv4();
 
     // First yield the task
@@ -113,7 +113,7 @@ export class A2ARequestHandler {
     };
     yield task;
 
-    // TODO: Subscribe to workflow events and stream them
+    // TODO: Subscribe to run events and stream them
     
     // For now, yield a completion message
     const message: Message = {
@@ -141,17 +141,17 @@ export class A2ARequestHandler {
     });
 
     try {
-      const status = await getWorkflowStatus(params.id, context.organizationId!);
+      const status = await getRunStatus(params.id, context.organizationId!);
       
       if (!status.success) {
         throw taskNotFound(params.id);
       }
 
-      const workflow = status.data;
+      const run = status.data;
       
-      // Map workflow status to task state
+      // Map run status to task state
       let taskState: TaskState;
-      switch (workflow.status) {
+      switch (run.status) {
         case 'waiting':
         case 'active':
           taskState = TaskState.Working;
@@ -197,21 +197,21 @@ export class A2ARequestHandler {
 
     try {
       // Get current status first
-      const status = await getWorkflowStatus(params.id, context.organizationId!);
+      const status = await getRunStatus(params.id, context.organizationId!);
       
       if (!status.success) {
         throw taskNotFound(params.id);
       }
 
-      const workflow = status.data;
+      const run = status.data;
       
       // Check if task can be canceled
-      if (workflow.status === 'completed' || workflow.status === 'failed') {
-        throw taskNotCancelable(params.id, workflow.status);
+      if (run.status === 'completed' || run.status === 'failed') {
+        throw taskNotCancelable(params.id, run.status);
       }
 
-      // Cancel the workflow
-      const result = await cancelWorkflow(params.id, context.organizationId!);
+      // Cancel the run
+      const result = await cancelRun(params.id, context.organizationId!);
       
       if (!result.success) {
         throw internalError('Failed to cancel task');
@@ -251,6 +251,6 @@ export class A2ARequestHandler {
     
     yield task;
 
-    // TODO: Subscribe to workflow events and stream them
+    // TODO: Subscribe to run events and stream them
   }
 }

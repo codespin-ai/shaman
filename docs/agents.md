@@ -14,8 +14,8 @@ description: Handles customer inquiries
 model: gpt-4              # LLM model to use
 temperature: 0.7
 tools:                    # Available tools
-  - workflow_data_write
-  - workflow_data_read
+  - run_data_write
+  - run_data_read
   - call_agent
 ---
 
@@ -51,19 +51,19 @@ Task: {{task}}
 
 Built-in tools available to all agents:
 
-**workflow_data_write**
+**run_data_write**
 ```yaml
 # Store data for other agents
-- tool: workflow_data_write
+- tool: run_data_write
   args:
     key: "customer_email"
     value: "user@example.com"
 ```
 
-**workflow_data_read**
+**run_data_read**
 ```yaml
 # Retrieve stored data
-- tool: workflow_data_read
+- tool: run_data_read
   args:
     key: "customer_email"
 ```
@@ -120,12 +120,12 @@ Coordinate between agents to complete orders.
 ```markdown
 ---
 name: DataCollector
-tools: [workflow_data_write, call_agent]
+tools: [run_data_write, call_agent]
 ---
 
 You collect customer information and share it with other agents.
 
-Always write collected data using workflow_data_write before calling other agents:
+Always write collected data using run_data_write before calling other agents:
 - customer_email
 - order_items
 - shipping_address
@@ -209,14 +209,14 @@ shaman-cli agent send CustomerSupport "Help with order #123" --mock-tools
 ---
 name: TestableAgent
 model: gpt-4
-tools: [workflow_data_read, workflow_data_write]
+tools: [run_data_read, run_data_write]
 ---
 
 You help test the workflow system.
 
 Test scenarios:
-1. Write test data: use workflow_data_write with key "test_{{timestamp}}"
-2. Read test data: use workflow_data_read
+1. Write test data: use run_data_write with key "test_{{timestamp}}"
+2. Read test data: use run_data_read
 3. Report results clearly
 ```
 
@@ -227,12 +227,12 @@ Test scenarios:
 ```markdown
 ---
 name: SmartRouter
-tools: [call_agent, workflow_data_read]
+tools: [call_agent, run_data_read]
 ---
 
 Route requests based on context:
 - If amount > $1000: call FraudChecker first
-- If customer is VIP (check workflow_data): call VIPHandler
+- If customer is VIP (check run_data): call VIPHandler
 - Otherwise: process normally
 ```
 
@@ -241,11 +241,11 @@ Route requests based on context:
 ```markdown
 ---
 name: ResilientAgent
-tools: [call_agent, workflow_data_write]
+tools: [call_agent, run_data_write]
 ---
 
 Handle errors gracefully:
-1. If agent call fails, write error to workflow_data
+1. If agent call fails, write error to run_data
 2. Try alternative agent if available
 3. Always provide helpful error messages
 
@@ -257,7 +257,7 @@ Never expose internal errors to users.
 ```markdown
 ---
 name: WorkflowOrchestrator
-tools: [call_agent, workflow_data_write, workflow_data_read]
+tools: [call_agent, run_data_write, run_data_read]
 ---
 
 Orchestrate complex workflows:
@@ -268,7 +268,7 @@ Orchestrate complex workflows:
 4. If any step fails, call ErrorHandler
 5. Write final status
 
-Always maintain workflow state in workflow_data.
+Always maintain workflow state in run_data.
 ```
 
 ## Best Practices

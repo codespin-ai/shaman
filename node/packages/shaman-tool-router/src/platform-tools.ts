@@ -2,7 +2,7 @@
  * Platform tool implementations
  */
 
-import type { WorkflowData } from '@codespin/shaman-types';
+import type { RunData } from '@codespin/shaman-types';
 import type {
   ToolHandler,
   PlatformToolSchemas,
@@ -22,22 +22,22 @@ export function createPlatformToolHandlers(
   deps: ToolRouterDependencies
 ): PlatformToolHandlers {
   return {
-    workflow_data_write: createWorkflowDataWriteHandler(deps),
-    workflow_data_read: createWorkflowDataReadHandler(deps),
-    workflow_data_query: createWorkflowDataQueryHandler(deps),
-    workflow_data_list: createWorkflowDataListHandler(deps)
+    run_data_write: createRunDataWriteHandler(deps),
+    run_data_read: createRunDataReadHandler(deps),
+    run_data_query: createRunDataQueryHandler(deps),
+    run_data_list: createRunDataListHandler(deps)
   };
 }
 
 /**
- * workflow_data_write handler
+ * run_data_write handler
  */
-function createWorkflowDataWriteHandler(
+function createRunDataWriteHandler(
   deps: ToolRouterDependencies
-): ToolHandler<PlatformToolSchemas['workflow_data_write'], void> {
+): ToolHandler<PlatformToolSchemas['run_data_write'], void> {
   return async (input, context) => {
     try {
-      const workflowData: Omit<WorkflowData, 'id' | 'createdAt'> = {
+      const workflowData: Omit<RunData, 'id' | 'createdAt'> = {
         runId: context.runId,
         key: input.key,
         value: input.value,
@@ -46,27 +46,27 @@ function createWorkflowDataWriteHandler(
         createdByAgentSource: context.agentSource
       };
 
-      await deps.persistenceLayer.createWorkflowData(workflowData);
+      await deps.persistenceLayer.createRunData(workflowData);
       
       return { success: true, data: undefined };
     } catch (error) {
       return {
         success: false,
-        error: error instanceof Error ? error : new Error('Failed to write workflow data')
+        error: error instanceof Error ? error : new Error('Failed to write run data')
       };
     }
   };
 }
 
 /**
- * workflow_data_read handler
+ * run_data_read handler
  */
-function createWorkflowDataReadHandler(
+function createRunDataReadHandler(
   deps: ToolRouterDependencies
-): ToolHandler<PlatformToolSchemas['workflow_data_read'], PlatformToolResults['workflow_data_read']> {
+): ToolHandler<PlatformToolSchemas['run_data_read'], PlatformToolResults['run_data_read']> {
   return async (input, context) => {
     try {
-      const data = await deps.persistenceLayer.getWorkflowData(
+      const data = await deps.persistenceLayer.getRunData(
         context.runId,
         input.key
       );
@@ -75,21 +75,21 @@ function createWorkflowDataReadHandler(
     } catch (error) {
       return {
         success: false,
-        error: error instanceof Error ? error : new Error('Failed to read workflow data')
+        error: error instanceof Error ? error : new Error('Failed to read run data')
       };
     }
   };
 }
 
 /**
- * workflow_data_query handler
+ * run_data_query handler
  */
-function createWorkflowDataQueryHandler(
+function createRunDataQueryHandler(
   deps: ToolRouterDependencies
-): ToolHandler<PlatformToolSchemas['workflow_data_query'], PlatformToolResults['workflow_data_query']> {
+): ToolHandler<PlatformToolSchemas['run_data_query'], PlatformToolResults['run_data_query']> {
   return async (input, context) => {
     try {
-      const data = await deps.persistenceLayer.queryWorkflowData(
+      const data = await deps.persistenceLayer.queryRunData(
         context.runId,
         input.pattern,
         input.limit
@@ -99,21 +99,21 @@ function createWorkflowDataQueryHandler(
     } catch (error) {
       return {
         success: false,
-        error: error instanceof Error ? error : new Error('Failed to query workflow data')
+        error: error instanceof Error ? error : new Error('Failed to query run data')
       };
     }
   };
 }
 
 /**
- * workflow_data_list handler
+ * run_data_list handler
  */
-function createWorkflowDataListHandler(
+function createRunDataListHandler(
   deps: ToolRouterDependencies
-): ToolHandler<PlatformToolSchemas['workflow_data_list'], PlatformToolResults['workflow_data_list']> {
+): ToolHandler<PlatformToolSchemas['run_data_list'], PlatformToolResults['run_data_list']> {
   return async (input, context) => {
     try {
-      const keys = await deps.persistenceLayer.listWorkflowDataKeys(
+      const keys = await deps.persistenceLayer.listRunDataKeys(
         context.runId,
         {
           agentName: input.filterByAgent,
@@ -128,7 +128,7 @@ function createWorkflowDataListHandler(
     } catch (error) {
       return {
         success: false,
-        error: error instanceof Error ? error : new Error('Failed to list workflow data')
+        error: error instanceof Error ? error : new Error('Failed to list run data')
       };
     }
   };
@@ -138,9 +138,9 @@ function createWorkflowDataListHandler(
  * Platform tool definitions
  */
 export const PLATFORM_TOOL_DEFINITIONS = {
-  workflow_data_write: {
-    name: 'workflow_data_write',
-    description: 'Write data to workflow storage for sharing between agents',
+  run_data_write: {
+    name: 'run_data_write',
+    description: 'Write data to run storage for sharing between agents',
     schema: {
       type: 'object',
       properties: {
@@ -159,9 +159,9 @@ export const PLATFORM_TOOL_DEFINITIONS = {
     },
     isPlatformTool: true
   },
-  workflow_data_read: {
-    name: 'workflow_data_read',
-    description: 'Read data from workflow storage by key',
+  run_data_read: {
+    name: 'run_data_read',
+    description: 'Read data from run storage by key',
     schema: {
       type: 'object',
       properties: {
@@ -172,9 +172,9 @@ export const PLATFORM_TOOL_DEFINITIONS = {
     },
     isPlatformTool: true
   },
-  workflow_data_query: {
-    name: 'workflow_data_query',
-    description: 'Query workflow data using pattern matching',
+  run_data_query: {
+    name: 'run_data_query',
+    description: 'Query run data using pattern matching',
     schema: {
       type: 'object',
       properties: {
@@ -185,9 +185,9 @@ export const PLATFORM_TOOL_DEFINITIONS = {
     },
     isPlatformTool: true
   },
-  workflow_data_list: {
-    name: 'workflow_data_list',
-    description: 'List all workflow data keys with optional filtering',
+  run_data_list: {
+    name: 'run_data_list',
+    description: 'List all run data keys with optional filtering',
     schema: {
       type: 'object',
       properties: {

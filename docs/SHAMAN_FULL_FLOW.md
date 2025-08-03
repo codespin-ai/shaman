@@ -322,9 +322,9 @@ export async function executeToolCall(
 Shaman provides built-in platform tools for workflow data management:
 
 ```typescript
-// Platform tool: workflow_data_write
+// Platform tool: run_data_write
 {
-  name: 'workflow_data_write',
+  name: 'run_data_write',
   description: 'Store data for agent collaboration',
   inputSchema: z.object({
     key: z.string(),
@@ -333,7 +333,7 @@ Shaman provides built-in platform tools for workflow data management:
   }),
   execute: async ({ key, value, description }) => {
     await db.none(`
-      INSERT INTO workflow_data (workflow_id, key, value, description, agent_id, step_id)
+      INSERT INTO run_data (workflow_id, key, value, description, agent_id, step_id)
       VALUES ($(workflowId), $(key), $(value), $(description), $(agentId), $(stepId))
     `, {
       workflowId: context.workflowId,
@@ -520,7 +520,7 @@ temperature: 0.3
 tools:
   - file_search
   - code_analysis
-  - workflow_data_write
+  - run_data_write
 providers:
   file_search:
     type: mcp
@@ -534,7 +534,7 @@ You are a code analysis expert. Your role is to:
 2. Analyze code structure and dependencies
 3. Provide insights about code quality
 
-Always store your findings using workflow_data_write for other agents to access.
+Always store your findings using run_data_write for other agents to access.
 ```
 
 ### A2A Message Format
@@ -644,10 +644,10 @@ interface Tool {
 
 ### Platform Tools
 
-1. **workflow_data_write** - Store data for agent collaboration
-2. **workflow_data_read** - Retrieve specific data by key
-3. **workflow_data_query** - Search data by patterns
-4. **workflow_data_list** - List all stored data
+1. **run_data_write** - Store data for agent collaboration
+2. **run_data_read** - Retrieve specific data by key
+3. **run_data_query** - Search data by patterns
+4. **run_data_list** - List all stored data
 
 ### MCP (Model Context Protocol) Tools
 

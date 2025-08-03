@@ -3,7 +3,7 @@
  */
 
 import type { Result } from '@codespin/shaman-core';
-import type { WorkflowData, AgentSource } from '@codespin/shaman-types';
+import type { RunData, AgentSource } from '@codespin/shaman-types';
 
 /**
  * Tool execution context
@@ -19,16 +19,16 @@ export type ToolExecutionContext = {
  * Platform tool types
  */
 export type PlatformToolName = 
-  | 'workflow_data_write'
-  | 'workflow_data_read'
-  | 'workflow_data_query'
-  | 'workflow_data_list';
+  | 'run_data_write'
+  | 'run_data_read'
+  | 'run_data_query'
+  | 'run_data_list';
 
 /**
  * Platform tool schemas
  */
 export type PlatformToolSchemas = {
-  workflow_data_write: {
+  run_data_write: {
     key: string;
     value: unknown;
     metadata?: {
@@ -37,15 +37,15 @@ export type PlatformToolSchemas = {
       ttl?: number;
     };
   };
-  workflow_data_read: {
+  run_data_read: {
     key: string;
     includeMetadata?: boolean;
   };
-  workflow_data_query: {
+  run_data_query: {
     pattern: string;
     limit?: number;
   };
-  workflow_data_list: {
+  run_data_list: {
     filterByAgent?: string;
     prefix?: string;
     limit?: number;
@@ -56,10 +56,10 @@ export type PlatformToolSchemas = {
  * Platform tool results
  */
 export type PlatformToolResults = {
-  workflow_data_write: void;
-  workflow_data_read: WorkflowData[];
-  workflow_data_query: WorkflowData[];
-  workflow_data_list: Array<{
+  run_data_write: void;
+  run_data_read: RunData[];
+  run_data_query: RunData[];
+  run_data_list: Array<{
     key: string;
     count: number;
     agents: string[];
@@ -99,10 +99,10 @@ export type McpServerConnection = {
  */
 export type ToolRouterDependencies = {
   readonly persistenceLayer: {
-    createWorkflowData: (data: Omit<WorkflowData, 'id' | 'createdAt'>) => Promise<WorkflowData>;
-    getWorkflowData: (runId: string, key: string) => Promise<WorkflowData[]>;
-    queryWorkflowData: (runId: string, pattern: string, limit?: number) => Promise<WorkflowData[]>;
-    listWorkflowDataKeys: (runId: string, filters?: { agentName?: string; prefix?: string }) => Promise<Array<{ key: string; count: number; agents: string[] }>>;
+    createRunData: (data: Omit<RunData, 'id' | 'createdAt'>) => Promise<RunData>;
+    getRunData: (runId: string, key: string) => Promise<RunData[]>;
+    queryRunData: (runId: string, pattern: string, limit?: number) => Promise<RunData[]>;
+    listRunDataKeys: (runId: string, filters?: { agentName?: string; prefix?: string }) => Promise<Array<{ key: string; count: number; agents: string[] }>>;
   };
   readonly mcpClient?: {
     callTool: (server: McpServerConnection, toolName: string, args: unknown) => Promise<Result<unknown>>;

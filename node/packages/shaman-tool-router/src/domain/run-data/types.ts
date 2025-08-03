@@ -1,12 +1,12 @@
 /**
- * Type definitions for workflow data domain
+ * Type definitions for run data domain
  */
 
 /**
- * Database row type for workflow_data table
+ * Database row type for run_data table
  * Mirrors the exact database schema
  */
-export type WorkflowDataDbRow = {
+export type RunDataDbRow = {
   id: string;
   run_id: string;
   key: string;

@@ -1,17 +1,17 @@
 /**
- * BullMQ workflow engine
+ * BullMQ workflow engine that orchestrates runs
  */
 
 import { Queue } from 'bullmq';
 import type { JobsOptions } from 'bullmq';
 import { createLogger } from '@codespin/shaman-logger';
-import type { WorkflowConfig, StepRequest, AsyncPollRequest } from './types.js';
+import type { WorkflowConfig, TaskRequest, AsyncPollRequest } from './types.js';
 
 const logger = createLogger('WorkflowEngine');
 
 export type WorkflowEngine = {
   // Queue step execution
-  queueStep: (data: StepRequest, options?: JobsOptions) => Promise<string>;
+  queueStep: (data: TaskRequest, options?: JobsOptions) => Promise<string>;
   
   // Queue async polling
   queueAsyncPoll: (data: AsyncPollRequest, options?: JobsOptions) => Promise<string>;
@@ -45,7 +45,7 @@ export function createWorkflowEngine(config: WorkflowConfig): WorkflowEngine {
   });
 
   return {
-    async queueStep(data: StepRequest, options?: JobsOptions): Promise<string> {
+    async queueStep(data: TaskRequest, options?: JobsOptions): Promise<string> {
       const job = await stepQueue.add('execute-step', data, {
         attempts: 3,
         backoff: {

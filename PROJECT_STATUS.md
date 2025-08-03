@@ -154,7 +154,7 @@ Maintain the current 3-server architecture:
 
 ### Database Schema
 - Multi-tenant with Row Level Security
-- Tables: organization, user, agent_repository, git_agent, run, step, workflow_data, etc.
+- Tables: organization, user, agent_repository, git_agent, run, step, run_data, etc.
 - Two DB users: `rls_db_user` (app queries) and `unrestricted_db_user` (migrations)
 
 ### Architecture Highlights

@@ -7,7 +7,7 @@ import type {
   Message,
   ToolCall,
   ExecutionState,
-  WorkflowContext
+  RunContext
 } from '@codespin/shaman-types';
 import type {
   AgentDefinition,
@@ -336,7 +336,7 @@ async function executeToolCalls(
 /**
  * Build context message from workflow memory
  */
-function buildContextMessage(context: WorkflowContext): Message | null {
+function buildContextMessage(context: RunContext): Message | null {
   if (context.memory.size === 0) {
     return null;
   }

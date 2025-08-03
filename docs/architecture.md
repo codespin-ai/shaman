@@ -123,7 +123,7 @@ All workflows start with a `call_agent` tool step - even external requests. This
 
 **@codespin/shaman-tool-router**
 - Routes tool calls to handlers
-- Platform tools: workflow_data_*
+- Platform tools: run_data_*
 - Handles agent-to-agent calls
 - MCP protocol support
 
@@ -214,9 +214,9 @@ CREATE TABLE step (
 );
 ```
 
-**workflow_data** - Agent collaboration store
+**run_data** - Agent collaboration store
 ```sql
-CREATE TABLE workflow_data (
+CREATE TABLE run_data (
   run_id VARCHAR(26) REFERENCES run(id),
   key VARCHAR(255),
   value JSONB,
@@ -351,7 +351,7 @@ name: CustomerSupport
 description: Handles customer inquiries
 model: gpt-4
 exposed: true
-tools: [workflow_data_read, call_agent]
+tools: [run_data_read, call_agent]
 ---
 ```
 

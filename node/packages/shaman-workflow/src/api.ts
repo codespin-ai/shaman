@@ -1,22 +1,22 @@
 import type { Result } from '@codespin/shaman-core';
 
-export interface WorkflowOptions {
+export interface RunOptions {
   id: string;
   name: string;
   data: unknown;
   organizationId: string;
 }
 
-export interface WorkflowStatus {
+export interface RunStatus {
   id: string;
   status: 'waiting' | 'active' | 'completed' | 'failed';
   result?: unknown;
 }
 
 /**
- * Start a workflow
+ * Start a run
  */
-export async function startWorkflow(options: WorkflowOptions): Promise<Result<{ id: string }, Error>> {
+export async function startRun(options: RunOptions): Promise<Result<{ id: string }, Error>> {
   // TODO: Implement with BullMQ
   return {
     success: true,
@@ -25,9 +25,9 @@ export async function startWorkflow(options: WorkflowOptions): Promise<Result<{ 
 }
 
 /**
- * Get workflow status
+ * Get run status
  */
-export async function getWorkflowStatus(id: string, _organizationId: string): Promise<Result<WorkflowStatus, Error>> {
+export async function getRunStatus(id: string, _organizationId: string): Promise<Result<RunStatus, Error>> {
   // TODO: Implement with BullMQ
   return {
     success: true,
@@ -39,9 +39,9 @@ export async function getWorkflowStatus(id: string, _organizationId: string): Pr
 }
 
 /**
- * Cancel a workflow
+ * Cancel a run
  */
-export async function cancelWorkflow(_id: string, _organizationId: string): Promise<Result<void, Error>> {
+export async function cancelRun(_id: string, _organizationId: string): Promise<Result<void, Error>> {
   // TODO: Implement with BullMQ
   return {
     success: true,

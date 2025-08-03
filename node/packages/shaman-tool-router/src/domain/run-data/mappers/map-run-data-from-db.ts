@@ -1,10 +1,10 @@
-import type { WorkflowData, AgentSource } from '@codespin/shaman-types';
-import type { WorkflowDataDbRow } from '../types.js';
+import type { RunData, AgentSource } from '@codespin/shaman-types';
+import type { RunDataDbRow } from '../types.js';
 
 /**
  * Map database row to domain type
  */
-export function mapWorkflowDataFromDb(row: WorkflowDataDbRow): WorkflowData {
+export function mapRunDataFromDb(row: RunDataDbRow): RunData {
   return {
     id: row.id,
     runId: row.run_id,
