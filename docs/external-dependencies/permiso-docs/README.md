@@ -13,9 +13,59 @@ Permiso is an external RBAC service that Shaman integrates with for fine-grained
 - 🔐 **Fine-grained Permissions** - Resource-based access control with path-like IDs
 - 🏷️ **Properties & Filtering** - Custom metadata with query capabilities
 - 🚀 **GraphQL API** - Modern, type-safe API with full CRUD operations
+- 📦 **TypeScript Client** - Official client library with type-safe functions, no GraphQL knowledge required
 - 📊 **Effective Permissions** - Combined user and role permission calculation
+- 🐳 **Docker Ready** - Official Docker images for easy deployment
 
-## Endpoint
+## Quick Start
+
+### Option 1: Docker (Recommended)
+
+The fastest way to get started is using our official Docker image:
+
+```bash
+# Pull and run with auto-migration
+docker run -p 5001:5001 \
+  -e PERMISO_DB_HOST=host.docker.internal \
+  -e PERMISO_DB_USER=postgres \
+  -e PERMISO_DB_PASSWORD=postgres \
+  -e PERMISO_DB_NAME=permiso \
+  -e PERMISO_AUTO_MIGRATE=true \
+  ghcr.io/codespin-ai/permiso:latest
+```
+
+### Option 2: TypeScript Client (Recommended for Applications)
+
+For TypeScript/JavaScript applications, use our official client library:
+
+```bash
+npm install @codespin/permiso-client
+```
+
+```typescript
+import { createOrganization, createUser, hasPermission } from '@codespin/permiso-client';
+
+const config = {
+  endpoint: 'http://localhost:5001',
+  apiKey: 'your-api-key' // optional
+};
+
+// Create an organization
+const org = await createOrganization(config, {
+  id: 'acme-corp',
+  name: 'ACME Corporation'
+});
+
+// Check permissions
+const canRead = await hasPermission(config, {
+  orgId: 'acme-corp',
+  userId: 'john-doe',
+  resourceId: '/api/users/*',
+  action: 'read'
+});
+```
+
+## GraphQL Endpoint
 
 ```
 POST http://localhost:5001/graphql
@@ -94,9 +144,101 @@ Key-value metadata stored as JSONB that can be attached to organizations, users,
 - **Filterable queries** - Query by property names and values
 - **Type-safe** - PostgreSQL JSONB validation and operations
 
-## Usage Example
+## TypeScript Client API
 
-### Checking User Permissions
+### Core Features
+- 🔒 **Type-safe** - Full TypeScript support with comprehensive type definitions
+- 🚀 **Zero GraphQL knowledge required** - Simple function calls instead of query strings
+- ⚡ **Lightweight** - Minimal dependencies, tree-shakeable
+- 🛡️ **Result types** - Explicit error handling with discriminated unions
+- 🔄 **Consistent API** - Uniform patterns across all operations
+- 📦 **Pagination support** - Built-in pagination for list operations
+- 🔍 **Property filtering** - Filter entities by custom properties
+
+### API Categories
+
+#### Organizations (9 functions)
+- `getOrganization()`, `listOrganizations()`, `createOrganization()`
+- `updateOrganization()`, `deleteOrganization()`
+- `getOrganizationProperty()`, `setOrganizationProperty()`, `deleteOrganizationProperty()`
+
+#### Users (15 functions)
+- `getUser()`, `listUsers()`, `createUser()`, `updateUser()`, `deleteUser()`
+- `getUsersByIdentity()` - Find users by identity provider
+- `assignUserRole()`, `unassignUserRole()`
+- Property management: `getUserProperty()`, `setUserProperty()`, `deleteUserProperty()`
+
+#### Roles (10 functions)
+- `getRole()`, `listRoles()`, `createRole()`, `updateRole()`, `deleteRole()`
+- Property management: `getRoleProperty()`, `setRoleProperty()`, `deleteRoleProperty()`
+
+#### Resources (7 functions)
+- `getResource()`, `listResources()`, `createResource()`, `updateResource()`, `deleteResource()`
+- `getResourcesByIdPrefix()` - Wildcard resource matching
+
+#### Permissions (9 functions)
+- `hasPermission()` - Check single permission
+- `getUserPermissions()`, `getRolePermissions()`, `getEffectivePermissions()`
+- `grantUserPermission()`, `revokeUserPermission()`
+- `grantRolePermission()`, `revokeRolePermission()`
+
+### Usage Example with TypeScript Client
+
+```typescript
+import { 
+  createOrganization,
+  createUser,
+  assignUserRole,
+  hasPermission,
+  setUserProperty
+} from '@codespin/permiso-client';
+
+const config = {
+  endpoint: 'http://localhost:5001',
+  apiKey: 'your-secret-api-key'
+};
+
+// Create organization
+const orgResult = await createOrganization(config, {
+  id: 'acme-corp',
+  name: 'ACME Corporation',
+  description: 'A sample organization'
+});
+
+if (orgResult.success) {
+  console.log('Created organization:', orgResult.data);
+}
+
+// Create user with properties
+const userResult = await createUser(config, {
+  id: 'john-doe',
+  orgId: 'acme-corp',
+  identityProvider: 'auth0',
+  identityProviderUserId: 'auth0|123456',
+  userType: 'HUMAN'
+});
+
+// Set user properties (JSON support)
+await setUserProperty(config, 'acme-corp', 'john-doe', 'preferences', {
+  theme: 'dark',
+  language: 'en',
+  notifications: true
+});
+
+// Check permissions
+const permResult = await hasPermission(config, {
+  orgId: 'acme-corp',
+  userId: 'john-doe',
+  resourceId: '/api/users/*',
+  action: 'read'
+});
+
+if (permResult.success) {
+  console.log('Has permission:', permResult.data);
+}
+```
+
+### GraphQL API Example (Alternative)
 
 ```graphql
 query GetUserPermissions {
@@ -211,6 +353,87 @@ When deploying Permiso, use these environment variables:
 | `PERMISO_SERVER_PORT` | GraphQL server port             | `5001`      |
 | `LOG_LEVEL`           | Logging level                   | `info`      |
 
+## Resource Path Patterns
+
+Permiso uses Unix-like path patterns for resources with wildcard support:
+
+```typescript
+// Exact match
+const resource1 = await createResource(config, {
+  id: '/api/users',
+  orgId: 'acme-corp',
+  description: 'User management API'
+});
+
+// Wildcard match (matches any sub-path)
+const resource2 = await createResource(config, {
+  id: '/api/users/*',
+  orgId: 'acme-corp',
+  description: 'All user endpoints'
+});
+
+// Hierarchical resources
+const resource3 = await createResource(config, {
+  id: '/api/billing/invoices/*',
+  orgId: 'acme-corp',
+  description: 'Invoice management'
+});
+```
+
+## Advanced Features
+
+### Property System
+Permiso supports flexible JSON properties on organizations, users, and roles:
+
+```typescript
+// Set complex property
+await setUserProperty(config, 'acme-corp', 'john-doe', 'profile', {
+  department: 'engineering',
+  level: 3,
+  skills: ['typescript', 'graphql', 'postgres'],
+  manager: 'jane-smith'
+});
+
+// Set hidden property (sensitive data)
+await setUserProperty(
+  config,
+  'acme-corp',
+  'john-doe',
+  'apiToken',
+  'secret-token-123',
+  true  // hidden = true
+);
+
+// Filter by properties
+const engineersResult = await listUsers(config, 'acme-corp', {
+  filter: {
+    properties: [
+      { name: 'profile.department', value: 'engineering' }
+    ]
+  }
+});
+```
+
+### Batch Operations
+
+```typescript
+// Create multiple users efficiently
+const users = [
+  { id: 'user-1', orgId: 'org-1', identityProvider: 'auth0', identityProviderUserId: 'auth0|123' },
+  { id: 'user-2', orgId: 'org-1', identityProvider: 'auth0', identityProviderUserId: 'auth0|456' },
+  { id: 'user-3', orgId: 'org-1', identityProvider: 'auth0', identityProviderUserId: 'auth0|789' }
+];
+
+const results = await Promise.all(
+  users.map(user => createUser(config, user))
+);
+
+const failed = results.filter(r => !r.success);
+if (failed.length > 0) {
+  console.error('Some users failed to create:', failed);
+}
+```
+
 ## Docker Deployment
 
 ### Using Pre-built Images
@@ -256,5 +479,43 @@ services:
     depends_on:
       - postgres
 ```
+
+## Integration with Shaman
+
+Shaman integrates with Permiso for all authorization decisions:
+
+```typescript
+// Example: Check if user can execute specific agent
+const canExecuteAgent = await hasPermission(permisoConfig, {
+  orgId: organizationId,
+  userId: userId,
+  resourceId: `/agents/${agentName}`,
+  action: 'execute'
+});
+
+if (!canExecuteAgent.success || !canExecuteAgent.data) {
+  throw new UnauthorizedError('Cannot execute agent');
+}
+```
+
+### Recommended Roles for Shaman
+- **ADMIN**: Full access to organization management
+- **DEVELOPER**: Can manage agents and view runs
+- **VIEWER**: Read-only access to runs and agents
+- **EXTERNAL_API_CLIENT**: Service accounts with API-only access to specific exposed agents
+
+### Resource Patterns for Shaman
+- `/agents/*` - All agent execution permissions
+- `/agents/{name}` - Specific agent execution
+- `/api/runs/*` - Workflow monitoring access
+- `/api/repositories/*` - Agent repository management
+
+## Testing Coverage
+
+Permiso includes comprehensive testing:
+- **Integration Tests**: All GraphQL operations tested against real server
+- **Client Tests**: All TypeScript client functions tested (64+ tests)
+- **Docker Testing**: Automated container testing with real database
+- **Test Infrastructure**: Isolated test databases, automated cleanup
 
 For detailed API documentation, see [api-spec.md](./api-spec.md).

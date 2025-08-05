@@ -20,15 +20,20 @@ This directory contains copies of documentation from external services that Sham
 - **Purpose**: Handles all authorization and role-based access control for Shaman
 
 #### Documentation:
-- **[README](./permiso-docs/README.md)** - Complete overview, setup, and usage
+- **[README](./permiso-docs/README.md)** - Complete overview, setup, and usage with TypeScript client
 - **[GraphQL Schema](./permiso-docs/schema.graphql)** - Full API specification
+
+#### TypeScript Client Integration:
+```bash
+npm install @codespin/permiso-client
+```
 
 #### Integration with Shaman:
 - All authorization decisions delegated to Permiso
-- Users authenticated by Shaman are mapped to Permiso users
-- Agent execution permissions: `/agents/{name}`
-- API permissions: `/api/runs/*`, `/api/repositories/*`
-- Suggested roles: `admin`, `developer`, `viewer`
+- TypeScript client provides type-safe API (no GraphQL knowledge required)
+- Resource patterns: `/agents/{name}`, `/api/runs/*`, `/api/repositories/*`
+- Recommended roles: `ADMIN`, `DEVELOPER`, `VIEWER`, `EXTERNAL_API_CLIENT`
+- Multi-tenant organization isolation with properties support
 
 #### Environment Variables:
 ```bash
@@ -45,24 +50,30 @@ PERMISO_API_KEY=your-secret-api-key
 - **Purpose**: Handles all workflow orchestration, task management, and run data storage for Shaman
 
 #### Documentation:
-- **[README](./foreman-docs/README.md)** - Complete overview, setup, and usage
+- **[README](./foreman-docs/README.md)** - Complete overview, setup, and usage with TypeScript client
 - **[API Reference](./foreman-docs/api-reference.md)** - REST API endpoints specification
 - **[API Guide](./foreman-docs/api.md)** - Common workflows and examples
 - **[Database Schema](./foreman-docs/database.md)** - Database design and architecture
 
+#### TypeScript Client Integration:
+```bash
+npm install @codespin/foreman-client
+```
+
 #### Integration with Shaman:
 - All workflow and task management delegated to Foreman
-- Shaman creates runs and tasks via Foreman API
-- Task execution results stored in Foreman's run data
-- Queue-agnostic design (BullMQ, SQS, etc.)
+- ID-only queue pattern: queues store only task IDs, all data in PostgreSQL
+- Complete SDK handles both database and queue operations
+- Agent collaboration via sophisticated run data system
 - Multi-tenant support with organization isolation
 
 #### Key Features:
-- Multi-tenant runs and task management
-- Key-value storage with tags for inter-task communication
-- PostgreSQL as source of truth (queues only store IDs)
-- Status tracking and execution history
-- Support for hierarchical tasks
+- **ID-Only Queue Pattern**: Queues store only task IDs, never data
+- **Run Data Storage**: Key-value system with tags, multiple values per key
+- **PostgreSQL First**: All data in PostgreSQL, queues are ephemeral
+- **Queue Agnostic**: Switch between BullMQ, SQS, RabbitMQ without data migration
+- **Complete SDK**: TypeScript client handles all operations
+- **Docker Ready**: Official Docker images available
 
 #### Environment Variables:
 ```bash
