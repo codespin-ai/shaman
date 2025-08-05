@@ -373,7 +373,7 @@ Base URL: `https://{subdomain}.shaman.ai/graphql`
 
 ### Authentication
 
-Use session cookies (via Ory Kratos) or API keys.
+Use API keys for authentication.
 
 ```http
 POST /graphql
@@ -620,12 +620,10 @@ Create via GraphQL, use in Authorization header:
 Authorization: Bearer sk_live_abcdef123456
 ```
 
-### Session Auth
+### Session Auth (Planned)
 
-For web applications using Ory Kratos:
-1. Redirect to `/auth/login`
-2. Receive session cookie
-3. Include cookie in requests
+Future integration with Ory Kratos is planned but not yet implemented.
+Currently only API key authentication is supported.
 
 ### Internal JWT
 

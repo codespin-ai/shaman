@@ -1,6 +1,6 @@
 # External Dependencies Documentation
 
-This directory contains copies of documentation from external services that Shaman integrates with. These are maintained locally to ensure developers and AI assistants have quick access to the exact API specifications we're working with.
+This directory contains copies of documentation from external services that Shaman either actively integrates with or plans to integrate with in the future. These are maintained locally to ensure developers and AI assistants have quick access to the exact API specifications.
 
 ## Purpose
 
@@ -11,13 +11,14 @@ This directory contains copies of documentation from external services that Sham
 
 ## External Services
 
-### 1. Permiso - Role-Based Access Control (RBAC)
+### 1. Permiso - Role-Based Access Control (RBAC) [PLANNED - NOT YET INTEGRATED]
 
 - **Type**: Docker service
 - **Port**: 5001
 - **Protocol**: GraphQL
 - **Docker Image**: `ghcr.io/codespin-ai/permiso:latest`
-- **Purpose**: Handles all authorization and role-based access control for Shaman
+- **Purpose**: Will handle authorization and role-based access control when integrated
+- **Current Status**: Documentation and configuration exist, but no active integration in codebase
 
 #### Documentation:
 - **[README](./permiso-docs/README.md)** - Complete overview, setup, and usage with TypeScript client
@@ -28,12 +29,14 @@ This directory contains copies of documentation from external services that Sham
 npm install @codespin/permiso-client
 ```
 
-#### Integration with Shaman:
-- All authorization decisions delegated to Permiso
-- TypeScript client provides type-safe API (no GraphQL knowledge required)
-- Resource patterns: `/agents/{name}`, `/api/runs/*`, `/api/repositories/*`
+#### Planned Integration with Shaman:
+- Would delegate authorization decisions to Permiso
+- TypeScript client would provide type-safe API (no GraphQL knowledge required)
+- Planned resource patterns: `/agents/{name}`, `/api/runs/*`, `/api/repositories/*`
 - Recommended roles: `ADMIN`, `DEVELOPER`, `VIEWER`, `EXTERNAL_API_CLIENT`
-- Multi-tenant organization isolation with properties support
+- Would enable multi-tenant organization isolation with properties support
+
+**Note**: Currently, authorization is handled internally by the shaman-security package using JWT tokens and API keys.
 
 #### Environment Variables:
 ```bash
@@ -41,13 +44,14 @@ PERMISO_ENDPOINT=http://localhost:5001/graphql
 PERMISO_API_KEY=your-secret-api-key
 ```
 
-### 2. Foreman - Workflow Orchestration Engine
+### 2. Foreman - Workflow Orchestration Engine [ACTIVELY INTEGRATED]
 
 - **Type**: REST API service
 - **Port**: 3000 (default)
 - **Protocol**: REST/HTTP
 - **NPM Package**: `@codespin/foreman-client`
 - **Purpose**: Handles all workflow orchestration, task management, and run data storage for Shaman
+- **Current Status**: Fully integrated and actively used in a2a-server and worker packages
 
 #### Documentation:
 - **[README](./foreman-docs/README.md)** - Complete overview, setup, and usage with TypeScript client

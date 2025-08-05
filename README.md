@@ -37,9 +37,14 @@ Shaman follows a dual-server architecture with clear separation between manageme
          └─────────────┬──────────────────────┘
                        │
 ┌─────────────────────────────────────────────────────────────┐
-│                External Services                             │
-│  • Permiso - RBAC Authorization (@codespin/permiso-client)  │
+│                External Services (Active)                    │
 │  • Foreman - Workflow Orchestration (@codespin/foreman-client)│
+└─────────────────────────────────────────────────────────────┘
+                       │
+┌─────────────────────────────────────────────────────────────┐
+│           External Services (Planned/Future)                 │
+│  • Permiso - RBAC Authorization (not yet integrated)        │
+│  • Ory Kratos - User Authentication (not yet integrated)    │
 └─────────────────────────────────────────────────────────────┘
 ```
 
@@ -111,11 +116,13 @@ ANTHROPIC_API_KEY=your-anthropic-key
 # Workflow Engine
 REDIS_URL=redis://localhost:6379  # Required for BullMQ
 
-# External Services
-PERMISO_ENDPOINT=http://localhost:5001/graphql  # Permiso RBAC service
-PERMISO_API_KEY=your-permiso-api-key  # Optional
+# External Services (Active)
 FOREMAN_ENDPOINT=http://localhost:3000  # Foreman workflow orchestration
-FOREMAN_API_KEY=fmn_dev_default_key  # Required
+FOREMAN_API_KEY=fmn_dev_default_key  # Required for Foreman integration
+
+# External Services (Planned - not yet implemented)
+# PERMISO_ENDPOINT=http://localhost:5001/graphql  # Future: Permiso RBAC service
+# PERMISO_API_KEY=your-permiso-api-key  # Future: Optional API key
 ```
 
 ## Project Structure
@@ -157,9 +164,8 @@ This is a TypeScript monorepo that deliberately avoids npm workspaces in favor o
 - `@codespin/shaman-types` - Shared TypeScript types
 - `@codespin/shaman-logger` - Centralized logging
 - `@codespin/shaman-db` - Database connection management
-- `@codespin/shaman-security` - Auth & RBAC
+- `@codespin/shaman-security` - JWT auth & API key validation (internal implementation)
 - `@codespin/shaman-observability` - Metrics & tracing
-- `@codespin/permiso-client` - Integration with external Permiso RBAC service
 
 ## Creating Agents
 

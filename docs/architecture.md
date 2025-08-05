@@ -162,16 +162,17 @@ All workflows start with a `call_agent` tool step - even external requests. This
 
 ## External Dependencies
 
-### Ory Kratos
-- User authentication (sessions)
-- Identity management
-- GraphQL server integration only
+### Ory Kratos (Planned Integration)
+- User authentication service (external)
+- Would provide identity management and sessions
+- **Status**: Not yet integrated
+- **Current Auth**: JWT tokens and API keys handled internally by shaman-security package
 
-### Permiso
-- RBAC authorization service
-- Permission checks via GraphQL API
-- External service accessed via `@codespin/permiso-client`
-- GraphQL server integrates for user permissions
+### Permiso (Planned Integration)
+- RBAC authorization service (external)
+- Would provide permission checks via GraphQL API
+- **Status**: Not yet integrated - configuration exists but no implementation
+- **Future**: Will use `@codespin/permiso-client` when implemented
 
 ### Foreman
 - Workflow orchestration engine

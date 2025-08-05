@@ -6,7 +6,6 @@
 - PostgreSQL 15+
 - Redis 7+
 - Git
-- Permiso RBAC service (or use @codespin/permiso-client)
 - Foreman workflow orchestration service (or use @codespin/foreman-client)
 
 ## Installation
@@ -155,11 +154,13 @@ PUBLIC_URL=https://your-domain.com
 INTERNAL_JWT_SECRET=your-secret-key
 ENCRYPTION_KEY=your-encryption-key
 
-# External Services
-PERMISO_ENDPOINT=http://localhost:5001/graphql  # RBAC service
-PERMISO_API_KEY=your-permiso-api-key  # Optional
+# External Services (Active)
 FOREMAN_ENDPOINT=http://localhost:3000  # Workflow orchestration
 FOREMAN_API_KEY=fmn_dev_default_key  # Required
+
+# External Services (Planned - not yet implemented)
+# PERMISO_ENDPOINT=http://localhost:5001/graphql  # Future: RBAC service
+# PERMISO_API_KEY=your-permiso-api-key  # Future: Optional
 ```
 
 ### Multi-Tenant Setup

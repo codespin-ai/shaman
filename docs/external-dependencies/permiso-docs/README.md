@@ -4,7 +4,9 @@ A comprehensive Role-Based Access Control (RBAC) system with GraphQL API, built 
 
 ## Overview
 
-Permiso is an external RBAC service that Shaman integrates with for fine-grained authorization. It provides multi-tenant organizations, users, roles, and resource-based permissions.
+Permiso is an external RBAC service that Shaman plans to integrate with for fine-grained authorization. It provides multi-tenant organizations, users, roles, and resource-based permissions.
+
+**Note**: This documentation is maintained for future integration. Permiso is not currently integrated into Shaman's codebase.
 
 ## Features
 
@@ -480,9 +482,9 @@ services:
       - postgres
 ```
 
-## Integration with Shaman
+## Planned Integration with Shaman
 
-Shaman integrates with Permiso for all authorization decisions:
+When integrated, Shaman would use Permiso for all authorization decisions:
 
 ```typescript
 // Example: Check if user can execute specific agent

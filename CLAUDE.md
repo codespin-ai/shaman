@@ -242,8 +242,8 @@ External service configuration:
 - `FOREMAN_API_KEY` - API key for Foreman authentication (format: `fmn_[env]_[orgId]_[random]`)
 - `SHAMAN_TASK_QUEUE` - Optional: Override Foreman task queue name (default: 'shaman:tasks')
 - `SHAMAN_RESULT_QUEUE` - Optional: Override Foreman result queue name (default: 'shaman:results')
-- `PERMISO_ENDPOINT` - Permiso GraphQL endpoint (default: http://localhost:5001/graphql)
-- `PERMISO_API_KEY` - Optional API key for Permiso
+- Authentication currently handled internally by shaman-security (JWT/API keys)
+- Future: `PERMISO_ENDPOINT` and `PERMISO_API_KEY` for planned Permiso integration
 
 ## Code Patterns
 
@@ -376,8 +376,8 @@ import { executeAgent } from "./agent-runner";
 - Architecture overview: `/docs/03-system-architecture.md`
 - API specification: `/docs/05-graphql-api-reference.md`
 - **External dependencies**: `/docs/external-dependencies/` - Documentation for external services:
-  - **Permiso**: RBAC and authorization service
-  - **Foreman**: Workflow orchestration engine (handles all runs, tasks, and run data)
+  - **Foreman**: Workflow orchestration engine (handles all runs, tasks, and run data) - ACTIVELY INTEGRATED
+  - **Permiso**: RBAC and authorization service - DOCUMENTED BUT NOT YET INTEGRATED
 - **A2A Protocol**: `/docs/external-specs/a2a/` - Agent-to-agent communication spec
 - **MCP Protocol**: `/docs/external-specs/mcp/` - Model Context Protocol spec
 
