@@ -75,6 +75,7 @@ Shaman is a federated AI agent orchestration system that enables agents to commu
    - `@codespin/shaman-tool-router` - Tool execution routing
    - `@codespin/shaman-llm-vercel` - LLM provider implementation
    - `@codespin/shaman-workflow` - BullMQ workflow engine
+   - `@codespin/foreman-client` - Integration with external Foreman service
 
 5. **Infrastructure**
    - `@codespin/shaman-db` - Database with Row Level Security
@@ -323,6 +324,7 @@ Shaman provides built-in platform tools for workflow data management:
 
 ```typescript
 // Platform tool: run_data_write
+// Note: All workflow data is stored in the external Foreman service
 {
   name: 'run_data_write',
   description: 'Store data for agent collaboration',
@@ -332,16 +334,13 @@ Shaman provides built-in platform tools for workflow data management:
     description: z.string().optional(),
   }),
   execute: async ({ key, value, description }) => {
-    await db.none(`
-      INSERT INTO run_data (workflow_id, key, value, description, agent_id, step_id)
-      VALUES ($(workflowId), $(key), $(value), $(description), $(agentId), $(stepId))
-    `, {
-      workflowId: context.workflowId,
+    // Uses Foreman client to store data
+    const foremanClient = getForemanClient();
+    await foremanClient.createRunData(context.runId, {
       key,
-      value: JSON.stringify(value),
-      description,
-      agentId: context.agentId,
-      stepId: context.stepId,
+      value,
+      taskId: context.taskId,
+      tags: [`agent:${context.agentId}`, `step:${context.stepId}`]
     });
     
     return { success: true };
@@ -644,10 +643,12 @@ interface Tool {
 
 ### Platform Tools
 
-1. **run_data_write** - Store data for agent collaboration
-2. **run_data_read** - Retrieve specific data by key
-3. **run_data_query** - Search data by patterns
-4. **run_data_list** - List all stored data
+1. **run_data_write** - Store data for agent collaboration (via Foreman)
+2. **run_data_read** - Retrieve specific data by key (via Foreman)
+3. **run_data_query** - Search data by patterns (via Foreman)
+4. **run_data_list** - List all stored data (via Foreman)
+
+Note: All platform tools delegate to the external Foreman service via `@codespin/foreman-client`
 
 ### MCP (Model Context Protocol) Tools
 

@@ -33,6 +33,14 @@ Shaman follows a dual-server architecture with clear separation between manageme
 │                  Infrastructure Layer                        │
 │    (PostgreSQL + Redis + Security + Observability)         │
 └─────────────────────────────────────────────────────────────┘
+         │                                    │
+         └─────────────┬──────────────────────┘
+                       │
+┌─────────────────────────────────────────────────────────────┐
+│                External Services                             │
+│  • Permiso - RBAC Authorization (@codespin/permiso-client)  │
+│  • Foreman - Workflow Orchestration (@codespin/foreman-client)│
+└─────────────────────────────────────────────────────────────┘
 ```
 
 ## Quick Start
@@ -102,6 +110,12 @@ ANTHROPIC_API_KEY=your-anthropic-key
 
 # Workflow Engine
 REDIS_URL=redis://localhost:6379  # Required for BullMQ
+
+# External Services
+PERMISO_ENDPOINT=http://localhost:5001/graphql  # Permiso RBAC service
+PERMISO_API_KEY=your-permiso-api-key  # Optional
+FOREMAN_ENDPOINT=http://localhost:3000  # Foreman workflow orchestration
+FOREMAN_API_KEY=fmn_dev_default_key  # Required
 ```
 
 ## Project Structure
@@ -132,6 +146,7 @@ This is a TypeScript monorepo that deliberately avoids npm workspaces in favor o
 
 ### Workflow & Orchestration
 - `@codespin/shaman-workflow` - BullMQ-based workflow engine
+- `@codespin/foreman-client` - Integration with external Foreman service
 
 ### Servers
 - `@codespin/shaman-gql-server` - GraphQL management API
@@ -144,6 +159,7 @@ This is a TypeScript monorepo that deliberately avoids npm workspaces in favor o
 - `@codespin/shaman-db` - Database connection management
 - `@codespin/shaman-security` - Auth & RBAC
 - `@codespin/shaman-observability` - Metrics & tracing
+- `@codespin/permiso-client` - Integration with external Permiso RBAC service
 
 ## Creating Agents
 

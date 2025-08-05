@@ -45,6 +45,8 @@ Everything is a **step**:
 
 All workflows start with a `call_agent` tool step - even external requests. This creates a uniform model with no special cases.
 
+**Note**: All workflow orchestration is handled by the external Foreman service via `@codespin/foreman-client`.
+
 ### Example Flow
 
 ```
@@ -166,10 +168,17 @@ All workflows start with a `call_agent` tool step - even external requests. This
 - GraphQL server integration only
 
 ### Permiso
-- RBAC authorization
-- Permission checks
-- External service (not embedded)
-- GraphQL server uses their API
+- RBAC authorization service
+- Permission checks via GraphQL API
+- External service accessed via `@codespin/permiso-client`
+- GraphQL server integrates for user permissions
+
+### Foreman
+- Workflow orchestration engine
+- Run and task management
+- Workflow data storage (run_data)
+- External REST API service accessed via `@codespin/foreman-client`
+- Handles all workflow execution and state management
 
 ### PostgreSQL
 - All persistent data
