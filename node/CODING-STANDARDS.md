@@ -1,126 +1,583 @@
-# Shaman Coding Standards
+# Coding Standards
 
-This document defines the coding standards and conventions for the Shaman AI Agent Coordination Framework.
+This document outlines the coding standards and patterns used throughout the codebase. All contributors should follow these guidelines to maintain consistency and quality.
 
-## 🎯 Core Principles
+## Core Principles
 
-### 1. **Functional Programming First**
+### 1. Functional Programming First
 
-- No classes - use pure functions and data transformations
-- Immutable data structures where possible
-- Composable function design
-- Explicit dependency injection through parameters
-
-### 2. **ESM TypeScript**
-
-- Modern ES modules with `.js` file extensions in imports
-- Strong typing with comprehensive type definitions
-- Prefer `type` over `interface` (use `interface` only for extensible contracts)
-- **NO `any` types** - All code must be fully typed
-
-### 3. **Explicit and Predictable**
-
-- Function signatures should be self-documenting
-- No hidden state or side effects
-- Clear input/output contracts
-- Explicit error handling with Result types
-
-### 4. **Recent Architectural Decisions**
-
-- **Git Operations**: Use native git commands instead of isomorphic-git
-- **Agent Caching**: Cache agents by commit hash for performance
-- **Unified Interfaces**: Single interface for all agent sources
-- **Platform Tools**: Immutable, attributed workflow data storage
-- **Workflow Abstraction**: ExecutionEngine interface for all workflow adapters
-
-## 📁 File Structure and Naming
-
-### File Extensions and Imports
-
-```typescript
-// ✅ Good - Use .js extensions in imports
-import { executeAgent } from "./agent-runner.js";
-import { GitAgent } from "../shared/types.js";
-
-// ❌ Bad - No file extensions
-import { executeAgent } from "./agent-runner";
-```
-
-### File Naming
-
-- Use kebab-case: `agent-runner.ts`, `git-discovery.ts`
-- Be descriptive: `external-agent-health.ts` not `health.ts`
-- Group related functionality in directories
-
-## 🔧 Function Design Patterns
-
-### 1. **Pure Function Exports**
+**PREFER FUNCTIONS OVER CLASSES** - Export functions from modules when possible. Classes should only be used when they provide clear benefits.
 
 ```typescript
 // ✅ Good - Pure function with explicit dependencies
-export async function executeAgent(
-  agentName: string,
-  input: string,
-  context: ExecutionContext,
-  dependencies: {
-    llmProvider: LLMProvider;
-    toolRouter: ToolRouter;
-  }
-): Promise<AgentExecutionResult> {
+export async function createCustomer(
+  db: Database,
+  input: CreateCustomerInput
+): Promise<Result<Customer, Error>> {
   // Implementation
 }
 
-// ❌ Bad - Class-based approach
-export class AgentRunner {
-  constructor(
-    private llmProvider: LLMProvider,
-    private toolRouter: ToolRouter
-  ) {}
+// ✅ Acceptable - Class when it provides clear value
+// Example: Stateful connection management
+export class WebSocketConnection {
+  private socket: WebSocket;
+  private reconnectAttempts = 0;
+  
+  constructor(private config: WebSocketConfig) {
+    this.socket = new WebSocket(config.url);
+  }
+  
+  async send(message: Message): Promise<void> {
+    if (this.socket.readyState !== WebSocket.OPEN) {
+      await this.reconnect();
+    }
+    this.socket.send(JSON.stringify(message));
+  }
+  
+  private async reconnect(): Promise<void> {
+    // Reconnection logic with exponential backoff
+  }
+}
 
-  async execute(agentName: string, input: string) {
-    // Implementation
+// ❌ Bad - Class used unnecessarily for stateless operations
+export class CustomerService {
+  constructor(private db: Database) {}
+  
+  async createCustomer(input: CreateCustomerInput): Promise<Customer> {
+    // This doesn't need to be a class
   }
 }
 ```
 
-### 2. **Configuration and Dependencies**
+**When classes are appropriate:**
+- Managing stateful connections (WebSocket, database pools)
+- Third-party library requirements
+- Complex state machines with internal state
+- When inheritance genuinely simplifies the code
+- Framework requirements (some frameworks require class components)
+
+### 2. Explicit Error Handling with Result Types
+
+Use `Result<T, E>` for all operations that can fail. Never throw exceptions for expected errors.
 
 ```typescript
-// ✅ Good - Explicit configuration objects
-export type DatabaseConfig = {
-  readonly url: string;
-  readonly poolSize: number;
-  readonly ssl: boolean;
-  readonly timeout: number;
+// ✅ Good - Using Result type
+export async function findOrder(
+  db: Database,
+  orderId: string
+): Promise<Result<Order, Error>> {
+  try {
+    const order = await db.oneOrNone<OrderDbRow>(...);
+    if (!order) {
+      return failure(new Error('Order not found'));
+    }
+    return success(mapOrderFromDb(order));
+  } catch (error) {
+    return failure(error as Error);
+  }
+}
+
+// ❌ Bad - Throwing exceptions
+export async function findOrder(db: Database, orderId: string): Promise<Order> {
+  const order = await db.one<OrderDbRow>(...); // Throws if not found
+  return mapOrderFromDb(order);
+}
+```
+
+### 3. Database Patterns
+
+#### DbRow Types
+All database interactions use `*DbRow` types that exactly mirror the database schema with snake_case:
+
+```typescript
+// Database type (snake_case) - Example: Customer entity
+type CustomerDbRow = {
+  id: string;
+  org_id: string;
+  email: string;
+  created_at: Date;
+  updated_at: Date | null;
+  preferences: unknown; // JSONB fields typed as unknown
 };
 
-export async function initializeDatabase(
-  config: DatabaseConfig
-): Promise<DatabaseConnection> {
-  // Implementation
+// Domain/API type (camelCase) - What your application uses
+type Customer = {
+  id: string;
+  orgId: string;
+  email: string;
+  createdAt: Date;
+  updatedAt: Date | null;
+  preferences: CustomerPreferences | undefined;
+};
+```
+
+#### Mapper Functions
+Always use mapper functions to convert between different representations. The target representation depends on your needs (REST API, GraphQL, domain models, etc.):
+
+```typescript
+// Example: Mapping from database to domain/REST representation
+export function mapCustomerFromDb(row: CustomerDbRow): Customer {
+  return {
+    id: row.id,
+    orgId: row.org_id,
+    email: row.email,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+    preferences: row.preferences as CustomerPreferences | undefined
+  };
 }
 
-// ✅ Good - Dependency injection pattern
-export async function processAgentCall(
-  agentCall: AgentCallRequest,
-  dependencies: {
-    agentResolver: (name: string) => Promise<ResolvedAgent>;
-    workflowEngine: WorkflowEngine;
-    authChecker: (context: SecurityContext) => Promise<boolean>;
+// Example: Mapping from domain to database representation
+export function mapCustomerToDb(customer: Partial<Customer>): Partial<CustomerDbRow> {
+  return {
+    id: customer.id,
+    org_id: customer.orgId,
+    email: customer.email,
+    created_at: customer.createdAt,
+    updated_at: customer.updatedAt,
+    preferences: customer.preferences || null
+  };
+}
+
+// Example: Mapping to GraphQL type (if different from domain)
+export function mapCustomerToGraphQL(customer: Customer): CustomerGraphQLType {
+  return {
+    id: customer.id,
+    organizationId: customer.orgId, // GraphQL might use different naming
+    emailAddress: customer.email,
+    createdAt: customer.createdAt.toISOString(),
+    updatedAt: customer.updatedAt?.toISOString() || null,
+    preferences: customer.preferences || defaultPreferences()
+  };
+}
+```
+
+#### Type-safe Queries
+Always specify the type parameter for database queries and use named parameters:
+
+```typescript
+// ✅ Good - Type parameter specified with named parameters
+// Example: Finding a user by email
+const row = await db.one<UserDbRow>(
+  `SELECT * FROM "user" WHERE email = $(email)`,
+  { email: userEmail }
+);
+
+// ❌ Bad - Using positional parameters
+const row = await db.one<UserDbRow>(
+  `SELECT * FROM "user" WHERE email = $1`,
+  [userEmail]
+);
+
+// ❌ Bad - No type parameter
+const row = await db.one(
+  `SELECT * FROM "user" WHERE email = $(email)`,
+  { email: userEmail }
+);
+```
+
+#### Named Parameters
+ALWAYS use named parameters for database queries. This improves readability, prevents SQL injection, and makes queries self-documenting:
+
+```typescript
+// ✅ Good - Named parameters
+// Example: Creating a product record
+const product = await db.one<ProductDbRow>(
+  `INSERT INTO product (id, name, price, category_id, description) 
+   VALUES ($(id), $(name), $(price), $(categoryId), $(description)) 
+   RETURNING *`,
+  {
+    id: input.id,
+    name: input.name,
+    price: input.price,
+    categoryId: input.categoryId,
+    description: input.description
   }
-): Promise<AgentCallResult> {
+);
+
+// ❌ Bad - Positional parameters
+const product = await db.one<ProductDbRow>(
+  `INSERT INTO product (id, name, price, category_id, description) 
+   VALUES ($1, $2, $3, $4, $5) 
+   RETURNING *`,
+  [input.id, input.name, input.price, input.categoryId, input.description]
+);
+```
+
+#### Domain Structure Organization
+
+All database-related functions are organized in domain directories. Example for a "user" domain:
+
+```typescript
+// Example structure: src/domain/user/
+// types.ts - Only type definitions
+export type UserDbRow = {
+  id: string;
+  email: string;
+  role: string;
+  // ... other fields
+};
+
+// mappers/map-user-from-db.ts - Single mapper function
+export function mapUserFromDb(row: UserDbRow): User {
+  return {
+    id: row.id,
+    email: row.email,
+    role: row.role as UserRole,
+    // ... field conversions
+  };
+}
+
+// create-user.ts - Single business function  
+export async function createUser(db: Database, user: CreateUserInput): Promise<User> {
+  // Implementation using mapUserToDb and mapUserFromDb
+}
+
+// index.ts - Clean exports
+export { createUser } from './create-user.js';
+export { getUser } from './get-user.js';
+export { mapUserFromDb } from './mappers/map-user-from-db.js';
+export type { UserDbRow } from './types.js';
+```
+
+### 4. Module Structure
+
+#### Imports
+All imports MUST include the `.js` extension:
+
+```typescript
+// ✅ Good
+import { createOrder } from './orders.js';
+import { validatePayment } from './payments.js';
+import { Result } from '@company/core';
+
+// ❌ Bad
+import { createOrder } from './orders';
+import { validatePayment } from './payments';
+```
+
+#### Exports
+Use named exports, avoid default exports:
+
+```typescript
+// ✅ Good
+export function createInvoice() { ... }
+export function updateInvoice() { ... }
+export type Invoice = { ... };
+
+// ❌ Bad
+export default class InvoiceService { ... }
+```
+
+### 5. Naming Conventions
+
+#### General Rules
+- **Functions**: camelCase (`createOrder`, `findUserById`, `validatePayment`)
+- **Types/Interfaces**: PascalCase (`Customer`, `CreateOrderInput`, `PaymentStatus`)
+- **Constants**: UPPER_SNAKE_CASE (`MAX_RETRIES`, `DEFAULT_TIMEOUT`, `API_VERSION`)
+- **Files**: kebab-case (`order-service.ts`, `create-payment.ts`, `user-validator.ts`)
+
+#### Acronym Handling
+- **Two-letter acronyms**: Keep uppercase when not at the beginning (`delayMS`, `apiID`, `xmlIO`)
+- **Two-letter acronyms at beginning**: Lowercase (`dbConnection`, `ioStream`, `idGenerator`)
+- **Three or more letter acronyms**: Use PascalCase (`HttpClient`, `JsonParser`, `XmlSerializer`)
+
+Examples:
+```typescript
+// ✅ Good
+const delayMS = 1000;        // MS = milliseconds (2 letters)
+const apiURL = "https://";   // URL = 3+ letters, so PascalCase
+const dbConn = connect();    // db at beginning, so lowercase
+const totalMS = 5000;        // MS in middle, so uppercase
+const xmlData = parse();     // xml at beginning, so lowercase
+const getXMLData = () => {}; // XML in middle of function, 3 letters, so uppercase
+
+// ❌ Bad
+const delayMs = 1000;        // Should be delayMS
+const apiUrl = "https://";   // Should be apiURL
+const DBConn = connect();    // Should be dbConn
+const totalms = 5000;        // Should be totalMS
+```
+
+#### Database Naming
+- **Tables**: singular, snake_case (`customer`, `product_category`, `order_item`)
+- **Columns**: snake_case (`customer_id`, `created_at`, `is_active`)
+- **Indexes**: `idx_table_column` (`idx_order_status`, `idx_customer_email`)
+
+### 6. TypeScript Guidelines
+
+#### Strict Mode
+Always use TypeScript strict mode. The following compiler options must be enabled:
+
+```json
+{
+  "strict": true,
+  "noUnusedLocals": true,
+  "noUnusedParameters": true,
+  "noImplicitReturns": true,
+  "noFallthroughCasesInSwitch": true,
+  "noUncheckedIndexedAccess": true
+}
+```
+
+#### Type vs Interface
+Prefer `type` over `interface` unless you need interface-specific features:
+
+```typescript
+// ✅ Good - Using type for data structures
+type Product = {
+  id: string;
+  name: string;
+  price: number;
+};
+
+type OrderStatus = 'pending' | 'processing' | 'shipped' | 'delivered';
+
+// Use interface only for extensible contracts
+interface PaymentProcessor {
+  processPayment(amount: number, currency: string): Promise<PaymentResult>;
+  refundPayment(transactionId: string): Promise<RefundResult>;
+}
+
+// For extensible systems like plugins or providers
+interface AuthProvider {
+  authenticate(credentials: Credentials): Promise<AuthResult>;
+  refresh(token: string): Promise<AuthResult>;
+  logout(token: string): Promise<void>;
+}
+```
+
+#### Avoid `any`
+Never use `any`. Use `unknown` if the type is truly unknown:
+
+```typescript
+// ✅ Good - Handling webhook payloads
+function processWebhookPayload(payload: unknown): ProcessedData {
+  if (!isValidWebhookPayload(payload)) {
+    throw new Error('Invalid webhook payload');
+  }
+  // Now payload is typed through the type guard
+  return transformPayload(payload);
+}
+
+// ❌ Bad
+function processWebhookPayload(payload: any): ProcessedData {
+  return payload.data; // No type safety
+}
+```
+
+#### Immutable Data Structures
+
+```typescript
+// ✅ Good - Readonly properties for cart state
+export type ShoppingCart = {
+  readonly id: string;
+  readonly userId: string;
+  readonly items: readonly CartItem[];
+  readonly totals: Readonly<CartTotals>;
+};
+
+// ✅ Good - Functional updates
+export function addItemToCart(
+  cart: ShoppingCart,
+  item: CartItem
+): ShoppingCart {
+  return {
+    ...cart,
+    items: [...cart.items, item],
+    totals: recalculateTotals([...cart.items, item])
+  };
+}
+```
+
+#### Discriminated Unions
+
+```typescript
+// ✅ Good - Payment method types
+export type PaymentMethod =
+  | {
+      readonly type: "credit_card";
+      readonly cardNumber: string;
+      readonly expiryDate: string;
+      readonly cvv: string;
+    }
+  | {
+      readonly type: "paypal";
+      readonly email: string;
+      readonly paypalId: string;
+    }
+  | {
+      readonly type: "bank_transfer";
+      readonly accountNumber: string;
+      readonly routingNumber: string;
+    };
+
+// Order processing states
+export type OrderState =
+  | { readonly status: "draft"; readonly createdAt: Date }
+  | { 
+      readonly status: "submitted"; 
+      readonly createdAt: Date;
+      readonly submittedAt: Date;
+    }
+  | {
+      readonly status: "processing";
+      readonly createdAt: Date;
+      readonly submittedAt: Date;
+      readonly processingStartedAt: Date;
+    }
+  | {
+      readonly status: "completed";
+      readonly createdAt: Date;
+      readonly submittedAt: Date;
+      readonly processingStartedAt: Date;
+      readonly completedAt: Date;
+      readonly trackingNumber: string;
+    };
+```
+
+### 7. Async/Await Pattern
+
+Always use async/await instead of promises with `.then()`:
+
+```typescript
+// ✅ Good - Example: Processing an order with inventory check
+export async function processOrderWithInventory(
+  db: Database,
+  orderInput: CreateOrderInput,
+  items: OrderItemInput[]
+): Promise<Result<Order>> {
+  const inventoryResult = await checkInventory(db, items);
+  if (!inventoryResult.success) {
+    return failure(new Error('Insufficient inventory'));
+  }
+  
+  const orderResult = await createOrder(db, orderInput);
+  if (!orderResult.success) {
+    return orderResult;
+  }
+  
+  for (const item of items) {
+    const itemResult = await addOrderItem(db, orderResult.data.id, item);
+    if (!itemResult.success) {
+      // Rollback logic here
+      return failure(itemResult.error);
+    }
+  }
+  
+  return orderResult;
+}
+
+// ❌ Bad - Promise chains
+export function processOrderWithInventory(
+  db: Database,
+  orderInput: CreateOrderInput,
+  items: OrderItemInput[]
+): Promise<Result<Order>> {
+  return checkInventory(db, items).then(inventoryResult => {
+    if (!inventoryResult.success) {
+      return failure(new Error('Insufficient inventory'));
+    }
+    return createOrder(db, orderInput).then(orderResult => {
+      // Nested promise chains...
+    });
+  });
+}
+```
+
+### 8. Documentation
+
+#### JSDoc Comments
+Add JSDoc comments for all exported functions and types:
+
+```typescript
+/**
+ * Processes a payment for the given order.
+ * 
+ * @param paymentGateway - Payment gateway connection
+ * @param order - Order to process payment for
+ * @param paymentMethod - Customer's payment method
+ * @returns Result containing the payment transaction or an error
+ * 
+ * @example
+ * const result = await processPayment(gateway, {
+ *   orderId: 'ord-123',
+ *   amount: 99.99,
+ *   currency: 'USD'
+ * }, {
+ *   type: 'credit_card',
+ *   cardNumber: '4111111111111111',
+ *   expiryDate: '12/25',
+ *   cvv: '123'
+ * });
+ * 
+ * if (result.success) {
+ *   console.log('Payment processed:', result.data.transactionId);
+ * }
+ */
+export async function processPayment(
+  paymentGateway: PaymentGateway,
+  order: Order,
+  paymentMethod: PaymentMethod
+): Promise<Result<PaymentTransaction, PaymentError>> {
   // Implementation
 }
 ```
 
-### 3. **Result Types for Error Handling**
+### 9. Testing
+
+#### Test Structure
+- Place tests in `__tests__` directories
+- Name test files with `.test.ts` suffix
+- Use descriptive test names
 
 ```typescript
-// ✅ Good - Explicit Result types
-import { createLogger } from '@codespin/shaman-logger';
+// Example: Testing user registration
+describe('registerUser', () => {
+  it('should create a new user with valid email', async () => {
+    // Arrange
+    const input = {
+      email: 'test@example.com',
+      password: 'securePassword123',
+      name: 'Test User'
+    };
+    
+    // Act
+    const result = await registerUser(db, input);
+    
+    // Assert
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.email).toBe(input.email);
+      expect(result.data.name).toBe(input.name);
+    }
+  });
+  
+  it('should return error when email already exists', async () => {
+    // Arrange - create existing user
+    await createUser(db, { email: 'existing@example.com' });
+    
+    // Act
+    const result = await registerUser(db, {
+      email: 'existing@example.com',
+      password: 'password123',
+      name: 'Another User'
+    });
+    
+    // Assert
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.message).toContain('already exists');
+    }
+  });
+});
+```
 
-const logger = createLogger('Validation');
+### 10. Error Handling Patterns
 
+#### Result Type Implementation
+
+```typescript
 export type Result<T, E = Error> =
   | {
       readonly success: true;
@@ -131,598 +588,51 @@ export type Result<T, E = Error> =
       readonly error: E;
     };
 
-export async function validateAgentDefinition(
-  frontmatter: unknown
-): Promise<Result<AgentDefinition, ValidationError[]>> {
-  if (!isValidFrontmatter(frontmatter)) {
-    return {
-      success: false,
-      error: [{ field: "name", message: "Name is required" }],
-    };
-  }
-
-  return {
-    success: true,
-    data: frontmatter as AgentDefinition,
-  };
+export function success<T>(data: T): Result<T, never> {
+  return { success: true, data };
 }
 
-// Usage
-const result = await validateAgentDefinition(data);
-if (!result.success) {
-  logger.error("Validation failed:", result.error);
-  return;
-}
-const agentDef = result.data; // Type-safe access
-```
-
-### 4. **LLM Provider Pattern**
-
-```typescript
-// ✅ Good - Unified LLM provider interface
-import type { LLMProvider, LLMCompletionRequest } from '@codespin/shaman-llm-core';
-
-export async function callLLM(
-  request: LLMCompletionRequest,
-  provider: LLMProvider
-): Promise<Result<LLMCompletionResponse>> {
-  try {
-    const response = await provider.complete(request);
-    return { success: true, data: response };
-  } catch (error) {
-    return { success: false, error };
-  }
-}
-
-// ✅ Good - Provider implementation with Vercel AI SDK
-export function createVercelLLMProvider(config: VercelConfig): LLMProvider {
-  return {
-    async complete(request) {
-      const model = getModelFromConfig(request.model, config);
-      return await generateText({
-        model,
-        messages: request.messages,
-        tools: request.tools,
-        temperature: request.temperature
-      });
-    },
-    
-    async streamComplete(request) {
-      const model = getModelFromConfig(request.model, config);
-      const stream = await streamText({
-        model,
-        messages: request.messages,
-        tools: request.tools
-      });
-      
-      for await (const chunk of stream.textStream) {
-        yield { content: chunk };
-      }
-    }
-  };
+export function failure<E>(error: E): Result<never, E> {
+  return { success: false, error };
 }
 ```
 
-## 📊 Type Definitions
-
-### 1. **Prefer `type` over `interface`**
+#### Validation Functions
 
 ```typescript
-// ✅ Good - Use type for data structures
-export type User = {
-  readonly id: string;
-  readonly email: string;
-  readonly name: string;
-  readonly role: UserRole;
-  readonly createdAt: Date;
-};
-
-export type CreateUserRequest = {
-  readonly email: string;
-  readonly name: string;
-  readonly role?: UserRole;
-};
-
-// ✅ Acceptable - Use interface for extensible contracts
-export interface LLMProvider {
-  call(request: LLMRequest): Promise<LLMResponse>;
-  stream(request: LLMRequest): AsyncIterable<LLMStreamChunk>;
-  getModels(): Promise<string[]>;
-}
-```
-
-### 2. **Immutable Data Structures**
-
-```typescript
-// ✅ Good - Readonly properties
-export type AgentExecutionContext = {
-  readonly runId: string;
-  readonly stepId: string;
-  readonly agentName: string;
-  readonly callStack: readonly string[];
-  readonly metadata: Readonly<Record<string, unknown>>;
-};
-
-// ✅ Good - Functional updates
-export function addToCallStack(
-  context: AgentExecutionContext,
-  agentName: string
-): AgentExecutionContext {
-  return {
-    ...context,
-    callStack: [...context.callStack, agentName],
-  };
-}
-```
-
-### 3. **Discriminated Unions**
-
-```typescript
-// ✅ Good - Clear discriminated unions
-export type AgentSource =
-  | {
-      readonly type: "git";
-      readonly repository: string;
-      readonly commit: string;
-    }
-  | {
-      readonly type: "external";
-      readonly endpoint: string;
-      readonly agentCard: A2AAgentCard;
-    };
-
-export type ExecutionState =
-  | { readonly status: "running"; readonly startTime: Date }
-  | {
-      readonly status: "completed";
-      readonly startTime: Date;
-      readonly endTime: Date;
-      readonly result: string;
-    }
-  | {
-      readonly status: "failed";
-      readonly startTime: Date;
-      readonly endTime: Date;
-      readonly error: string;
-    };
-```
-
-## 🗄️ Database Access Patterns
-
-### 1. **DbRow Pattern with Domain Structure**
-
-All database access must use the DbRow pattern for type safety and clear separation between database schema and domain types. The codebase follows a domain-driven architecture with modular organization.
-
-```typescript
-// ✅ Good - DbRow type mirrors exact database schema
-type RunDbRow = {
-  id: string;
-  status: string;
-  initial_input: string;
-  total_cost: number;
-  start_time: Date;
-  end_time: Date | null;
-  duration: number | null;
-  created_by: string;
-  trace_id: string | null;
-  metadata: unknown;  // JSONB fields typed as unknown
-};
-
-// ✅ Good - Bidirectional mapper functions
-function mapRunFromDb(row: RunDbRow): Run {
-  return {
-    id: row.id,
-    status: row.status as ExecutionState,
-    initialInput: row.initial_input,
-    totalCost: row.total_cost,
-    startTime: row.start_time,
-    endTime: row.end_time || undefined,
-    duration: row.duration || undefined,
-    createdBy: row.created_by,
-    traceId: row.trace_id || undefined,
-    metadata: row.metadata as Record<string, unknown> | undefined
-  };
-}
-
-function mapRunToDb(run: Omit<Run, 'id' | 'startTime'> & { id?: string }): Partial<RunDbRow> {
-  return {
-    id: run.id,
-    status: run.status,
-    initial_input: run.initialInput,
-    total_cost: run.totalCost,
-    created_by: run.createdBy,
-    trace_id: run.traceId || null,
-    metadata: run.metadata || null,
-    end_time: run.endTime || null,
-    duration: run.duration || null
-  };
-}
-
-// ✅ Good - Type-safe queries
-export async function getRun(id: string): Promise<Run | null> {
-  const result = await db.oneOrNone<RunDbRow>(
-    `SELECT * FROM run WHERE id = $(id)`,
-    { id }
-  );
-  return result ? mapRunFromDb(result) : null;
-}
-```
-
-**Key Rules:**
-- DbRow types use **snake_case** to match database columns exactly
-- Domain types use **camelCase** for TypeScript conventions
-- JSONB fields typed as `unknown` in DbRow types
-- All queries must specify the DbRow type: `db.one<XxxDbRow>(...)`
-- Mapper functions handle all conversions including null/undefined mapping
-- Use `Partial<XxxDbRow>` for insert/update operations
-
-### Domain Structure Organization
-
-All database-related functions are organized in domain directories with:
-- `types.ts` - DbRow type definitions only
-- `mappers/` - Individual mapper functions (one per file, e.g., `map-run-from-db.ts`, `map-run-to-db.ts`)
-- Individual function files for business logic (e.g., `create-run.ts`, `get-run.ts`, `update-run.ts`)
-- Utility functions in separate files (e.g., `generate-run-id.ts`)
-- `index.ts` - Clean exports for the entire domain
-
-```typescript
-// Example domain structure: src/domain/run/
-// types.ts - Only type definitions
-export type RunDbRow = {
-  id: string;
-  status: string;
-  // ... other fields
-};
-
-// mappers/map-run-from-db.ts - Single mapper function
-export function mapRunFromDb(row: RunDbRow): Run {
-  return {
-    id: row.id,
-    status: row.status as ExecutionState,
-    // ... field conversions
-  };
-}
-
-// create-run.ts - Single business function  
-export async function createRun(db: Database, run: CreateRunInput): Promise<Run> {
-  // Implementation using mapRunToDb and mapRunFromDb
-}
-
-// index.ts - Clean exports
-export { createRun } from './create-run.js';
-export { getRun } from './get-run.js';
-export { mapRunFromDb } from './mappers/map-run-from-db.js';
-export type { RunDbRow } from './types.js';
-```
-
-### 2. **Named Parameters in SQL**
-
-Always use named parameters in SQL queries for clarity and safety. Use pg-promise's named parameter syntax.
-
-```typescript
-// ✅ Good - Named parameters
-export async function createRunData(
-  data: RunDataInput,
-  db: Database
-): Promise<Result<RunData, DatabaseError>> {
-  try {
-    const result = await db.one(
-      `INSERT INTO run_data 
-       (run_id, key, value, created_by_agent_name, created_by_agent_source, created_by_step_id)
-       VALUES ($(runId), $(key), $(value), $(agentName), $(agentSource), $(stepId))
-       RETURNING *`,
-      {
-        runId: data.runId,
-        key: data.key,
-        value: JSON.stringify(data.value),
-        agentName: data.agentName,
-        agentSource: data.agentSource,
-        stepId: data.stepId
-      }
-    );
-    return { success: true, data: result };
-  } catch (error) {
-    return { success: false, error: adaptDatabaseError(error) };
-  }
-}
-
-// ❌ Bad - Positional parameters
-export async function createRunData(data: RunDataInput, db: Database) {
-  const result = await db.query(
-    `INSERT INTO run_data VALUES ($1, $2, $3, $4, $5, $6)`,
-    [data.runId, data.key, data.value, data.agentName, data.agentSource, data.stepId]
-  );
-}
-
-// ✅ Good - Complex queries with named parameters
-export async function findRunDataByAgent(
-  filters: RunDataFilters,
-  db: Database
-): Promise<Result<RunData[], DatabaseError>> {
-  const query = `
-    SELECT * FROM run_data 
-    WHERE run_id = $(runId)
-      AND created_by_agent_name = $(agentName)
-      ${filters.afterDate ? 'AND created_at > $(afterDate)' : ''}
-    ORDER BY created_at DESC
-    LIMIT $(limit)
-  `;
-  
-  try {
-    const results = await db.manyOrNone(query, {
-      runId: filters.runId,
-      agentName: filters.agentName,
-      afterDate: filters.afterDate,
-      limit: filters.limit || 100
-    });
-    return { success: true, data: results };
-  } catch (error) {
-    return { success: false, error: adaptDatabaseError(error) };
-  }
-}
-```
-
-### 2. **Database Connection Patterns**
-
-```typescript
-// ✅ Good - Pass database connection explicitly
-export async function executeInTransaction<T>(
-  operation: (tx: DatabaseTransaction) => Promise<T>,
-  db: Database
-): Promise<Result<T, DatabaseError>> {
-  try {
-    const result = await db.tx(async (tx) => {
-      return await operation(tx);
-    });
-    return { success: true, data: result };
-  } catch (error) {
-    return { success: false, error: adaptDatabaseError(error) };
-  }
-}
-```
-
-## 🔄 Async Patterns
-
-### 1. **Promise-Based Functions**
-
-```typescript
-// ✅ Good - Explicit async/await
-export async function syncGitRepository(
-  repoConfig: GitRepositoryConfig
-): Promise<Result<SyncResult, SyncError>> {
-  try {
-    const gitCredentials = await authenticateRepository(repoConfig);
-    const commits = await fetchNewCommits(repoConfig, gitCredentials);
-    const agents = await discoverAgentsInCommits(commits);
-
-    return {
-      success: true,
-      data: {
-        repository: repoConfig.name,
-        discoveredAgents: agents,
-        syncedCommit: commits[0]?.hash ?? null,
-      },
-    };
-  } catch (error) {
-    return {
-      success: false,
-      error: {
-        repository: repoConfig.name,
-        message: error.message,
-        timestamp: new Date(),
-      },
-    };
-  }
-}
-```
-
-### 2. **Stream Processing**
-
-```typescript
-// ✅ Good - Async iterables for streaming
-export async function* streamLLMResponse(
-  request: LLMRequest,
-  provider: LLMProvider
-): AsyncIterable<LLMStreamChunk> {
-  for await (const chunk of provider.stream(request)) {
-    // Transform and validate chunk
-    const validatedChunk = validateStreamChunk(chunk);
-    if (validatedChunk.success) {
-      yield validatedChunk.data;
-    }
-  }
-}
-
-// Usage
-import { createLogger } from '@codespin/shaman-logger';
-const logger = createLogger('LLMStream');
-
-for await (const chunk of streamLLMResponse(request, provider)) {
-  logger.debug("Received chunk:", { chunk });
-}
-```
-
-## 🏗️ Module Organization
-
-### 1. **Clear Module Exports**
-
-```typescript
-// src/agents/resolver.ts
-
-// Types first
-export type AgentResolution = {
-  readonly agent: GitAgent | ExternalAgent;
-  readonly source: "git" | "external";
-  readonly resolvedAt: Date;
-};
-
-export type ResolverOptions = {
-  readonly includeInactive: boolean;
-  readonly preferredCommit?: string;
-};
-
-// Main functions
-export async function resolveAgent(
-  agentName: string,
-  options: ResolverOptions = { includeInactive: false }
-): Promise<Result<AgentResolution, AgentNotFoundError>> {
-  // Implementation
-}
-
-export async function listAvailableAgents(
-  filters?: AgentFilters
-): Promise<readonly string[]> {
-  // Implementation
-}
-
-// Helper functions (can be internal)
-function parseAgentPath(agentName: string): AgentPath {
-  // Implementation
-}
-```
-
-### 2. **Index Files for Clean Imports**
-
-```typescript
-// src/agents/index.ts
-export {
-  resolveAgent,
-  listAvailableAgents,
-  type AgentResolution,
-  type ResolverOptions,
-} from "./resolver.js";
-
-export {
-  syncRepository,
-  discoverAgents,
-  type SyncResult,
-  type GitRepositoryConfig,
-} from "./git-discovery.js";
-
-// Usage in other modules
-import { resolveAgent, syncRepository } from "@/agents/index.js";
-```
-
-## 🧪 Testing Patterns
-
-### 1. **Pure Function Testing**
-
-```typescript
-// tests/unit/agent-resolver.test.ts
-import { describe, it, expect } from "vitest";
-import { resolveAgent } from "@/agents/resolver.js";
-
-describe("resolveAgent", () => {
-  it("should resolve git agent from root repository", async () => {
-    const mockGitResolver = vi.fn().mockResolvedValue({
-      success: true,
-      data: {
-        name: "test-agent",
-        source: "git",
-        repository: "main-agents",
-      },
-    });
-
-    const result = await resolveAgent(
-      "test-agent",
-      { includeInactive: false },
-      { gitResolver: mockGitResolver, externalResolver: vi.fn() }
-    );
-
-    expect(result.success).toBe(true);
-    if (result.success) {
-      expect(result.data.source).toBe("git");
-    }
-  });
-});
-```
-
-### 2. **Integration Testing**
-
-```typescript
-// tests/integration/agent-execution.test.ts
-describe("Agent Execution Integration", () => {
-  it("should execute simple agent end-to-end", async () => {
-    const testConfig = await loadTestConfig();
-    const dependencies = await setupTestDependencies(testConfig);
-
-    const result = await executeAgent(
-      "test-echo-agent",
-      "Hello, world!",
-      createTestContext(),
-      dependencies
-    );
-
-    expect(result.success).toBe(true);
-    expect(result.data.output).toContain("Hello, world!");
-  });
-});
-```
-
-## 📋 Code Quality Guidelines
-
-### 1. **Documentation Comments**
-
-````typescript
-/**
- * Executes an AI agent with the given input and context.
- *
- * @param agentName - The name of the agent to execute
- * @param input - The input prompt for the agent
- * @param context - Execution context with run metadata
- * @param dependencies - Required service dependencies
- * @returns Promise resolving to execution result or error
- *
- * @example
- * ```typescript
- * const result = await executeAgent(
- *   'customer-support',
- *   'Help with order #12345',
- *   context,
- *   { llmProvider, toolRouter }
- * );
- *
- * import { createLogger } from '@codespin/shaman-logger';
- * const logger = createLogger('AgentDemo');
- * 
- * if (result.success) {
- *   logger.info('Agent response:', { output: result.data.output });
- * }
- * ```
- */
-export async function executeAgent(/* ... */): Promise<AgentExecutionResult> {
-  // Implementation
-}
-````
-
-### 2. **Validation Functions**
-
-```typescript
-// ✅ Good - Explicit validation with type guards
+// ✅ Good - Email validation with type guard
 export function isValidEmail(email: unknown): email is string {
   return typeof email === "string" && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 }
 
-export function validateCreateUserRequest(
-  request: unknown
-): Result<CreateUserRequest, ValidationError[]> {
+// Example: Validating order input
+export function validateCreateOrderInput(
+  input: unknown
+): Result<CreateOrderInput, ValidationError[]> {
   const errors: ValidationError[] = [];
 
-  if (!isObject(request)) {
+  if (!isObject(input)) {
     return {
       success: false,
-      error: [{ field: "root", message: "Request must be an object" }],
+      error: [{ field: "root", message: "Input must be an object" }],
     };
   }
 
-  if (!isValidEmail(request.email)) {
-    errors.push({ field: "email", message: "Invalid email format" });
+  if (!isValidCustomerId(input.customerId)) {
+    errors.push({ field: "customerId", message: "Invalid customer ID format" });
   }
 
-  if (typeof request.name !== "string" || request.name.length < 2) {
+  if (!Array.isArray(input.items) || input.items.length === 0) {
     errors.push({
-      field: "name",
-      message: "Name must be at least 2 characters",
+      field: "items",
+      message: "Order must contain at least one item",
+    });
+  }
+
+  if (typeof input.shippingAddress !== "object") {
+    errors.push({
+      field: "shippingAddress",
+      message: "Shipping address is required",
     });
   }
 
@@ -732,155 +642,292 @@ export function validateCreateUserRequest(
 
   return {
     success: true,
-    data: request as CreateUserRequest,
+    data: input as CreateOrderInput,
   };
 }
 ```
 
-## 🛠️ Platform Tools Pattern
+### 11. Dependency Injection Patterns
 
 ```typescript
-// ✅ Good - Type-safe platform tool implementation
-import type { PlatformToolName, PlatformToolSchemas, PlatformToolResults } from './types.js';
+// ✅ Good - Payment service configuration
+export type PaymentServiceConfig = {
+  readonly apiKey: string;
+  readonly webhookSecret: string;
+  readonly environment: 'sandbox' | 'production';
+  readonly timeout: number;
+};
 
-export type PlatformToolHandlers = {
-  [K in PlatformToolName]: ToolHandler<
-    PlatformToolSchemas[K],
-    PlatformToolResults[K]
-  >;
+export async function initializePaymentService(
+  config: PaymentServiceConfig
+): Promise<PaymentService> {
+  // Implementation
+}
+
+// ✅ Good - Order processing with injected dependencies
+export async function processCustomerOrder(
+  order: Order,
+  dependencies: {
+    inventoryService: (sku: string) => Promise<InventoryStatus>;
+    paymentGateway: (payment: PaymentRequest) => Promise<PaymentResult>;
+    shippingProvider: (shipment: ShipmentRequest) => Promise<ShipmentResult>;
+    notificationService: (message: NotificationMessage) => Promise<void>;
+  }
+): Promise<OrderProcessingResult> {
+  // Check inventory
+  for (const item of order.items) {
+    const inventory = await dependencies.inventoryService(item.sku);
+    if (inventory.available < item.quantity) {
+      return { success: false, error: 'Insufficient inventory' };
+    }
+  }
+  
+  // Process payment
+  const paymentResult = await dependencies.paymentGateway({
+    amount: order.total,
+    currency: order.currency,
+    orderId: order.id
+  });
+  
+  // Continue with other steps...
+}
+```
+
+### 12. Stream Processing
+
+```typescript
+// ✅ Good - Streaming large datasets
+export async function* streamOrderHistory(
+  customerId: string,
+  dateRange: DateRange,
+  db: Database
+): AsyncIterable<Order> {
+  const query = db.stream<OrderDbRow>(
+    `SELECT * FROM "order" 
+     WHERE customer_id = $(customerId) 
+     AND created_at BETWEEN $(startDate) AND $(endDate)
+     ORDER BY created_at DESC`,
+    {
+      customerId,
+      startDate: dateRange.start,
+      endDate: dateRange.end
+    }
+  );
+  
+  for await (const row of query) {
+    yield mapOrderFromDb(row);
+  }
+}
+
+// Usage example
+import { createLogger } from '@company/logger';
+const logger = createLogger('OrderExport');
+
+for await (const order of streamOrderHistory(customerId, dateRange, db)) {
+  logger.debug("Processing order:", { orderId: order.id });
+  await exportOrder(order);
+}
+```
+
+### 13. Platform-Specific Patterns
+
+#### Type-safe Tool Implementation
+
+```typescript
+// Example: E-commerce platform tools
+export type ToolHandler<TInput, TOutput> = (
+  input: TInput,
+  context: ToolContext
+) => Promise<Result<TOutput, ToolError>>;
+
+export type EcommercePlatformTools = {
+  inventory_check: ToolHandler<InventoryCheckInput, InventoryStatus>;
+  price_calculate: ToolHandler<PriceCalculationInput, PriceBreakdown>;
+  shipping_estimate: ToolHandler<ShippingEstimateInput, ShippingOptions>;
 };
 
 // Type-safe handler implementation
 export function createPlatformToolHandlers(
-  dependencies: ToolRouterDependencies
-): PlatformToolHandlers {
+  dependencies: PlatformDependencies
+): EcommercePlatformTools {
   return {
-    run_data_write: async (input, context) => {
-      const data = await dependencies.persistenceLayer.createRunData({
-        runId: context.runId,
-        key: input.key,
-        value: input.value,
-        createdByAgentName: context.agentName,
-        createdByAgentSource: context.agentSource,
-        createdByStepId: context.stepId,
-        metadata: input.metadata
+    inventory_check: async (input, context) => {
+      const status = await dependencies.inventory.checkAvailability({
+        sku: input.sku,
+        warehouse: input.warehouse,
+        quantity: input.requestedQuantity
       });
-      return { success: true, data: undefined };
+      return { success: true, data: status };
     },
     
-    run_data_read: async (input, context) => {
-      const data = await dependencies.persistenceLayer.getRunData(
-        context.runId,
-        input.key
-      );
-      return { success: true, data };
+    price_calculate: async (input, context) => {
+      const breakdown = await dependencies.pricing.calculate({
+        items: input.items,
+        discountCodes: input.discountCodes,
+        taxRegion: input.taxRegion
+      });
+      return { success: true, data: breakdown };
+    },
+    
+    shipping_estimate: async (input, context) => {
+      const options = await dependencies.shipping.getOptions({
+        origin: input.origin,
+        destination: input.destination,
+        weight: input.weight,
+        dimensions: input.dimensions
+      });
+      return { success: true, data: options };
     }
-    // ... other handlers
   };
 }
 ```
 
-## 🚫 Anti-Patterns to Avoid
+### 14. Performance Considerations
 
-### 1. **Don't Use Classes**
+#### Database Queries
+- ALWAYS use named parameters (e.g., `$(paramName)`) instead of positional parameters (e.g., `$1`)
+- Use parameterized queries to prevent SQL injection
+- Add appropriate indexes for frequently queried columns
+- Use transactions for operations that modify multiple tables
+- Avoid N+1 queries by using joins or batch operations
 
+Example of batch operation:
 ```typescript
-// ❌ Bad
-export class UserService {
-  constructor(private db: Database) {}
-
-  async createUser(data: CreateUserRequest): Promise<User> {
-    return this.db.users.create(data);
-  }
-}
-
-// ✅ Good
-export async function createUser(
-  data: CreateUserRequest,
+// ✅ Good - Batch fetch product details
+export async function getProductsWithCategories(
+  productIds: string[],
   db: Database
-): Promise<Result<User, DatabaseError>> {
-  try {
-    const user = await db.users.create(data);
-    return { success: true, data: user };
-  } catch (error) {
-    return { success: false, error: adaptDatabaseError(error) };
-  }
-}
-```
-
-### 2. **Avoid Implicit Dependencies**
-
-```typescript
-// ❌ Bad - Hidden global state
-let globalConfig: Config;
-
-export function processRequest(request: Request): Response {
-  // Uses globalConfig implicitly
-  return processWithConfig(request, globalConfig);
+): Promise<ProductWithCategory[]> {
+  const products = await db.manyOrNone<ProductWithCategoryDbRow>(
+    `SELECT p.*, c.name as category_name, c.slug as category_slug
+     FROM product p
+     JOIN category c ON p.category_id = c.id
+     WHERE p.id = ANY($(productIds))`,
+    { productIds }
+  );
+  
+  return products.map(mapProductWithCategoryFromDb);
 }
 
-// ✅ Good - Explicit dependencies
-export function processRequest(request: Request, config: Config): Response {
-  return processWithConfig(request, config);
-}
-```
-
-### 3. **Don't Throw Exceptions for Business Logic**
-
-```typescript
-// ❌ Bad - Exceptions for control flow
-export async function getUser(id: string): Promise<User> {
-  const user = await db.findUser(id);
-  if (!user) {
-    throw new Error("User not found");
-  }
-  return user;
-}
-
-// ✅ Good - Result types for business logic
-export async function getUser(
-  id: string,
+// ❌ Bad - N+1 query pattern
+export async function getProductsWithCategories(
+  productIds: string[],
   db: Database
-): Promise<Result<User, UserNotFoundError>> {
-  const user = await db.findUser(id);
-  if (!user) {
-    return {
-      success: false,
-      error: { type: "UserNotFound", userId: id },
-    };
+): Promise<ProductWithCategory[]> {
+  const products = [];
+  for (const id of productIds) {
+    const product = await getProduct(db, id);
+    const category = await getCategory(db, product.categoryId);
+    products.push({ ...product, category });
   }
-  return { success: true, data: user };
+  return products;
 }
 ```
 
-## 🎨 Formatting and Linting
+#### Memory Management
+- Stream large result sets instead of loading all data into memory
+- Use pagination for list operations
+- Clean up resources (close database connections, etc.)
 
-Use the following tools and configurations:
+### 15. Module Organization
 
-- **Prettier** for code formatting
-- **ESLint** with TypeScript rules
-- **Strict TypeScript** configuration
-- **Import sorting** by category (Node.js → dependencies → internal)
+#### Clear Module Exports
 
-Example ESLint configuration:
+```typescript
+// src/services/inventory-manager.ts
 
-```json
-{
-  "extends": ["@typescript-eslint/recommended"],
-  "rules": {
-    "@typescript-eslint/no-explicit-any": "error",
-    "@typescript-eslint/no-unsafe-assignment": "error",
-    "@typescript-eslint/no-unsafe-member-access": "error",
-    "@typescript-eslint/no-unsafe-call": "error",
-    "@typescript-eslint/no-unsafe-return": "error",
-    "@typescript-eslint/explicit-function-return-type": "warn",
-    "@typescript-eslint/no-unused-vars": "error",
-    "prefer-const": "error",
-    "no-var": "error"
-  }
+// Types first
+export type InventoryCheck = {
+  readonly sku: string;
+  readonly available: number;
+  readonly reserved: number;
+  readonly incoming: number;
+};
+
+export type ReservationOptions = {
+  readonly duration: number;
+  readonly allowBackorder: boolean;
+};
+
+// Main functions
+export async function checkInventory(
+  sku: string,
+  warehouse: string,
+  options: ReservationOptions = { duration: 3600, allowBackorder: false }
+): Promise<Result<InventoryCheck, InventoryError>> {
+  // Implementation
+}
+
+export async function reserveInventory(
+  items: ReservationItem[],
+  orderId: string
+): Promise<Result<ReservationConfirmation, ReservationError>> {
+  // Implementation
+}
+
+// Helper functions (can be internal)
+function calculateAvailableQuantity(
+  physical: number,
+  reserved: number
+): number {
+  // Implementation
 }
 ```
 
----
+#### Direct Imports vs Index Files
 
-**Remember**: The goal is to write code that is **predictable, testable, and maintainable** through functional composition and strong typing.
+**Direct imports are perfectly fine and often preferred:**
+
+```typescript
+// ✅ Good - Direct import
+import { checkInventory } from "@/services/inventory-manager.js";
+import { processPayment } from "@/services/payment-processor.js";
+import { validateAddress } from "@/utils/address-validator.js";
+```
+
+**Use index files only when they add value:**
+
+```typescript
+// ✅ Good - Index file for public API of a complex module
+// src/auth/index.ts - Exposing only the public interface
+export { authenticate, logout } from "./authentication.js";
+export { authorize } from "./authorization.js";
+export type { AuthToken, Permission } from "./types.js";
+// Not exporting internal utilities and helpers
+
+// ✅ Good - Index file for grouping related constants
+// src/constants/index.ts
+export * from "./error-codes.js";
+export * from "./api-endpoints.js";
+export * from "./validation-rules.js";
+```
+
+**Avoid index files that just re-export everything:**
+
+```typescript
+// ❌ Bad - Unnecessary index file that just re-exports
+// src/services/index.ts
+export * from "./inventory-manager.js";
+export * from "./payment-processor.js";
+export * from "./shipping-calculator.js";
+// This adds no value and creates maintenance overhead
+```
+
+## Code Review Checklist
+
+Before submitting a PR, ensure:
+
+- [ ] All functions use Result types for error handling
+- [ ] Classes are only used when they provide clear benefits
+- [ ] All imports include `.js` extension
+- [ ] Database queries use typed parameters with named parameters
+- [ ] JSDoc comments are present for public APIs
+- [ ] Tests are included for new functionality
+- [ ] No `any` types are used
+- [ ] Code follows the naming conventions including acronym rules
+- [ ] No console.log statements (use logger instead)
+- [ ] All database code uses the DbRow pattern
+- [ ] Mappers are used for all database-domain conversions
+- [ ] Functions have explicit return types
+- [ ] Dependencies are injected explicitly
+- [ ] Immutable data structures are used where appropriate
