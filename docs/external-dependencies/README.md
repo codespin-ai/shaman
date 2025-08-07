@@ -1,116 +1,62 @@
-# External Dependencies Documentation
+# External Dependencies
 
-This directory contains copies of documentation from external services that Shaman either actively integrates with or plans to integrate with in the future. These are maintained locally to ensure developers and AI assistants have quick access to the exact API specifications.
+This directory contains documentation for external services that Shaman integrates with or plans to integrate with.
 
-## Purpose
+## Active Integrations
 
-- **Development Reference**: Quick access to external service documentation
-- **AI Assistant Context**: Ensures AI coding assistants have complete documentation available
-- **Version Control**: Track the exact version of external APIs we're integrating with
-- **Offline Access**: Documentation available even without access to external repositories
+### Foreman
+- **Status**: ✅ ACTIVELY INTEGRATED
+- **Purpose**: Workflow orchestration engine
+- **Documentation**: [foreman/](foreman/)
+- **Integration Guide**: [foreman/shaman-integration.md](foreman/shaman-integration.md)
 
-## External Services
+Foreman handles all workflow orchestration for Shaman:
+- Run and task management
+- Queue orchestration with BullMQ
+- Run data storage for inter-agent communication
+- Status tracking and monitoring
 
-### 1. Permiso - Role-Based Access Control (RBAC) [PLANNED - NOT YET INTEGRATED]
+## Planned Integrations
 
-- **Type**: Docker service
-- **Port**: 5001
-- **Protocol**: GraphQL
-- **Docker Image**: `ghcr.io/codespin-ai/permiso:latest`
-- **Purpose**: Will handle authorization and role-based access control when integrated
-- **Current Status**: Documentation and configuration exist, but no active integration in codebase
+### Permiso
+- **Status**: 📋 DOCUMENTED BUT NOT YET INTEGRATED
+- **Purpose**: Role-Based Access Control (RBAC) system
+- **Documentation**: [permiso/](permiso/)
+- **Integration Guide**: [permiso/shaman-integration.md](permiso/shaman-integration.md)
 
-#### Documentation:
-- **[README](./permiso-docs/README.md)** - Complete overview, setup, and usage with TypeScript client
-- **[GraphQL Schema](./permiso-docs/schema.graphql)** - Full API specification
+Permiso will provide authorization services:
+- Multi-tenant organization management
+- User and role management
+- Fine-grained permission control
+- Resource-based access control
 
-#### TypeScript Client Integration:
-```bash
-npm install @codespin/permiso-client
-```
+### Ory Kratos
+- **Status**: 📋 PLANNED
+- **Purpose**: User authentication and identity management
+- **Documentation**: [ory-kratos-docs/](ory-kratos-docs/)
 
-#### Planned Integration with Shaman:
-- Would delegate authorization decisions to Permiso
-- TypeScript client would provide type-safe API (no GraphQL knowledge required)
-- Planned resource patterns: `/agents/{name}`, `/api/runs/*`, `/api/repositories/*`
-- Recommended roles: `ADMIN`, `DEVELOPER`, `VIEWER`, `EXTERNAL_API_CLIENT`
-- Would enable multi-tenant organization isolation with properties support
+Ory Kratos will handle:
+- User registration and login
+- Multi-factor authentication
+- Account recovery
+- Session management
 
-**Note**: Currently, authorization is handled internally by the shaman-security package using JWT tokens and API keys.
+## Documentation Structure
 
-#### Environment Variables:
-```bash
-PERMISO_ENDPOINT=http://localhost:5001/graphql
-PERMISO_API_KEY=your-secret-api-key
-```
-
-### 2. Foreman - Workflow Orchestration Engine [ACTIVELY INTEGRATED]
-
-- **Type**: REST API service
-- **Port**: 3000 (default)
-- **Protocol**: REST/HTTP
-- **NPM Package**: `@codespin/foreman-client`
-- **Purpose**: Handles all workflow orchestration, task management, and run data storage for Shaman
-- **Current Status**: Fully integrated and actively used in a2a-server and worker packages
-
-#### Documentation:
-- **[README](./foreman-docs/README.md)** - Complete overview, setup, and usage with TypeScript client
-- **[API Reference](./foreman-docs/api-reference.md)** - REST API endpoints specification
-- **[API Guide](./foreman-docs/api.md)** - Common workflows and examples
-- **[Database Schema](./foreman-docs/database.md)** - Database design and architecture
-
-#### TypeScript Client Integration:
-```bash
-npm install @codespin/foreman-client
-```
-
-#### Integration with Shaman:
-- All workflow and task management delegated to Foreman
-- ID-only queue pattern: queues store only task IDs, all data in PostgreSQL
-- Complete SDK handles both database and queue operations
-- Agent collaboration via sophisticated run data system
-- Multi-tenant support with organization isolation
-
-#### Key Features:
-- **ID-Only Queue Pattern**: Queues store only task IDs, never data
-- **Run Data Storage**: Key-value system with tags, multiple values per key
-- **PostgreSQL First**: All data in PostgreSQL, queues are ephemeral
-- **Queue Agnostic**: Switch between BullMQ, SQS, RabbitMQ without data migration
-- **Complete SDK**: TypeScript client handles all operations
-- **Docker Ready**: Official Docker images available
-
-#### Environment Variables:
-```bash
-FOREMAN_ENDPOINT=http://localhost:3000
-FOREMAN_API_KEY=fmn_prod_your_api_key_here  # Format: fmn_[env]_[orgId]_[random]
-SHAMAN_TASK_QUEUE=shaman:tasks              # Optional: Override default queue name
-SHAMAN_RESULT_QUEUE=shaman:results          # Optional: Override default queue name
-```
-
-#### Client Usage:
-The `@codespin/foreman-client` package provides:
-- Initialize once with `initializeForemanClient()`
-- All functions return Result types for explicit error handling
-- Queue names can be overridden for multi-tenant deployments
-- Client handles all Redis/BullMQ operations internally
-
-### 3. [Other Services] (to be added as needed)
-
-## Integration Guidelines
-
-When integrating with external services:
-
-1. Always use environment variables for connection details
-2. Implement proper error handling for service unavailability
-3. Use health checks before attempting connections
-4. Log all external service interactions for debugging
-5. Implement circuit breakers for resilience
+Each service directory contains:
+- `README.md` - Main documentation (copy of official docs)
+- `api.md` - API reference (if applicable)
+- `architecture.md` - System design documentation
+- `shaman-integration.md` - Shaman-specific integration details
+- Additional files as provided by the upstream project
 
 ## Updating Documentation
 
-When external service APIs change:
+To update external documentation:
 
-1. Copy the latest documentation from the external repository
-2. Update the integration code to match the new API
-3. Test the integration thoroughly
-4. Note the version/date of the documentation update
+1. Copy the latest documentation from the external project
+2. Place files in the appropriate directory
+3. Update `shaman-integration.md` with any integration changes
+4. Note any breaking changes or new features that affect Shaman
+
+The goal is to keep documentation as close to the original as possible to enable easy updates via copy-paste.

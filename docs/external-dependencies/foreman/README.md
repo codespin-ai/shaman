@@ -2,8 +2,6 @@
 
 A workflow orchestration engine with REST API, built with TypeScript. Foreman provides queue-agnostic task orchestration with PostgreSQL as the source of truth.
 
-**Architecture**: ID-only queue pattern - queues store only task IDs, all data remains in PostgreSQL.
-
 **Security Model**: Foreman is designed to run in a fully trusted environment behind a firewall. All authenticated callers have full access to all operations.
 
 ## Features
@@ -29,7 +27,7 @@ Foreman follows a clean architecture where:
 
 ### Option 1: Docker (Recommended)
 
-The fastest way to get started with Foreman:
+The fastest way to get started with Foreman is using Docker:
 
 ```bash
 # Using Docker Compose (includes PostgreSQL)
@@ -55,6 +53,8 @@ docker run -p 5002:5002 \
   ghcr.io/codespin-ai/foreman:latest
 ```
 
+See [deployment documentation](docs/deployment.md) for production Docker configuration.
+
 ### Option 2: TypeScript Client SDK
 
 For existing applications, install the TypeScript client:
@@ -72,10 +72,11 @@ const client = await initializeForemanClient({
 });
 ```
 
+See the [foreman-client README](node/packages/foreman-client/README.md) for detailed client documentation.
+
 ### Option 3: Local Development
 
 #### Prerequisites
-
 - Node.js 22+
 - PostgreSQL 12+
 - Redis (if using BullMQ)
@@ -163,46 +164,11 @@ For testing:
 
 - `GET /health` - Health check endpoint (no authentication required)
 
-### Runs
-
-- `POST /api/v1/runs` - Create a new run
-- `GET /api/v1/runs/:id` - Get run details
-- `PATCH /api/v1/runs/:id` - Update run status
-- `GET /api/v1/runs` - List runs with filtering
-
-### Tasks
-
-- `POST /api/v1/tasks` - Create a new task
-- `GET /api/v1/tasks/:id` - Get task details
-- `PATCH /api/v1/tasks/:id` - Update task status
-- `GET /api/v1/tasks` - List tasks with filtering
-
-### Run Data
-
-- `POST /api/v1/runs/:runId/data` - Store data with optional tags
-- `GET /api/v1/runs/:runId/data` - Query data with flexible filtering (by key, tags, prefix)
-- `PATCH /api/v1/runs/:runId/data/:dataId/tags` - Update tags on existing data
-- `DELETE /api/v1/runs/:runId/data` - Delete data by key or ID
-
-### Configuration
-
-- `GET /api/v1/config` - Get client configuration (Redis, queues, version)
-- `GET /api/v1/config/redis` - Get Redis configuration only
-- `GET /api/v1/config/queues` - Get queue names configuration only
+See the [API documentation](docs/api.md) for complete endpoint reference and examples.
 
 ## TypeScript Client SDK
 
 The `@codespin/foreman-client` package provides a complete workflow SDK that handles all queue operations internally:
-
-### Core Features
-- 🔧 **Automatic Configuration** - Fetches Redis/queue config from Foreman server
-- 📦 **Complete SDK** - Handles both database and queue operations
-- 🏃 **Worker Management** - Built-in BullMQ worker creation and management
-- 🔄 **Task Lifecycle** - Full task enqueueing, execution, and status tracking
-- 📊 **Run Data** - Store and query workflow data with tags
-- 🎯 **Clean API** - Simple, composable functions
-
-### Quick Start Example
 
 ```typescript
 import { 
@@ -240,7 +206,7 @@ const task = await enqueueFn({
   priority: 10
 });
 
-// Complete workflow example with inter-task communication
+// Create a worker with multiple task handlers
 const worker = await createWorkerFn({
   'validate-order': async (task) => {
     console.log('Validating order:', task.inputData);
@@ -281,15 +247,32 @@ const worker = await createWorkerFn({
 });
 
 await worker.start();
+
+// Query run data
+const results = await queryRunData(foremanConfig, run.data.id, {
+  tags: ['validation'],
+  sortBy: 'created_at',
+  sortOrder: 'desc'
+});
+
+// Complete the run
+await updateRun(foremanConfig, run.data.id, {
+  status: 'completed',
+  outputData: {
+    processedAt: new Date().toISOString(),
+    totalAmount: 99.99
+  }
+});
 ```
 
-### Key Architecture Principles
+## Best Practices
 
-1. **ID-Only Queue Pattern**: Queues store only task IDs, never data
-2. **PostgreSQL First**: All data in PostgreSQL, queues are ephemeral
-3. **Queue Agnostic**: Can switch between BullMQ, SQS, RabbitMQ without data migration
-4. **Multi-tenant**: Organization isolation built-in
-5. **Complete SDK**: TypeScript client handles both database and queue operations
+1. **Store Task IDs Only**: Keep queue payloads minimal by storing only task IDs
+2. **Use Run Data**: Share data between tasks using the run data key-value store
+3. **Handle Retries**: Configure `maxRetries` when creating tasks
+4. **Update Status**: Always update task status during processing
+5. **Error Handling**: Store detailed error information for debugging
+6. **Metadata**: Use metadata for filtering and additional context
 
 ## Client API Reference
 
@@ -348,13 +331,12 @@ listRuns(config: ForemanConfig, params?: PaginationParams): Promise<Result<Pagin
 // Create a task (DB only)
 createTask(config: ForemanConfig, input: CreateTaskInput): Promise<Result<Task, Error>>
 
-// Enqueue a task (DB + Queue) - from initialized client
-enqueueTask({
-  runId: string,
-  type: string,
-  inputData: unknown,
-  priority?: number,
-  delay?: number
+// Enqueue a task (DB + Queue)
+enqueueTask(params: {
+  foremanConfig: ForemanConfig;
+  redisConfig: RedisConfig;
+  queueConfig: QueueConfig;
+  task: CreateTaskInput & { priority?: number; delay?: number };
 }): Promise<Result<{ taskId: string }, Error>>
 
 // Get task status
@@ -395,9 +377,7 @@ createTaskWorker(params: {
 }): Promise<WorkerControls>
 ```
 
-### Run Data Management (Key Feature)
-
-Foreman's sophisticated key-value storage system for inter-task communication:
+### Run Data Management
 
 ```typescript
 // Store run data with tags
@@ -411,7 +391,7 @@ createRunData(
 queryRunData(
   config: ForemanConfig,
   runId: string,
-  params?: QueryRunDataParams  // Supports key, tags, prefix, sorting
+  params?: QueryRunDataParams
 ): Promise<Result<{ data: RunData[]; pagination: {...} }, Error>>
 
 // Update tags on existing data
@@ -430,193 +410,36 @@ deleteRunData(
 ): Promise<Result<{ deleted: number }, Error>>
 ```
 
-### Run Data Features
-- **Multiple Values per Key**: Store multiple entries with same key
-- **Tag System**: Flexible tagging for categorization and filtering
-- **Prefix Matching**: Query by key prefixes
-- **GIN Indexes**: Fast queries on tags using PostgreSQL GIN indexes
-- **Sorting Support**: Sort by creation time, update time, or custom fields
+## Docker Support
 
-## Advanced Usage Examples
+### Quick Start with Docker Compose
 
-### Processing Pipeline with Dependencies
+```bash
+# Start Foreman with PostgreSQL and Redis
+docker-compose up
 
-```typescript
-// Initialize once
-const client = await initializeForemanClient(config);
-const { enqueueTask, createWorker } = client;
-
-// Create a processing pipeline
-const run = await createRun(config, {
-  inputData: { pipeline: 'etl' }
-});
-
-// Enqueue tasks with dependencies
-const extractTask = await enqueueTask({
-  runId: run.data.id,
-  type: 'extract',
-  inputData: { source: 'database' }
-});
-
-const transformTask = await enqueueTask({
-  runId: run.data.id,
-  type: 'transform',
-  inputData: { dependsOn: extractTask.taskId },
-  delay: 5000 // Wait 5 seconds
-});
-
-// Create workers for each task type
-const worker = await createWorker({
-  'extract': async (task) => {
-    const data = await fetchData(task.inputData.source);
-    await createRunData(config, task.runId, {
-      taskId: task.id,
-      key: 'raw-data',
-      value: data,
-      tags: ['extracted', 'raw']
-    });
-    return { recordCount: data.length };
-  },
-  
-  'transform': async (task) => {
-    // Query previous results
-    const rawData = await queryRunData(config, task.runId, {
-      key: 'raw-data'
-    });
-    
-    const transformed = transformData(rawData.data[0].value);
-    await createRunData(config, task.runId, {
-      taskId: task.id,
-      key: 'transformed-data',
-      value: transformed,
-      tags: ['transformed', 'processed']
-    });
-    return { success: true };
-  }
-}, { concurrency: 10 });
-
-await worker.start();
+# Access the API at http://localhost:5002
+curl http://localhost:5002/health
 ```
 
-### Error Handling with Run Data
+### Building Docker Images
 
-```typescript
-const worker = await createWorker({
-  'risky-operation': async (task) => {
-    try {
-      const result = await riskyOperation(task.inputData);
-      return { success: true, result };
-    } catch (error) {
-      // Log error details to run data
-      await createRunData(config, task.runId, {
-        taskId: task.id,
-        key: `error-${Date.now()}`,
-        value: { 
-          error: error.message, 
-          stack: error.stack,
-          input: task.inputData 
-        },
-        tags: ['error', task.type]
-      });
-      throw error; // Re-throw for retry logic
-    }
-  }
-}, {
-  maxRetries: 3,
-  backoffDelay: 2000
-});
+```bash
+# Build the Docker image
+./scripts/docker-build.sh
+
+# Test the image locally
+./scripts/docker-test.sh
+
+# Push to registry
+./scripts/docker-push.sh latest ghcr.io/codespin-ai
 ```
 
-## Integration with Shaman
+### Official Images
 
-Shaman uses Foreman for all workflow orchestration:
+Official Docker images are available at `ghcr.io/codespin-ai/foreman`.
 
-```typescript
-// Initialize Foreman client in Shaman
-import { initializeForemanClient } from '@codespin/foreman-client';
-
-const foremanConfig = {
-  endpoint: process.env.FOREMAN_ENDPOINT || 'http://localhost:3000',
-  apiKey: process.env.FOREMAN_API_KEY || 'fmn_dev_default_key',
-  timeout: 30000,
-  queues: {
-    taskQueue: process.env.SHAMAN_TASK_QUEUE || 'shaman:tasks',
-    resultQueue: process.env.SHAMAN_RESULT_QUEUE || 'shaman:results'
-  }
-};
-
-const client = await initializeForemanClient(foremanConfig);
-
-// Agent execution workflow
-const run = await createRun(foremanConfig, {
-  inputData: {
-    agentName: 'CustomerSupport',
-    input: { message: 'Hello' }
-  },
-  metadata: { 
-    source: 'a2a',
-    organizationId: 'org-123' 
-  }
-});
-
-// Store agent collaboration data
-await createRunData(foremanConfig, run.data.id, {
-  taskId: 'task-456',
-  key: 'agent-response',
-  value: { result: 'success' },
-  tags: ['response', 'agent:CustomerSupport']
-});
-
-// Query collaboration data
-const responses = await queryRunData(foremanConfig, run.data.id, {
-  tags: ['response'],
-  sortBy: 'created_at',
-  sortOrder: 'desc'
-});
-```
-
-## Best Practices
-
-1. **Store Task IDs Only**: Keep queue payloads minimal by storing only task IDs
-2. **Use Run Data**: Share data between tasks using the run data key-value store
-3. **Handle Retries**: Configure `maxRetries` when creating tasks
-4. **Update Status**: Always update task status during processing
-5. **Error Handling**: Store detailed error information for debugging
-6. **Metadata**: Use metadata for filtering and additional context
-7. **Initialize Once**: Call `initializeForemanClient` once and reuse the client
-8. **Tag Data**: Use tags for efficient data querying
-9. **Set Concurrency**: Configure worker concurrency based on your workload
-10. **Clean Shutdown**: Call `worker.stop()` for graceful shutdown
-
-## Configuration Options
-
-### Queue Names
-
-By default, the client fetches queue names from the Foreman server. You can override these:
-
-```typescript
-const config = {
-  endpoint: 'http://localhost:3000',
-  apiKey: 'your-api-key',
-  queues: {
-    taskQueue: 'my-app:tasks',      // Default: from server config
-    resultQueue: 'my-app:results'   // Default: from server config
-  }
-};
-```
-
-This is useful when:
-- Running multiple applications with separate queues
-- Testing with isolated queue names
-- Implementing queue-based routing or priority systems
-
-## Environment Variables
-
-The client respects these environment variables when connecting to Foreman:
-
-- `FOREMAN_ENDPOINT` - Default Foreman server URL
-- `FOREMAN_API_KEY` - Default API key for authentication
-- `FOREMAN_TIMEOUT` - Default request timeout in milliseconds
+See [deployment documentation](docs/deployment.md) for production Docker deployment.
 
 ## Development
 
@@ -657,6 +480,9 @@ cd devenv
 #### Test Commands
 
 ```bash
+# Run full integration test suite (recommended)
+npm test
+
 # Run all tests (integration + client)
 npm run test:integration:all
 
@@ -667,13 +493,34 @@ npm run test:integration:foreman
 npm run test:client
 
 # Run specific test suite
-npm run test:grep -- "Organizations"
+npm run test:integration:grep -- "Organizations"
 npm run test:client:grep -- "Run Management"
 
-# Run with watch mode
-npm run test:integration:foreman:watch
-npm run test:client:watch
+# Run tests with verbose logging
+VERBOSE_TESTS=true npm run test:integration:all
 ```
+
+#### Test Infrastructure
+
+Foreman uses a two-layer testing architecture:
+
+1. **Integration Tests** (`foreman-integration-tests`):
+   - Test the REST API directly using HTTP requests
+   - Use a real Foreman server instance
+   - Located in `/node/packages/foreman-integration-tests`
+   - 49 tests covering all API endpoints
+
+2. **Client Tests** (`foreman-client`):
+   - Test the TypeScript client library
+   - Validate Result types and error handling
+   - Located in `/node/packages/foreman-client/src/tests`
+   - 18 tests covering all client functions
+
+Both test suites:
+- Use separate test databases (`foreman_test`, `foreman_client_test`)
+- Run fresh migrations before each test suite
+- Truncate tables between tests for isolation
+- Support grep patterns for running specific tests
 
 ### Building
 
@@ -684,57 +531,6 @@ npm run test:client:watch
 # Clean build artifacts
 ./clean.sh
 ```
-
-## Testing Coverage
-
-Foreman includes comprehensive testing with a two-layer architecture:
-
-### Integration Tests (49 tests)
-- Test the REST API directly using HTTP requests
-- Use a real Foreman server instance
-- Cover all API endpoints: runs, tasks, run data, configuration
-- Located in `/node/packages/foreman-integration-tests`
-
-### Client Tests (18 tests)
-- Test the TypeScript client library
-- Validate Result types and error handling
-- Located in `/node/packages/foreman-client/src/tests`
-- Cover all client functions and edge cases
-
-### Test Infrastructure
-- Separate test databases (`foreman_test`, `foreman_client_test`)
-- Fresh migrations before each test suite
-- Table truncation between tests for isolation
-- Support grep patterns for running specific tests
-
-## Docker Support
-
-### Quick Start with Docker Compose
-
-```bash
-# Start Foreman with PostgreSQL and Redis
-docker-compose up
-
-# Access the API at http://localhost:5002
-curl http://localhost:5002/health
-```
-
-### Building Docker Images
-
-```bash
-# Build the Docker image
-./scripts/docker-build.sh
-
-# Test the image locally
-./scripts/docker-test.sh
-
-# Push to registry
-./scripts/docker-push.sh ghcr.io/codespin-ai/foreman latest
-```
-
-### Official Images
-
-Official Docker images are available at `ghcr.io/codespin-ai/foreman`.
 
 ## Contributing
 
