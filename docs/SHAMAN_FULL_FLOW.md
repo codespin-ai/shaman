@@ -45,13 +45,9 @@ Shaman is a federated AI agent orchestration system that enables agents to commu
                          ┌────────────────────────────────┐
                          │    Worker Process              │
                          │  (shaman-worker)               │
-                         └────────────┬───────────────────┘
-                                      │
-                                      ▼
-                         ┌────────────────────────────────┐
-                         │    A2A Server                  │
-                         │  (--role internal)             │
-                         │  Port: 5001                    │
+                         │  - Processes Foreman tasks    │
+                         │  - Executes agents directly   │
+                         │  - Calls LLM providers        │
                          └────────────────────────────────┘
 ```
 

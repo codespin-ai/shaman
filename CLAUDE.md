@@ -7,7 +7,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 When you begin working on this project, you MUST:
 
 1. **Read this entire CLAUDE.md file** to understand the project structure and conventions
-2. **Read PROJECT_STATUS.md** - **CRITICAL**: This file contains the current A2A protocol implementation plan with all technical details needed to implement the SDK v0.2.5 compliance updates. It includes SDK findings, package decisions, and the complete implementation roadmap.
+2. **Read PROJECT_STATUS.md** - Contains current implementation state and known issues
 3. **Read the key documentation files** in this order:
    - `/README.md` - Project overview and quick start
    - `/node/CODING-STANDARDS.md` - Mandatory coding patterns and conventions
@@ -24,24 +24,19 @@ Only after reading these documents should you proceed with any implementation or
 
 Shaman is a comprehensive backend framework for managing and coordinating AI agents through a federated ecosystem. It's a NodeJS/TypeScript monorepo that deliberately avoids npm workspaces in favor of a custom build system.
 
-## Recent Important Changes
+## Current State Summary
 
-- **Server Split**: Shaman now has two separate servers: `shaman-gql-server` (management) and `shaman-a2a-server` (execution)
-- **A2A Server Roles**: The A2A server supports `--role public` and `--role internal` for different deployment scenarios
-- **No GraphQL Execution**: GraphQL server is purely for management - all agent execution goes through A2A
-- **Workflow Orchestration**: All workflow management delegated to Foreman external service (no internal workflow code)
-- **Foreman Direct Integration**: Uses @codespin/foreman-client directly without wrapper, with configurable queue names
-- **A2A Protocol**: All agent-to-agent communication uses HTTP/A2A protocol (not direct function calls)
-- **New A2A Client**: Added `shaman-a2a-client` package for agent-to-agent HTTP calls
-- **Foreman Integration**: All runs, tasks, and run data handled by Foreman REST API
-- **Git Operations**: Now uses native git commands instead of isomorphic-git
-- **Agent Caching**: Git agents are cached by commit hash for performance
-- **Branch Support**: All git operations support branch parameters
-- **Unified Agent Resolution**: New `shaman-agents` package provides single interface for all agent sources
-- **Type Safety**: All `any` types removed from codebase, replaced with proper types
-- **LLM Provider**: Vercel AI SDK provider implemented with OpenAI and Anthropic support
-- **Agent Executor**: Complete agent execution engine with tool calling and conversation management
-- **Domain-Driven Architecture**: Refactored persistence layer to domain structure with one-function-per-file pattern and dedicated mapper directories
+- **Foreman Integration Complete**: ALL workflow orchestration handled by external Foreman service
+- **Worker Implementation**: Directly executes agents without circular A2A dependencies
+- **Vercel AI SDK v5.0.8**: Updated with @ai-sdk/openai@2.0.5 and @ai-sdk/anthropic@2.0.1
+- **Platform Tools**: run_data operations store in Foreman via @codespin/foreman-client
+- **Build System**: All 23 packages building successfully
+- **Server Architecture**: GraphQL for management, A2A for execution (public/internal modes)
+- **Agent Resolution**: Unified from git repos and external registries
+- **Type Safety**: No `any` types, proper Result types throughout
+- **Database**: RLS multi-tenancy, DbRow pattern for type-safe queries
+- **Git Caching**: Agents cached by commit hash
+- **Domain Structure**: One function per file with mapper directories
 
 ## Essential Commands
 

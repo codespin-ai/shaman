@@ -18,7 +18,7 @@ services:
       timeout: 5s
       retries: 5
 
-  # Redis for BullMQ and caching
+  # Redis for Foreman queues
   redis:
     image: redis:7-alpine
     command: redis-server --appendonly yes
@@ -133,20 +133,15 @@ services:
       timeout: 5s
       retries: 5
 
-  # Foreman - Workflow Orchestration Engine
+  # Foreman - Workflow Orchestration Engine (REQUIRED)
   foreman:
     image: ghcr.io/codespin-ai/foreman:latest
     ports:
-      - "3001:3000"  # Map to 3001 to avoid conflict with default Foreman port
+      - "3000:3000"
     environment:
-      - FOREMAN_DB_HOST=postgres
-      - FOREMAN_DB_PORT=5432
-      - FOREMAN_DB_NAME=foreman
-      - FOREMAN_DB_USER=foreman
-      - FOREMAN_DB_PASSWORD=foreman
+      - DATABASE_URL=postgresql://foreman:foreman@postgres:5432/foreman
+      - REDIS_URL=redis://redis:6379
       - FOREMAN_AUTO_MIGRATE=true
-      - REDIS_HOST=redis
-      - REDIS_PORT=6379
       - TASK_QUEUE_NAME=shaman:tasks
       - RESULT_QUEUE_NAME=shaman:results
       - FOREMAN_API_KEY=fmn_dev_shaman_abc123
@@ -175,90 +170,13 @@ services:
       - MAILSLURPER_API_PORT=4436
       - MAILSLURPER_UI_PORT=4437
 
-  # Shaman Server
-  shaman-server:
-    build: .
-    ports:
-      - "4000:4000"
-    environment:
-      # Database
-      - SHAMAN_DB_HOST=postgres
-      - SHAMAN_DB_PORT=5432
-      - SHAMAN_DB_NAME=shaman
-      - SHAMAN_DB_USER=shaman
-      - SHAMAN_DB_PASSWORD=shaman
-      # Redis
-      - REDIS_HOST=redis
-      - REDIS_PORT=6379
-      # Kratos
-      - KRATOS_PUBLIC_URL=http://kratos:4433
-      - KRATOS_ADMIN_URL=http://kratos:4434
-      - KRATOS_WEBHOOK_TOKEN=${KRATOS_WEBHOOK_TOKEN:-webhook-secret}
-      # Permiso
-      - PERMISO_URL=http://permiso:5001/graphql
-      - PERMISO_API_KEY=${PERMISO_API_KEY:-}
-      # Foreman
-      - FOREMAN_ENDPOINT=http://foreman:3000
-      - FOREMAN_API_KEY=${FOREMAN_API_KEY:-fmn_dev_shaman_abc123}
-      - SHAMAN_TASK_QUEUE=shaman:tasks
-      - SHAMAN_RESULT_QUEUE=shaman:results
-      # Server config
-      - NODE_ENV=development
-      - LOG_LEVEL=debug
-      - SERVER_PORT=4000
-    depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-      kratos:
-        condition: service_healthy
-      permiso:
-        condition: service_healthy
-      foreman:
-        condition: service_healthy
-    volumes:
-      - ./config.yaml:/app/config.yaml:ro
-      - ./agents:/app/agents:ro
-    command: npm run start:server
-
-  # Shaman Worker
-  shaman-worker:
-    build: .
-    environment:
-      # Database
-      - SHAMAN_DB_HOST=postgres
-      - SHAMAN_DB_PORT=5432
-      - SHAMAN_DB_NAME=shaman
-      - SHAMAN_DB_USER=shaman
-      - SHAMAN_DB_PASSWORD=shaman
-      # Redis
-      - REDIS_HOST=redis
-      - REDIS_PORT=6379
-      # Kratos (for audit)
-      - KRATOS_ADMIN_URL=http://kratos:4434
-      # Permiso (for authorization checks)
-      - PERMISO_URL=http://permiso:5001/graphql
-      - PERMISO_API_KEY=${PERMISO_API_KEY:-}
-      # Foreman
-      - FOREMAN_ENDPOINT=http://foreman:3000
-      - FOREMAN_API_KEY=${FOREMAN_API_KEY:-fmn_dev_shaman_abc123}
-      - SHAMAN_TASK_QUEUE=shaman:tasks
-      - SHAMAN_RESULT_QUEUE=shaman:results
-      # Worker config
-      - NODE_ENV=development
-      - LOG_LEVEL=debug
-    depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-      shaman-server:
-        condition: service_started
-    volumes:
-      - ./config.yaml:/app/config.yaml:ro
-      - ./agents:/app/agents:ro
-    command: npm run start:worker
+  # Note: Shaman services should be run directly from source after building
+  # The GraphQL server, A2A server, and worker are not containerized yet
+  # To run them:
+  # 1. Build: ./build.sh --install
+  # 2. GraphQL Server: cd node/packages/shaman-gql-server && npm start
+  # 3. A2A Server: cd node/packages/shaman-a2a-server && npm start -- --role public
+  # 4. Worker: cd node/packages/shaman-worker && npm start
 
 volumes:
   postgres_data:

@@ -7,9 +7,9 @@ Shaman implements the A2A Protocol v0.3.0 for agent-to-agent communication and h
 - **A2A Server**: All agent execution (public and internal modes)
 
 ```
-External Request → Public A2A → BullMQ → Worker → Internal A2A → Agent
-    (JSON-RPC)        ↓                     ↓           ↓
-                  PostgreSQL            PostgreSQL  PostgreSQL
+External Request → Public A2A → Foreman → Worker → Agent Executor
+    (JSON-RPC)        ↓            ↓         ↓           ↓
+                  PostgreSQL    Redis    PostgreSQL   LLM Provider
 ```
 
 ## A2A Protocol Implementation
@@ -77,12 +77,13 @@ All workflows start with a `call_agent` tool step - even external requests. This
 - Handles ALL workflow orchestration via `@codespin/foreman-client`
 - Manages runs, tasks, and workflow state
 - Provides run_data storage for agent collaboration
-- Queue management (BullMQ) handled internally by Foreman
-- REST API at `FOREMAN_ENDPOINT` (default: http://localhost:3001)
+- Queue management (Redis/BullMQ) handled internally by Foreman
+- REST API at `FOREMAN_ENDPOINT` (default: http://localhost:3000)
 
 **@codespin/shaman-worker**
 - Processes tasks from Foreman queues
-- Executes agents via internal A2A server
+- Directly executes agents using agent-executor
+- Integrates with LLM providers (OpenAI, Anthropic)
 - Updates task status in Foreman
 - Stores results as run_data in Foreman
 
@@ -137,8 +138,10 @@ All workflows start with a `call_agent` tool step - even external requests. This
 - Model-agnostic abstraction
 
 **@codespin/shaman-llm-vercel**
-- Vercel AI SDK implementation
-- OpenAI and Anthropic support
+- Vercel AI SDK v5.0.8 implementation
+- OpenAI support via @ai-sdk/openai@2.0.5
+- Anthropic support via @ai-sdk/anthropic@2.0.1
+- Streaming and tool calling support
 
 ### Supporting
 

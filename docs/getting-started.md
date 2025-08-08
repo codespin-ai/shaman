@@ -50,15 +50,13 @@ npm start
 
 # Terminal 2: A2A public server (external API)
 cd node/packages/shaman-a2a-server
-npm start -- --role public --port 3000
+npm start -- --role public --port 5000
 
-# Terminal 3: A2A internal server (agent execution)  
-cd node/packages/shaman-a2a-server
-npm start -- --role internal --port 4000
-
-# Terminal 4: Worker (job processing)
+# Terminal 3: Worker (processes Foreman tasks)
 cd node/packages/shaman-worker
 npm start
+
+# Note: Internal A2A server no longer needed - worker executes agents directly
 ```
 
 ### 2. Add an Agent Repository

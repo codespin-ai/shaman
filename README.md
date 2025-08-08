@@ -64,18 +64,15 @@ Shaman follows a dual-server architecture with clear separation between manageme
 git clone https://github.com/codespin-ai/shaman.git
 cd shaman
 
-# Install dependencies and build
-npm install
-./build.sh
+# Build all packages (uses custom build system, not npm workspaces)
+./build.sh --install  # Installs dependencies and builds
 
-# Start development environment (PostgreSQL and Redis)
-cd devenv
-./run.sh up
-cd ..
+# Start development environment with Docker Compose
+docker-compose up -d  # Starts PostgreSQL, Redis, and Foreman
 
 # Set up database
-npm run migrate:latest
-npm run seed:run
+npm run migrate:shaman:latest
+npm run seed:shaman:run
 
 # Start the servers
 # Terminal 1: GraphQL Management API
@@ -84,7 +81,7 @@ cd node/packages/shaman-gql-server && npm start
 # Terminal 2: A2A Execution Server (public mode)
 cd node/packages/shaman-a2a-server && npm start -- --role public --port 5000
 
-# Terminal 3: Worker (processes jobs)
+# Terminal 3: Worker (processes Foreman tasks)
 cd node/packages/shaman-worker && npm start
 ```
 
@@ -114,15 +111,20 @@ UNRESTRICTED_DB_USER_PASSWORD=secure_admin_password
 OPENAI_API_KEY=your-openai-key
 ANTHROPIC_API_KEY=your-anthropic-key
 
-# External Services (Required)
-FOREMAN_ENDPOINT=http://localhost:3001  # Foreman workflow orchestration
-FOREMAN_API_KEY=fmn_dev_shaman_abc123  # Required for Foreman integration
+# Workflow Orchestration (Required)
+FOREMAN_ENDPOINT=http://localhost:3000
+FOREMAN_API_KEY=fmn_dev_shaman_abc123
 SHAMAN_TASK_QUEUE=shaman:tasks  # Optional: Override default queue name
 SHAMAN_RESULT_QUEUE=shaman:results  # Optional: Override default queue name
 
-# External Services (Planned - not yet implemented)
-# PERMISO_ENDPOINT=http://localhost:5001/graphql  # Future: Permiso RBAC service
-# PERMISO_API_KEY=your-permiso-api-key  # Future: Optional API key
+# Security
+JWT_SECRET=your-jwt-secret-for-internal-auth
+
+# A2A Server Configuration
+INTERNAL_A2A_URL=http://localhost:5001  # Internal A2A server URL for worker
+
+# Worker Configuration
+WORKER_CONCURRENCY=5  # Number of concurrent tasks to process
 ```
 
 ## Project Structure
@@ -209,17 +211,23 @@ You are an example agent that helps users...
 ### Database
 
 ```bash
-# Create migration
-npm run migrate:make your_migration_name
+# Create migration (specify database name)
+npm run migrate:shaman:make your_migration_name
 
 # Run migrations
-npm run migrate:latest
+npm run migrate:shaman:latest
+
+# Rollback migrations
+npm run migrate:shaman:rollback
+
+# Check migration status
+npm run migrate:shaman:status
 
 # Create seed
-npm run seed:make your_seed_name
+npm run seed:shaman:make your_seed_name
 
 # Run seeds
-npm run seed:run
+npm run seed:shaman:run
 ```
 
 ### Code Standards
