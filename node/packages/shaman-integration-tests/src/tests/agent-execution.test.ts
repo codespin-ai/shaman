@@ -336,7 +336,7 @@ You process data and coordinate with other agents. Use platform tools to store a
 
       // Simulate CalculatorAgent storing its result
       await createRunData(foremanConfig, runId, {
-        taskId: calcTask.data.id,
+        taskId: calcTask.success ? calcTask.data.id : '',
         key: 'calculation-result',
         value: { result: 50 },
         tags: ['agent:CalculatorAgent', 'type:calculation']
@@ -394,7 +394,7 @@ You process data and coordinate with other agents. Use platform tools to store a
 
       // Store validation result
       await createRunData(foremanConfig, runId, {
-        taskId: validateTask.data.id,
+        taskId: validateTask.success ? validateTask.data.id : '',
         key: 'validation-status',
         value: { valid: true, errors: [] },
         tags: ['step:1', 'type:validation']
@@ -405,7 +405,7 @@ You process data and coordinate with other agents. Use platform tools to store a
         key: 'validation-status'
       });
 
-      if (validationData.success && validationData.data.data[0].value.valid) {
+      if (validationData.success && (validationData.data.data[0].value as any).valid) {
         const processTask = await createTask(foremanConfig, {
           runId,
           type: 'agent-execution',
@@ -417,7 +417,7 @@ You process data and coordinate with other agents. Use platform tools to store a
 
         // Store processing result
         await createRunData(foremanConfig, runId, {
-          taskId: processTask.data.id,
+          taskId: processTask.success ? processTask.data.id : '',
           key: 'processing-result',
           value: { processed: true, output: 'data' },
           tags: ['step:2', 'type:processing']
@@ -481,19 +481,19 @@ You process data and coordinate with other agents. Use platform tools to store a
       // Simulate agents storing their results
       await Promise.all([
         createRunData(foremanConfig, runId, {
-          taskId: tasks[0].data.id,
+          taskId: tasks[0].success ? tasks[0].data.id : '',
           key: 'inventory-check',
           value: { inStock: true },
           tags: ['parallel', 'agent:inventory']
         }),
         createRunData(foremanConfig, runId, {
-          taskId: tasks[1].data.id,
+          taskId: tasks[1].success ? tasks[1].data.id : '',
           key: 'fraud-check',
           value: { riskScore: 10 },
           tags: ['parallel', 'agent:fraud']
         }),
         createRunData(foremanConfig, runId, {
-          taskId: tasks[2].data.id,
+          taskId: tasks[2].success ? tasks[2].data.id : '',
           key: 'pricing-calc',
           value: { price: 99.99 },
           tags: ['parallel', 'agent:pricing']
@@ -546,7 +546,7 @@ You process data and coordinate with other agents. Use platform tools to store a
 
       // Store error information
       await createRunData(foremanConfig, runId, {
-        taskId: failTask.data.id,
+        taskId: failTask.success ? failTask.data.id : '',
         key: 'error-info',
         value: {
           error: 'Agent execution failed',

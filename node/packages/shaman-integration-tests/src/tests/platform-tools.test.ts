@@ -206,7 +206,7 @@ describe('Platform Tools Integration', () => {
 
       // Query by key prefix
       const agentResult = await queryRunData(foremanConfig, runId, {
-        keyStartsWith: 'agent-'
+        keyStartsWith: ['agent-']
       });
 
       expect(agentResult.success).to.be.true;

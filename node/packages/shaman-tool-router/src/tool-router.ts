@@ -5,7 +5,6 @@
 import type { Result } from '@codespin/shaman-core';
 import type { ForemanConfig } from '@codespin/foreman-client';
 import type {
-  Tool,
   ToolExecutionContext,
   ToolDefinition,
   ToolRouterDependencies,
@@ -15,7 +14,6 @@ import {
   createPlatformTools, 
   getPlatformTool, 
   isPlatformTool,
-  PLATFORM_TOOL_NAMES,
   type PlatformToolName 
 } from './platform-tools.js';
 
@@ -62,10 +60,10 @@ export function createToolRouter(
   dependencies: ToolRouterDependencies
 ): ToolRouter {
 
-  async function getTool(toolName: string, context?: ToolExecutionContext): Promise<Result<ToolDefinition | null>> {
+  async function getTool(toolName: string, _context?: ToolExecutionContext): Promise<Result<ToolDefinition | null>> {
     // Check platform tools
     if (isPlatformTool(toolName)) {
-      const definition = PLATFORM_TOOL_DEFINITIONS[toolName as PlatformToolName];
+      const definition = PLATFORM_TOOL_DEFINITIONS[toolName];
       return { success: true, data: definition || null };
     }
 

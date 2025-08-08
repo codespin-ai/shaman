@@ -15,10 +15,12 @@
     "lint:fix": "eslint src --ext .ts --fix"
   },
   "dependencies": {
-    "@codespin/shaman-types": "file:../shaman-types",
-    "@codespin/shaman-db": "file:../shaman-db",
-    "@codespin/shaman-core": "file:../shaman-core",
+    "@apollo/client": "^3.13.9",
     "@codespin/foreman-client": "^0.0.2",
+    "@codespin/shaman-core": "file:../shaman-core",
+    "@codespin/shaman-db": "file:../shaman-db",
+    "@codespin/shaman-types": "file:../shaman-types",
+    "graphql": "^16.11.0",
     "node-fetch": "^3.3.2",
     "pg-promise": "^11.11.1",
     "uuid": "^9.0.1"
