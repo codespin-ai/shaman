@@ -3,8 +3,8 @@
  */
 
 import { generateText, streamText, type LanguageModel, type ModelMessage, type SystemModelMessage, type UserModelMessage, type AssistantModelMessage } from 'ai';
-import { openai } from '@ai-sdk/openai';
-import { anthropic } from '@ai-sdk/anthropic';
+import { createOpenAI } from '@ai-sdk/openai';
+import { createAnthropic } from '@ai-sdk/anthropic';
 import type { LLMProvider, LLMCompletionRequest, LLMCompletionResponse, LLMStreamChunk, LLMMessage } from '@codespin/shaman-llm-core';
 import type { VercelLLMConfig, ModelConfig } from './types.js';
 
@@ -42,9 +42,12 @@ export function createVercelLLMProvider(config: VercelLLMConfig): LLMProvider {
         if (!apiKey) {
           throw new Error('OpenAI API key not provided');
         }
-        // Direct model creation with API key in environment
-        process.env.OPENAI_API_KEY = apiKey;
-        return openai(modelConfig.modelId) as unknown as LanguageModel;
+        // Create OpenAI provider with API key
+        const openaiProvider = createOpenAI({ 
+          apiKey,
+          baseURL: modelConfig.baseURL 
+        });
+        return openaiProvider(modelConfig.modelId) as unknown as LanguageModel;
       }
       
       case 'anthropic': {
@@ -52,9 +55,12 @@ export function createVercelLLMProvider(config: VercelLLMConfig): LLMProvider {
         if (!apiKey) {
           throw new Error('Anthropic API key not provided');
         }
-        // Direct model creation with API key in environment
-        process.env.ANTHROPIC_API_KEY = apiKey;
-        return anthropic(modelConfig.modelId) as unknown as LanguageModel;
+        // Create Anthropic provider with API key
+        const anthropicProvider = createAnthropic({ 
+          apiKey,
+          baseURL: modelConfig.baseURL 
+        });
+        return anthropicProvider(modelConfig.modelId) as unknown as LanguageModel;
       }
       
       case 'custom': {

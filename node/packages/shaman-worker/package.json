@@ -17,13 +17,18 @@
     "lint:fix": "eslint src --ext .ts --fix"
   },
   "dependencies": {
-    "@codespin/shaman-a2a-client": "file:../shaman-a2a-client",
-    "@codespin/shaman-a2a-protocol": "file:../shaman-a2a-protocol",
+    "@codespin/foreman-client": "^0.0.2",
+    "@codespin/shaman-agent-executor": "file:../shaman-agent-executor",
+    "@codespin/shaman-agents": "file:../shaman-agents",
+    "@codespin/shaman-core": "file:../shaman-core",
+    "@codespin/shaman-llm-vercel": "file:../shaman-llm-vercel",
     "@codespin/shaman-logger": "file:../shaman-logger",
-    "@codespin/shaman-security": "file:../shaman-security",
-    "@codespin/foreman-client": "^0.0.2"
+    "@codespin/shaman-tool-router": "file:../shaman-tool-router",
+    "@codespin/shaman-types": "file:../shaman-types",
+    "uuid": "^9.0.1"
   },
   "devDependencies": {
+    "@types/uuid": "^10.0.0",
     "@typescript-eslint/eslint-plugin": "^8.38.0",
     "@typescript-eslint/parser": "^8.38.0",
     "eslint": "^9.32.0",
