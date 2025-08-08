@@ -16,10 +16,15 @@
   },
   "license": "MIT",
   "dependencies": {
+    "@codespin/foreman-client": "^0.0.2",
+    "@codespin/shaman-a2a-client": "file:../shaman-a2a-client",
+    "@codespin/shaman-a2a-protocol": "file:../shaman-a2a-protocol",
     "@codespin/shaman-core": "file:../shaman-core",
     "@codespin/shaman-db": "file:../shaman-db",
+    "@codespin/shaman-logger": "file:../shaman-logger",
     "@codespin/shaman-types": "file:../shaman-types",
-    "uuid": "^11.1.0"
+    "uuid": "^11.1.0",
+    "zod": "^3.24.1"
   },
   "devDependencies": {
     "@types/uuid": "^9.0.8",

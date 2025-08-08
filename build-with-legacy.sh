@@ -1,15 +1,10 @@
 #!/usr/bin/env bash
 # -------------------------------------------------------------------
-# build.sh – monorepo-aware build helper for Codespin Shaman
-#
-# Flags:
-#   --install   Force npm install in every package even if node_modules exists
-#   --migrate   Run DB migrations after build (delegates to root npm script)
-#   --seed      Run DB seeders  after build (delegates to root npm script)
+# build-with-legacy.sh – Build with legacy peer deps
 # -------------------------------------------------------------------
 set -euo pipefail
 
-echo "=== Building Codespin Shaman ==="
+echo "=== Building Codespin Shaman (with legacy peer deps) ==="
 
 # Define the build order
 PACKAGES=(
@@ -43,8 +38,8 @@ PACKAGES=(
 
 # 2 ▸ install root deps (once)
 if [[ ! -d node_modules || "$*" == *--install* ]]; then
-  echo "Installing root dependencies…"
-  npm install
+  echo "Installing root dependencies with legacy peer deps…"
+  npm install --legacy-peer-deps
 fi
 
 # 3 ▸ loop through every package in build order
@@ -55,8 +50,8 @@ for pkg_name in "${PACKAGES[@]}"; do
     continue
   fi
   if [[ ! -d "$pkg/node_modules" || "$*" == *--install* ]]; then
-    echo "Installing deps in $pkg…"
-    (cd "$pkg" && npm install)
+    echo "Installing deps in $pkg with legacy peer deps…"
+    (cd "$pkg" && npm install --legacy-peer-deps)
   fi
 done
 
@@ -75,16 +70,4 @@ for pkg_name in "${PACKAGES[@]}"; do
   fi
 done
 
-# 5 ▸ optional migrations / seeds via root scripts
-if [[ "$*" == *--migrate* ]]; then
-  echo "Running database migrations…"
-  npm run migrate:latest
-fi
-
-if [[ "$*" == *--seed* ]]; then
-  echo "Running database seeds…"
-  npm run seed:run
-fi
-
 echo "=== Build completed successfully ==="
-echo "To start the application, run: ./start.sh"

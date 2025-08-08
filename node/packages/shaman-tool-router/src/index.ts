@@ -6,4 +6,13 @@
 
 export * from './types.js';
 export * from './tool-router.js';
-export { PLATFORM_TOOL_DEFINITIONS } from './platform-tools.js';
+export { 
+  createPlatformTools, 
+  getPlatformTool, 
+  isPlatformTool,
+  PLATFORM_TOOL_NAMES,
+  type PlatformToolName 
+} from './platform-tools.js';
+export { createRunDataTools } from './platform-tools/run-data-tools.js';
+export { createCallAgentTool } from './platform-tools/call-agent-tool.js';
+export { PLATFORM_TOOL_DEFINITIONS } from './tool-router.js';

@@ -1,202 +1,56 @@
 /**
- * Platform tool implementations
+ * Platform tool exports and utilities
  */
 
-// Platform tools use the persistence layer abstraction instead of direct Foreman calls
-import type {
-  ToolHandler,
-  PlatformToolSchemas,
-  PlatformToolResults,
-  ToolRouterDependencies
-} from './types.js';
+import type { ForemanConfig } from '@codespin/foreman-client';
+import type { Tool, ToolExecutionContext } from './types.js';
+import { createPlatformTools as createTools } from './platform-tools/index.js';
 
+export { 
+  createRunDataTools,
+  createCallAgentTool 
+} from './platform-tools/index.js';
+
+// Re-export createPlatformTools
+export const createPlatformTools = createTools;
 
 /**
- * Create platform tool handlers
+ * Platform tool names
  */
-export type PlatformToolHandlers = {
-  [K in keyof PlatformToolSchemas]: ToolHandler<PlatformToolSchemas[K], PlatformToolResults[K]>
-};
+export const PLATFORM_TOOL_NAMES = [
+  'run_data_write',
+  'run_data_read',
+  'run_data_query',
+  'run_data_list',
+  'run_data_delete',
+  'call_agent'
+] as const;
 
-export function createPlatformToolHandlers(
-  deps: ToolRouterDependencies
-): PlatformToolHandlers {
-  return {
-    run_data_write: createRunDataWriteHandler(deps),
-    run_data_read: createRunDataReadHandler(deps),
-    run_data_query: createRunDataQueryHandler(deps),
-    run_data_list: createRunDataListHandler(deps)
-  };
+export type PlatformToolName = typeof PLATFORM_TOOL_NAMES[number];
+
+/**
+ * Check if a tool name is a platform tool
+ */
+export function isPlatformTool(name: string): name is PlatformToolName {
+  return PLATFORM_TOOL_NAMES.includes(name as PlatformToolName);
 }
 
 /**
- * run_data_write handler
+ * Get platform tool by name
  */
-function createRunDataWriteHandler(
-  deps: ToolRouterDependencies
-): ToolHandler<PlatformToolSchemas['run_data_write'], void> {
-  return async (input, context) => {
-    try {
-      // Use persistence layer to store data
-      await deps.persistenceLayer.createRunData({
-        runId: context.runId,
-        key: input.key,
-        value: input.value,
-        createdByStepId: context.stepId,
-        createdByAgentName: context.agentName,
-        createdByAgentSource: context.agentSource
-      });
-      
-      return { success: true, data: undefined };
-    } catch (error) {
-      return {
-        success: false,
-        error: error instanceof Error ? error : new Error('Failed to write run data')
-      };
-    }
-  };
-}
-
-/**
- * run_data_read handler
- */
-function createRunDataReadHandler(
-  deps: ToolRouterDependencies
-): ToolHandler<PlatformToolSchemas['run_data_read'], PlatformToolResults['run_data_read']> {
-  return async (input, context) => {
-    try {
-      // Use persistence layer to read data
-      const data = await deps.persistenceLayer.getRunData(
-        context.runId,
-        input.key
-      );
-      
-      return { success: true, data };
-    } catch (error) {
-      return {
-        success: false,
-        error: error instanceof Error ? error : new Error('Failed to read run data')
-      };
-    }
-  };
-}
-
-/**
- * run_data_query handler
- */
-function createRunDataQueryHandler(
-  deps: ToolRouterDependencies
-): ToolHandler<PlatformToolSchemas['run_data_query'], PlatformToolResults['run_data_query']> {
-  return async (input, context) => {
-    try {
-      const data = await deps.persistenceLayer.queryRunData(
-        context.runId,
-        input.pattern,
-        input.limit
-      );
-      
-      return { success: true, data };
-    } catch (error) {
-      return {
-        success: false,
-        error: error instanceof Error ? error : new Error('Failed to query run data')
-      };
-    }
-  };
-}
-
-/**
- * run_data_list handler
- */
-function createRunDataListHandler(
-  deps: ToolRouterDependencies
-): ToolHandler<PlatformToolSchemas['run_data_list'], PlatformToolResults['run_data_list']> {
-  return async (input, context) => {
-    try {
-      // Use persistence layer to list data
-      const data = await deps.persistenceLayer.listRunDataKeys(
-        context.runId,
-        {
-          agentName: input.filterByAgent,
-          prefix: input.prefix
-        }
-      );
-      
-      // Apply limit if specified
-      const limitedData = input.limit ? data.slice(0, input.limit) : data;
-      
-      return { success: true, data: limitedData };
-    } catch (error) {
-      return {
-        success: false,
-        error: error instanceof Error ? error : new Error('Failed to list run data')
-      };
-    }
-  };
-}
-
-/**
- * Platform tool definitions
- */
-export const PLATFORM_TOOL_DEFINITIONS = {
-  run_data_write: {
-    name: 'run_data_write',
-    description: 'Write data to run storage for sharing between agents',
-    schema: {
-      type: 'object',
-      properties: {
-        key: { type: 'string', description: 'Key to store the data under' },
-        value: { type: 'unknown', description: 'Value to store (JSON-serializable data)' },
-        metadata: {
-          type: 'object',
-          properties: {
-            description: { type: 'string' },
-            schema: { type: 'string' },
-            ttl: { type: 'number', description: 'Time to live in seconds' }
-          }
-        }
-      },
-      required: ['key', 'value']
-    },
-    isPlatformTool: true
-  },
-  run_data_read: {
-    name: 'run_data_read',
-    description: 'Read data from run storage by key',
-    schema: {
-      type: 'object',
-      properties: {
-        key: { type: 'string', description: 'Key to read data from' },
-        includeMetadata: { type: 'boolean', description: 'Include metadata in response' }
-      },
-      required: ['key']
-    },
-    isPlatformTool: true
-  },
-  run_data_query: {
-    name: 'run_data_query',
-    description: 'Query run data using pattern matching',
-    schema: {
-      type: 'object',
-      properties: {
-        pattern: { type: 'string', description: 'Pattern to match keys (supports * and ? wildcards)' },
-        limit: { type: 'number', description: 'Maximum number of results' }
-      },
-      required: ['pattern']
-    },
-    isPlatformTool: true
-  },
-  run_data_list: {
-    name: 'run_data_list',
-    description: 'List all run data keys with optional filtering',
-    schema: {
-      type: 'object',
-      properties: {
-        filterByAgent: { type: 'string', description: 'Filter by agent name' },
-        prefix: { type: 'string', description: 'Filter by key prefix' },
-        limit: { type: 'number', description: 'Maximum number of results' }
-      }
-    },
-    isPlatformTool: true
+export function getPlatformTool(
+  name: string,
+  foremanConfig: ForemanConfig,
+  context: ToolExecutionContext,
+  options: {
+    internalA2AUrl?: string;
+    jwtToken?: string;
+  } = {}
+): Tool | undefined {
+  if (!isPlatformTool(name)) {
+    return undefined;
   }
-};
+  
+  const tools = createTools(foremanConfig, context, options);
+  return tools.find((tool: Tool) => tool.name === name);
+}

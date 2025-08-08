@@ -104,8 +104,9 @@ Maintain the current 3-server architecture:
 ### ⚠️ Known TODOs and Gaps
 
 1. **Worker Implementation**:
-   - Async polling mechanism designed but not implemented
-   - Worker has bootstrap code but missing actual job processing
+   - Worker processes tasks from Foreman queues  
+   - Uses Foreman's createWorker pattern
+   - Needs proper task status updates and error handling
 
 2. **Security**:
    - JWT generation placeholder (uses base64 encoding instead of proper JWT)
@@ -141,12 +142,13 @@ Maintain the current 3-server architecture:
 16. **shaman-a2a-server** - A2A protocol server (rewritten)
 17. **shaman-a2a-client** - A2A protocol client (rewritten)
 
-### Execution & Workflow (5 packages) - PARTIALLY COMPLETE ⚠️
+### Execution & Workflow (4 packages) - PARTIALLY COMPLETE ⚠️
 18. **shaman-tool-router** - Tool execution routing ✅
 19. **shaman-agent-executor** - Agent execution engine ✅
-20. **shaman-workflow** - BullMQ workflow engine ✅
-21. **shaman-worker** - Job processor (bootstrap only) ⚠️
-22. **shaman-cli** - CLI tool (structure only) ⚠️
+20. **shaman-worker** - Job processor using Foreman (bootstrap only) ⚠️
+21. **shaman-cli** - CLI tool (structure only) ⚠️
+
+Note: Workflow orchestration is handled entirely by the external Foreman service via `@codespin/foreman-client`. There is no internal `shaman-workflow` package.
 
 ### API Servers (2 packages) - WORKING ✅
 23. **shaman-gql-server** - GraphQL management API

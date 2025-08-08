@@ -36,8 +36,9 @@ Shaman is a federated AI agent orchestration system that enables agents to commu
                                               │
                                               ▼
                          ┌────────────────────────────────┐
-                         │     BullMQ Job Queue          │
-                         │  (Redis-backed workflow queue) │
+                         │     Foreman Service            │
+                         │  (Workflow orchestration)      │
+                         │  (Manages runs, tasks, data)   │
                          └────────────┬───────────────────┘
                                       │
                                       ▼
@@ -74,7 +75,6 @@ Shaman is a federated AI agent orchestration system that enables agents to commu
    - `@codespin/shaman-agent-executor` - Core agent execution logic
    - `@codespin/shaman-tool-router` - Tool execution routing
    - `@codespin/shaman-llm-vercel` - LLM provider implementation
-   - `@codespin/shaman-workflow` - BullMQ workflow engine
    - `@codespin/foreman-client` - Integration with external Foreman service
 
 5. **Infrastructure**
@@ -136,9 +136,9 @@ server.post('/', async (req, res) => {
 });
 ```
 
-### Step 3: Message Send Handler Creates Workflow Job
+### Step 3: Message Send Handler Creates Workflow via Foreman
 
-The `messageSendHandler` validates the request and creates a workflow job:
+The `messageSendHandler` validates the request and creates a run in Foreman:
 
 ```typescript
 // In packages/shaman-a2a-server/src/handlers/message-send.ts
@@ -148,16 +148,27 @@ async function messageSendHandler(params: MessageSendParams, context: A2AMethodC
   // Resolve agent from the agent string
   const resolvedAgent = await resolveAgent(agent);
   
-  // Create workflow job
-  const workflow = getWorkflowEngine();
-  const job = await workflow.createJob({
-    type: 'agent-execution',
-    data: {
+  // Create run in Foreman
+  const runResult = await createRun(foremanConfig, {
+    inputData: {
       agent: resolvedAgent,
       messages,
       threadId,
       organizationId,
+    },
+    metadata: {
       requestId: context.requestId,
+      source: 'a2a'
+    }
+  });
+  
+  // Create initial task
+  const taskResult = await createTask(foremanConfig, {
+    runId: runResult.data.id,
+    type: 'agent-execution',
+    inputData: {
+      agent: resolvedAgent,
+      messages
     }
   });
   

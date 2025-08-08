@@ -7,7 +7,7 @@ Shaman is a comprehensive backend framework for managing and coordinating AI age
 - **Agent Discovery**: Automatic discovery of agents from Git repositories with caching
 - **Multi-LLM Support**: Pluggable LLM providers (OpenAI, Anthropic via Vercel AI SDK)
 - **Dual Server Architecture**: Separate GraphQL management API and A2A execution server
-- **Workflow Orchestration**: BullMQ-based job queue for reliable execution
+- **Workflow Orchestration**: Foreman-based task management for reliable execution
 - **Tool Ecosystem**: Built-in platform tools and extensible tool router
 - **Type-Safe**: Fully typed TypeScript codebase with no `any` types
 - **Production Ready**: Built-in observability, security, and persistence layers
@@ -54,7 +54,8 @@ Shaman follows a dual-server architecture with clear separation between manageme
 
 - Node.js 18+ 
 - PostgreSQL 14+
-- Redis (required for BullMQ workflow engine)
+- Redis (required by Foreman for queue management)
+- Foreman service running (or use Docker Compose)
 
 ### Installation
 
@@ -113,12 +114,11 @@ UNRESTRICTED_DB_USER_PASSWORD=secure_admin_password
 OPENAI_API_KEY=your-openai-key
 ANTHROPIC_API_KEY=your-anthropic-key
 
-# Workflow Engine
-REDIS_URL=redis://localhost:6379  # Required for BullMQ
-
-# External Services (Active)
-FOREMAN_ENDPOINT=http://localhost:3000  # Foreman workflow orchestration
-FOREMAN_API_KEY=fmn_dev_default_key  # Required for Foreman integration
+# External Services (Required)
+FOREMAN_ENDPOINT=http://localhost:3001  # Foreman workflow orchestration
+FOREMAN_API_KEY=fmn_dev_shaman_abc123  # Required for Foreman integration
+SHAMAN_TASK_QUEUE=shaman:tasks  # Optional: Override default queue name
+SHAMAN_RESULT_QUEUE=shaman:results  # Optional: Override default queue name
 
 # External Services (Planned - not yet implemented)
 # PERMISO_ENDPOINT=http://localhost:5001/graphql  # Future: Permiso RBAC service
@@ -152,8 +152,8 @@ This is a TypeScript monorepo that deliberately avoids npm workspaces in favor o
 - `@codespin/shaman-tool-router` - Tool execution routing
 
 ### Workflow & Orchestration
-- `@codespin/shaman-workflow` - BullMQ-based workflow engine
-- `@codespin/foreman-client` - Integration with external Foreman service
+- `@codespin/foreman-client` - Integration with Foreman workflow service (handles all task management)
+- `@codespin/shaman-worker` - Processes tasks from Foreman queues
 
 ### Servers
 - `@codespin/shaman-gql-server` - GraphQL management API

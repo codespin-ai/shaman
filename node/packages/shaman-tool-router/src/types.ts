@@ -9,10 +9,14 @@ import type { RunData, AgentSource } from '@codespin/shaman-types';
  * Tool execution context
  */
 export type ToolExecutionContext = {
-  readonly runId: string;
-  readonly stepId: string;
-  readonly agentName: string;
-  readonly agentSource: AgentSource;
+  readonly runId?: string;
+  readonly stepId?: string;
+  readonly taskId?: string;
+  readonly agentName?: string;
+  readonly agentSource?: AgentSource;
+  readonly organizationId?: string;
+  readonly userId?: string;
+  readonly jwtToken?: string;
 };
 
 /**
@@ -22,7 +26,9 @@ export type PlatformToolName =
   | 'run_data_write'
   | 'run_data_read'
   | 'run_data_query'
-  | 'run_data_list';
+  | 'run_data_list'
+  | 'run_data_delete'
+  | 'call_agent';
 
 /**
  * Platform tool schemas
@@ -75,7 +81,20 @@ export type ToolHandler<TInput = unknown, TOutput = unknown> = (
 ) => Promise<Result<TOutput>>;
 
 /**
- * Tool definition
+ * Tool with executable function
+ */
+export type Tool = {
+  readonly name: string;
+  readonly description: string;
+  readonly inputSchema: {
+    parse: (input: unknown) => unknown;
+    parseAsync: (input: unknown) => Promise<unknown>;
+  };
+  readonly execute: (input: unknown) => Promise<unknown>;
+};
+
+/**
+ * Tool definition (for metadata)
  */
 export type ToolDefinition = {
   readonly name: string;

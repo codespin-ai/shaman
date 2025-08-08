@@ -1,13 +1,15 @@
 {
-  "extends": "../../../tsconfig.base.json",
   "compilerOptions": {
-    "rootDir": "./src",
+    "target": "ES2020",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
     "outDir": "./dist",
-    "lib": ["ES2023"],
-    "types": ["node", "mocha", "chai"]
+    "strict": true,
+    "forceConsistentCasingInFileNames": true,
+    "declaration": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true
   },
   "include": ["src/**/*"],
-  "ts-node": {
-    "esm": true
-  }
+  "exclude": ["node_modules", "dist"]
 }

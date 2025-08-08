@@ -73,15 +73,18 @@ All workflows start with a `call_agent` tool step - even external requests. This
 - `createRlsDb(orgId)` - Tenant-scoped queries
 - `createUnrestrictedDb()` - Admin operations
 
-**@codespin/shaman-workflow**
-- BullMQ wrapper for job processing
-- Queues: step execution, async polling
-- Simple interface hiding implementation details
+**Foreman (External Service)**
+- Handles ALL workflow orchestration via `@codespin/foreman-client`
+- Manages runs, tasks, and workflow state
+- Provides run_data storage for agent collaboration
+- Queue management (BullMQ) handled internally by Foreman
+- REST API at `FOREMAN_ENDPOINT` (default: http://localhost:3001)
 
 **@codespin/shaman-worker**
-- Processes workflow jobs
-- Executes agents and tools
-- Updates PostgreSQL state
+- Processes tasks from Foreman queues
+- Executes agents via internal A2A server
+- Updates task status in Foreman
+- Stores results as run_data in Foreman
 
 ### Agent System
 

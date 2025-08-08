@@ -144,8 +144,12 @@ services:
       - FOREMAN_DB_NAME=foreman
       - FOREMAN_DB_USER=foreman
       - FOREMAN_DB_PASSWORD=foreman
+      - FOREMAN_AUTO_MIGRATE=true
       - REDIS_HOST=redis
       - REDIS_PORT=6379
+      - TASK_QUEUE_NAME=shaman:tasks
+      - RESULT_QUEUE_NAME=shaman:results
+      - FOREMAN_API_KEY=fmn_dev_shaman_abc123
       - NODE_ENV=development
       - LOG_LEVEL=debug
     depends_on:
@@ -195,7 +199,9 @@ services:
       - PERMISO_API_KEY=${PERMISO_API_KEY:-}
       # Foreman
       - FOREMAN_ENDPOINT=http://foreman:3000
-      - FOREMAN_API_KEY=${FOREMAN_API_KEY:-fmn_dev_default_key}
+      - FOREMAN_API_KEY=${FOREMAN_API_KEY:-fmn_dev_shaman_abc123}
+      - SHAMAN_TASK_QUEUE=shaman:tasks
+      - SHAMAN_RESULT_QUEUE=shaman:results
       # Server config
       - NODE_ENV=development
       - LOG_LEVEL=debug
@@ -234,6 +240,11 @@ services:
       # Permiso (for authorization checks)
       - PERMISO_URL=http://permiso:5001/graphql
       - PERMISO_API_KEY=${PERMISO_API_KEY:-}
+      # Foreman
+      - FOREMAN_ENDPOINT=http://foreman:3000
+      - FOREMAN_API_KEY=${FOREMAN_API_KEY:-fmn_dev_shaman_abc123}
+      - SHAMAN_TASK_QUEUE=shaman:tasks
+      - SHAMAN_RESULT_QUEUE=shaman:results
       # Worker config
       - NODE_ENV=development
       - LOG_LEVEL=debug
