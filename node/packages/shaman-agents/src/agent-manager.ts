@@ -1,91 +1,106 @@
 /**
  * packages/shaman-agents/src/agent-manager.ts
- * 
+ *
  * Core agent management functions that unify git and external sources
  */
 
-import type { GitAgent } from '@codespin/shaman-types';
-import type { ExternalAgent } from '@codespin/shaman-core/dist/types/agent.js';
-import type { Result } from '@codespin/shaman-core/dist/types/result.js';
-import { success, failure } from '@codespin/shaman-core/dist/types/result.js';
-import { createLogger } from '@codespin/shaman-logger';
-import { getDb } from '@codespin/shaman-db';
+import type { GitAgent } from "@codespin/shaman-types";
+import type { ExternalAgent } from "@codespin/shaman-core/dist/types/agent.js";
+import type { Result } from "@codespin/shaman-core/dist/types/result.js";
+import { success, failure } from "@codespin/shaman-core/dist/types/result.js";
+import { createLogger } from "@codespin/shaman-logger";
+import { getDb } from "@codespin/shaman-db";
 
-import { fetchAgentsFromRegistry } from '@codespin/shaman-external-registry';
-import { resolveAgents, getAllGitAgents } from '@codespin/shaman-git-resolver';
-import type { 
-  UnifiedAgent, 
-  AgentSearchOptions, 
+import { fetchAgentsFromRegistry } from "@codespin/shaman-external-registry";
+import { resolveAgents, getAllGitAgents } from "@codespin/shaman-git-resolver";
+import type {
+  UnifiedAgent,
+  AgentSearchOptions,
   AgentResolveOptions,
   AgentsConfig,
-  AgentResolution 
-} from './types.js';
+  AgentResolution,
+} from "./types.js";
 
 /**
  * Get all available agents from both git repositories and external registries
  */
 export async function getAllAgents(
   config: AgentsConfig,
-  options: AgentSearchOptions = {}
+  options: AgentSearchOptions = {},
 ): Promise<Result<UnifiedAgent[], string>> {
   try {
     const agents: UnifiedAgent[] = [];
     const errors: string[] = [];
 
     // Get agents from git repositories
-    if (options.source === 'git' || options.source === 'all' || !options.source) {
+    if (
+      options.source === "git" ||
+      options.source === "all" ||
+      !options.source
+    ) {
       try {
         const db = getDb();
         const gitAgents = await getAllGitAgents(db);
-        
+
         // Filter by repository if specified
         const filteredGitAgents = options.repository
-          ? gitAgents.filter(_agent => {
+          ? gitAgents.filter((_agent) => {
               // TODO: Need to join with agent_repository table to filter by repository URL
               return true;
             })
           : gitAgents;
 
         // Filter by tags if specified
-        const tagFilteredAgents = options.tags && options.tags.length > 0
-          ? filteredGitAgents.filter(agent => 
-              agent.tags && options.tags!.some(tag => agent.tags!.includes(tag))
-            )
-          : filteredGitAgents;
+        const tagFilteredAgents =
+          options.tags && options.tags.length > 0
+            ? filteredGitAgents.filter(
+                (agent) =>
+                  agent.tags &&
+                  options.tags!.some((tag) => agent.tags!.includes(tag)),
+              )
+            : filteredGitAgents;
 
         for (const agent of tagFilteredAgents) {
           agents.push({
-            source: 'git' as const,
-            agent
+            source: "git" as const,
+            agent,
           });
         }
       } catch (error) {
-        errors.push(`Git agents error: ${error instanceof Error ? error.message : String(error)}`);
+        errors.push(
+          `Git agents error: ${error instanceof Error ? error.message : String(error)}`,
+        );
       }
     }
 
     // Get agents from external registries
-    if (options.source === 'external' || options.source === 'all' || !options.source) {
+    if (
+      options.source === "external" ||
+      options.source === "all" ||
+      !options.source
+    ) {
       if (config.externalRegistries) {
         for (const registry of config.externalRegistries) {
           try {
             const result = await fetchAgentsFromRegistry({
               url: registry.url,
-              timeout: registry.timeout
+              timeout: registry.timeout,
             });
 
             if (result.success) {
               for (const agent of result.data) {
                 agents.push({
-                  source: 'external' as const,
-                  agent
+                  source: "external" as const,
+                  agent,
                 });
               }
             } else {
               errors.push(`Registry ${registry.url}: ${result.error}`);
             }
           } catch (error) {
-            errors.push(`Registry ${registry.url}: ${error instanceof Error ? error.message : String(error)}`);
+            errors.push(
+              `Registry ${registry.url}: ${error instanceof Error ? error.message : String(error)}`,
+            );
           }
         }
       }
@@ -98,13 +113,15 @@ export async function getAllAgents(
 
     // If no agents and we have errors, return the errors
     if (errors.length > 0) {
-      return failure(`Failed to fetch agents: ${errors.join('; ')}`);
+      return failure(`Failed to fetch agents: ${errors.join("; ")}`);
     }
 
     // No agents, no errors - return empty list
     return success([]);
   } catch (error) {
-    return failure(`Unexpected error: ${error instanceof Error ? error.message : String(error)}`);
+    return failure(
+      `Unexpected error: ${error instanceof Error ? error.message : String(error)}`,
+    );
   }
 }
 
@@ -114,14 +131,14 @@ export async function getAllAgents(
 export async function resolveAgent(
   agentName: string,
   config: AgentsConfig,
-  options: AgentResolveOptions = {}
+  options: AgentResolveOptions = {},
 ): Promise<Result<AgentResolution | null, string>> {
   try {
     // Check preferred source first if specified
-    if (options.preferredSource === 'git') {
+    if (options.preferredSource === "git") {
       const gitResult = await resolveFromGit(agentName, options.branch);
       if (gitResult) return success(gitResult);
-    } else if (options.preferredSource === 'external') {
+    } else if (options.preferredSource === "external") {
       const externalResult = await resolveFromExternal(agentName, config);
       if (externalResult) return success(externalResult);
     }
@@ -135,7 +152,9 @@ export async function resolveAgent(
 
     return success(null);
   } catch (error) {
-    return failure(`Failed to resolve agent ${agentName}: ${error instanceof Error ? error.message : String(error)}`);
+    return failure(
+      `Failed to resolve agent ${agentName}: ${error instanceof Error ? error.message : String(error)}`,
+    );
   }
 }
 
@@ -145,10 +164,10 @@ export async function resolveAgent(
 export async function getAgent(
   agentName: string,
   config: AgentsConfig,
-  options: AgentResolveOptions = {}
+  options: AgentResolveOptions = {},
 ): Promise<Result<UnifiedAgent | null, string>> {
   const resolutionResult = await resolveAgent(agentName, config, options);
-  
+
   if (!resolutionResult.success) {
     return failure(resolutionResult.error);
   }
@@ -166,41 +185,49 @@ export async function getAgent(
 export async function searchAgents(
   query: string,
   config: AgentsConfig,
-  options: AgentSearchOptions = {}
+  options: AgentSearchOptions = {},
 ): Promise<Result<UnifiedAgent[], string>> {
   const allAgentsResult = await getAllAgents(config, options);
-  
+
   if (!allAgentsResult.success) {
     return failure(allAgentsResult.error);
   }
 
   const queryLower = query.toLowerCase();
-  const filtered = allAgentsResult.data.filter(unifiedAgent => {
-    if (unifiedAgent.source === 'git') {
+  const filtered = allAgentsResult.data.filter((unifiedAgent) => {
+    if (unifiedAgent.source === "git") {
       const agent = unifiedAgent.agent;
-      
+
       // Search in name and description
       if (agent.name.toLowerCase().includes(queryLower)) {
         return true;
       }
-      
-      if (agent.description && agent.description.toLowerCase().includes(queryLower)) {
+
+      if (
+        agent.description &&
+        agent.description.toLowerCase().includes(queryLower)
+      ) {
         return true;
       }
 
       // Search in tags
       if (agent.tags) {
-        return agent.tags.some((tag: string) => tag.toLowerCase().includes(queryLower));
+        return agent.tags.some((tag: string) =>
+          tag.toLowerCase().includes(queryLower),
+        );
       }
     } else {
       const agent = unifiedAgent.agent;
-      
+
       // Search in name and description for external agents
       if (agent.name.toLowerCase().includes(queryLower)) {
         return true;
       }
-      
-      if (agent.description && agent.description.toLowerCase().includes(queryLower)) {
+
+      if (
+        agent.description &&
+        agent.description.toLowerCase().includes(queryLower)
+      ) {
         return true;
       }
     }
@@ -215,7 +242,7 @@ export async function searchAgents(
  * Sync agents from configured git repositories
  */
 export async function syncGitRepositories(
-  config: AgentsConfig
+  config: AgentsConfig,
 ): Promise<Result<{ synced: number; errors: string[] }, string>> {
   if (!config.gitRepositories || config.gitRepositories.length === 0) {
     return success({ synced: 0, errors: [] });
@@ -226,10 +253,12 @@ export async function syncGitRepositories(
 
   for (const repo of config.gitRepositories) {
     try {
-      await resolveAgents(repo.url, repo.branch || 'main');
+      await resolveAgents(repo.url, repo.branch || "main");
       synced++;
     } catch (error) {
-      errors.push(`${repo.url}: ${error instanceof Error ? error.message : String(error)}`);
+      errors.push(
+        `${repo.url}: ${error instanceof Error ? error.message : String(error)}`,
+      );
     }
   }
 
@@ -239,38 +268,38 @@ export async function syncGitRepositories(
 // Helper functions
 
 async function resolveFromGit(
-  agentName: string, 
-  _branch?: string
+  agentName: string,
+  _branch?: string,
 ): Promise<AgentResolution | null> {
   try {
     // Get all git agents from the database
     const db = getDb();
     const gitAgents = await getAllGitAgents(db);
-    
+
     // Find agent by name
     const agent = gitAgents.find((a: GitAgent) => a.name === agentName);
-    
+
     if (agent) {
       return {
         agent: {
-          source: 'git' as const,
-          agent
+          source: "git" as const,
+          agent,
         },
-        resolvedFrom: 'git' as const
+        resolvedFrom: "git" as const,
         // TODO: Add repository information when we join with agent_repository table
       };
     }
   } catch (error) {
-    const logger = createLogger('AgentManager');
+    const logger = createLogger("AgentManager");
     logger.error(`Error resolving git agent ${agentName}:`, error);
   }
-  
+
   return null;
 }
 
 async function resolveFromExternal(
   agentName: string,
-  config: AgentsConfig
+  config: AgentsConfig,
 ): Promise<AgentResolution | null> {
   if (!config.externalRegistries) {
     return null;
@@ -280,24 +309,26 @@ async function resolveFromExternal(
     try {
       const result = await fetchAgentsFromRegistry({
         url: registry.url,
-        timeout: registry.timeout
+        timeout: registry.timeout,
       });
 
       if (result.success) {
-        const agent = result.data.find((a: ExternalAgent) => a.name === agentName);
+        const agent = result.data.find(
+          (a: ExternalAgent) => a.name === agentName,
+        );
         if (agent) {
           return {
             agent: {
-              source: 'external' as const,
-              agent
+              source: "external" as const,
+              agent,
             },
-            resolvedFrom: 'external' as const,
-            registryUrl: registry.url
+            resolvedFrom: "external" as const,
+            registryUrl: registry.url,
           };
         }
       }
     } catch (error) {
-      const logger = createLogger('AgentManager');
+      const logger = createLogger("AgentManager");
       logger.error(`Error checking registry ${registry.url}:`, error);
     }
   }

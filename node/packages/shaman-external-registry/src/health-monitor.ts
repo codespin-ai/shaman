@@ -2,9 +2,9 @@
  * @fileoverview Performs periodic health checks for external agents.
  */
 
-import { healthCheckRegistry } from './external-registry.js';
-import type { RegistryConfig } from './types.js';
-import { createLogger } from '@codespin/shaman-logger';
+import { healthCheckRegistry } from "./external-registry.js";
+import type { RegistryConfig } from "./types.js";
+import { createLogger } from "@codespin/shaman-logger";
 
 export class HealthMonitor {
   private intervalId?: ReturnType<typeof setInterval>;
@@ -52,11 +52,13 @@ export class HealthMonitor {
         if (result.success) {
           // Health check passed for ${config.url}
         } else {
-          const logger = createLogger('HealthMonitor');
-          logger.error(`Health check failed for ${config.url}: ${result.error}`);
+          const logger = createLogger("HealthMonitor");
+          logger.error(
+            `Health check failed for ${config.url}: ${result.error}`,
+          );
         }
       } catch (error) {
-        const logger = createLogger('HealthMonitor');
+        const logger = createLogger("HealthMonitor");
         logger.error(`Health check error for ${config.url}:`, error);
       }
     }

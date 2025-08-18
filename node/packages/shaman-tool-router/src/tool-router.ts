@@ -2,20 +2,20 @@
  * Main tool router implementation
  */
 
-import type { Result } from '@codespin/shaman-core';
-import type { ForemanConfig } from '@codespin/foreman-client';
+import type { Result } from "@codespin/shaman-core";
+import type { ForemanConfig } from "@codespin/foreman-client";
 import type {
   ToolExecutionContext,
   ToolDefinition,
   ToolRouterDependencies,
-  McpServerConnection
-} from './types.js';
-import { 
-  createPlatformTools, 
-  getPlatformTool, 
+  McpServerConnection,
+} from "./types.js";
+import {
+  createPlatformTools,
+  getPlatformTool,
   isPlatformTool,
-  type PlatformToolName 
-} from './platform-tools.js';
+  type PlatformToolName,
+} from "./platform-tools.js";
 
 /**
  * Tool router configuration
@@ -35,7 +35,7 @@ export type ToolExecutionResult = {
   readonly success: boolean;
   readonly output?: unknown;
   readonly error?: string;
-  readonly toolType: 'platform' | 'mcp' | 'agent';
+  readonly toolType: "platform" | "mcp" | "agent";
 };
 
 /**
@@ -45,7 +45,7 @@ export interface ToolRouter {
   executeTool(
     toolName: string,
     args: unknown,
-    context: ToolExecutionContext
+    context: ToolExecutionContext,
   ): Promise<Result<ToolExecutionResult>>;
   listTools(): Promise<Result<ToolDefinition[]>>;
   getTool(toolName: string): Promise<Result<ToolDefinition | null>>;
@@ -57,10 +57,12 @@ export interface ToolRouter {
  */
 export function createToolRouter(
   config: ToolRouterConfig,
-  dependencies: ToolRouterDependencies
+  dependencies: ToolRouterDependencies,
 ): ToolRouter {
-
-  async function getTool(toolName: string, _context?: ToolExecutionContext): Promise<Result<ToolDefinition | null>> {
+  async function getTool(
+    toolName: string,
+    _context?: ToolExecutionContext,
+  ): Promise<Result<ToolDefinition | null>> {
     // Check platform tools
     if (isPlatformTool(toolName)) {
       const definition = PLATFORM_TOOL_DEFINITIONS[toolName];
@@ -73,7 +75,9 @@ export function createToolRouter(
         const tools = await dependencies.mcpClient.listTools(server);
         if (!tools.success) continue;
 
-        const tool = tools.data.find((t: ToolDefinition) => t.name === toolName);
+        const tool = tools.data.find(
+          (t: ToolDefinition) => t.name === toolName,
+        );
         if (tool) {
           return { success: true, data: tool };
         }
@@ -90,24 +94,19 @@ export function createToolRouter(
     async executeTool(
       toolName: string,
       args: unknown,
-      context: ToolExecutionContext
+      context: ToolExecutionContext,
     ): Promise<Result<ToolExecutionResult>> {
       // 1. Check if it's a platform tool
       if (isPlatformTool(toolName) && config.foremanConfig) {
-        const tool = getPlatformTool(
-          toolName,
-          config.foremanConfig,
-          context,
-          {
-            internalA2AUrl: config.internalA2AUrl,
-            jwtToken: config.jwtToken
-          }
-        );
-        
+        const tool = getPlatformTool(toolName, config.foremanConfig, context, {
+          internalA2AUrl: config.internalA2AUrl,
+          jwtToken: config.jwtToken,
+        });
+
         if (!tool) {
           return {
             success: false,
-            error: new Error(`Platform tool ${toolName} not found`)
+            error: new Error(`Platform tool ${toolName} not found`),
           };
         }
 
@@ -118,8 +117,8 @@ export function createToolRouter(
             data: {
               success: true,
               output: result,
-              toolType: 'platform'
-            }
+              toolType: "platform",
+            },
           };
         } catch (error) {
           return {
@@ -127,21 +126,21 @@ export function createToolRouter(
             data: {
               success: false,
               error: error instanceof Error ? error.message : String(error),
-              toolType: 'platform'
-            }
+              toolType: "platform",
+            },
           };
         }
       }
 
       // 2. Check if it's an agent call (tools starting with 'agent:')
-      if (toolName.startsWith('agent:')) {
+      if (toolName.startsWith("agent:")) {
         return {
           success: true,
           data: {
             success: false,
             error: `Agent calls should be handled by workflow engine, not tool router`,
-            toolType: 'agent'
-          }
+            toolType: "agent",
+          },
         };
       }
 
@@ -151,17 +150,23 @@ export function createToolRouter(
           const tools = await dependencies.mcpClient.listTools(server);
           if (!tools.success) continue;
 
-          const tool = tools.data.find((t: ToolDefinition) => t.name === toolName);
+          const tool = tools.data.find(
+            (t: ToolDefinition) => t.name === toolName,
+          );
           if (tool) {
-            const result = await dependencies.mcpClient.callTool(server, toolName, args);
+            const result = await dependencies.mcpClient.callTool(
+              server,
+              toolName,
+              args,
+            );
             return {
               success: true,
               data: {
                 success: result.success,
                 output: result.success ? result.data : undefined,
                 error: result.success ? undefined : result.error.message,
-                toolType: 'mcp'
-              }
+                toolType: "mcp",
+              },
             };
           }
         }
@@ -170,34 +175,44 @@ export function createToolRouter(
       // Tool not found
       return {
         success: false,
-        error: new Error(`Tool ${toolName} not found in platform tools or MCP servers`)
+        error: new Error(
+          `Tool ${toolName} not found in platform tools or MCP servers`,
+        ),
       };
     },
 
     /**
      * List all available tools
      */
-    async listTools(context?: ToolExecutionContext): Promise<Result<ToolDefinition[]>> {
+    async listTools(
+      context?: ToolExecutionContext,
+    ): Promise<Result<ToolDefinition[]>> {
       const tools: ToolDefinition[] = [];
 
       // Add platform tools
-      if (config.enablePlatformTools !== false && config.foremanConfig && context) {
+      if (
+        config.enablePlatformTools !== false &&
+        config.foremanConfig &&
+        context
+      ) {
         const platformTools = createPlatformTools(
           config.foremanConfig,
           context,
           {
             internalA2AUrl: config.internalA2AUrl,
-            jwtToken: config.jwtToken
-          }
+            jwtToken: config.jwtToken,
+          },
         );
-        
+
         // Convert Tool to ToolDefinition format
-        tools.push(...platformTools.map(tool => ({
-          name: tool.name,
-          description: tool.description,
-          schema: {}, // Would need to convert Zod schema to JSON schema here
-          isPlatformTool: true
-        })));
+        tools.push(
+          ...platformTools.map((tool) => ({
+            name: tool.name,
+            description: tool.description,
+            schema: {}, // Would need to convert Zod schema to JSON schema here
+            isPlatformTool: true,
+          })),
+        );
       }
 
       // Add MCP tools
@@ -224,51 +239,54 @@ export function createToolRouter(
     async hasTool(toolName: string): Promise<boolean> {
       const result = await getTool(toolName);
       return result.success && result.data !== null;
-    }
+    },
   };
-  
+
   return router;
 }
 
 /**
  * Get platform tool definitions (static metadata without implementation)
  */
-export const PLATFORM_TOOL_DEFINITIONS: Record<PlatformToolName, ToolDefinition> = {
+export const PLATFORM_TOOL_DEFINITIONS: Record<
+  PlatformToolName,
+  ToolDefinition
+> = {
   run_data_write: {
-    name: 'run_data_write',
-    description: 'Store data for agent collaboration within the current workflow run',
+    name: "run_data_write",
+    description:
+      "Store data for agent collaboration within the current workflow run",
     schema: {},
-    isPlatformTool: true
+    isPlatformTool: true,
   },
   run_data_read: {
-    name: 'run_data_read',
-    description: 'Read specific data by key from the current workflow run',
+    name: "run_data_read",
+    description: "Read specific data by key from the current workflow run",
     schema: {},
-    isPlatformTool: true
+    isPlatformTool: true,
   },
   run_data_query: {
-    name: 'run_data_query',
-    description: 'Query run data by patterns, tags, or other criteria',
+    name: "run_data_query",
+    description: "Query run data by patterns, tags, or other criteria",
     schema: {},
-    isPlatformTool: true
+    isPlatformTool: true,
   },
   run_data_list: {
-    name: 'run_data_list',
-    description: 'List all data stored in the current workflow run',
+    name: "run_data_list",
+    description: "List all data stored in the current workflow run",
     schema: {},
-    isPlatformTool: true
+    isPlatformTool: true,
   },
   run_data_delete: {
-    name: 'run_data_delete',
-    description: 'Delete specific data by key from the current workflow run',
+    name: "run_data_delete",
+    description: "Delete specific data by key from the current workflow run",
     schema: {},
-    isPlatformTool: true
+    isPlatformTool: true,
   },
   call_agent: {
-    name: 'call_agent',
-    description: 'Call another agent via A2A protocol',
+    name: "call_agent",
+    description: "Call another agent via A2A protocol",
     schema: {},
-    isPlatformTool: true
-  }
+    isPlatformTool: true,
+  },
 };
-

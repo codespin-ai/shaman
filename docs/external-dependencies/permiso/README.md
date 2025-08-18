@@ -112,25 +112,29 @@ npm install @codespin/permiso-client
 **Note**: The client library is published to npm and can be used without building Permiso from source. You just need a running Permiso server (either via Docker or local installation).
 
 ```typescript
-import { createOrganization, createUser, hasPermission } from '@codespin/permiso-client';
+import {
+  createOrganization,
+  createUser,
+  hasPermission,
+} from "@codespin/permiso-client";
 
 const config = {
-  endpoint: 'http://localhost:5001',
-  apiKey: 'your-api-key' // optional
+  endpoint: "http://localhost:5001",
+  apiKey: "your-api-key", // optional
 };
 
 // Create an organization
 const org = await createOrganization(config, {
-  id: 'acme-corp',
-  name: 'ACME Corporation'
+  id: "acme-corp",
+  name: "ACME Corporation",
 });
 
 // Check permissions
 const canRead = await hasPermission(config, {
-  orgId: 'acme-corp',
-  userId: 'john-doe',
-  resourceId: '/api/users/*',
-  action: 'read'
+  orgId: "acme-corp",
+  userId: "john-doe",
+  resourceId: "/api/users/*",
+  action: "read",
 });
 ```
 
@@ -146,7 +150,6 @@ curl -X POST http://localhost:5001/graphql \
   -H "Content-Type: application/json" \
   -d '{"query": "mutation { createOrganization(input: { id: \"acme-corp\", name: \"ACME Corporation\" }) { id name } }"}'
 ```
-
 
 ## Development
 
@@ -171,7 +174,6 @@ npm run test:client:grep -- "Permissions"   # Client tests matching pattern
 ./clean.sh
 ```
 
-
 ## Configuration
 
 See [Configuration Documentation](docs/configuration.md) for all environment variables and configuration options.
@@ -179,6 +181,7 @@ See [Configuration Documentation](docs/configuration.md) for all environment var
 ## Deployment
 
 See [Deployment Guide](docs/deployment.md) for detailed instructions on:
+
 - Docker deployment
 - Docker Compose setup
 - Kubernetes deployment

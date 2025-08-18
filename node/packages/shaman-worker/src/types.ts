@@ -2,7 +2,7 @@
  * Worker configuration types
  */
 
-import type { ModelConfig } from '@codespin/shaman-llm-vercel';
+import type { ModelConfig } from "@codespin/shaman-llm-vercel";
 
 export type WorkerConfig = {
   foremanEndpoint: string;

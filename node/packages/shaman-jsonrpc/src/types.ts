@@ -21,7 +21,9 @@ export interface JsonRpcErrorResponse {
   readonly id: string | number | null;
 }
 
-export type JsonRpcResponse<T = unknown> = JsonRpcSuccessResponse<T> | JsonRpcErrorResponse;
+export type JsonRpcResponse<T = unknown> =
+  | JsonRpcSuccessResponse<T>
+  | JsonRpcErrorResponse;
 
 export interface JsonRpcError {
   readonly code: number;
@@ -54,7 +56,7 @@ export type JsonRpcBatchResponse = JsonRpcResponse[];
 
 export type JsonRpcMethodHandler<TParams = unknown, TResult = unknown> = (
   params: TParams,
-  context: JsonRpcContext
+  context: JsonRpcContext,
 ) => Promise<TResult> | TResult;
 
 export interface JsonRpcContext {
@@ -67,6 +69,6 @@ export interface JsonRpcMiddleware {
   (
     request: JsonRpcRequest,
     context: JsonRpcContext,
-    next: () => Promise<JsonRpcResponse>
+    next: () => Promise<JsonRpcResponse>,
   ): Promise<JsonRpcResponse>;
 }

@@ -1,9 +1,12 @@
-import type { AgentRepository } from '@codespin/shaman-types';
-import type { Database } from '@codespin/shaman-db';
-import { mapAgentRepositoryFromDb } from './mappers/map-agent-repository-from-db.js';
-import type { AgentRepositoryDbRow } from './types.js';
+import type { AgentRepository } from "@codespin/shaman-types";
+import type { Database } from "@codespin/shaman-db";
+import { mapAgentRepositoryFromDb } from "./mappers/map-agent-repository-from-db.js";
+import type { AgentRepositoryDbRow } from "./types.js";
 
-export async function updateAgentRepository(db: Database, repository: AgentRepository): Promise<AgentRepository> {
+export async function updateAgentRepository(
+  db: Database,
+  repository: AgentRepository,
+): Promise<AgentRepository> {
   const result = await db.one<AgentRepositoryDbRow>(
     `UPDATE agent_repository 
      SET name = $(name), git_url = $(gitUrl), branch = $(branch), is_root = $(isRoot), 
@@ -11,7 +14,7 @@ export async function updateAgentRepository(db: Database, repository: AgentRepos
          updated_at = CURRENT_TIMESTAMP
      WHERE id = $(id)
      RETURNING *`,
-    repository
+    repository,
   );
   return mapAgentRepositoryFromDb(result);
 }

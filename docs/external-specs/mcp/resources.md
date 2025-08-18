@@ -5,6 +5,7 @@ Resources in MCP enable servers to expose data, files, and other content that ag
 ## Overview
 
 Resources allow servers to:
+
 - Expose files, documents, and data
 - Provide live updates through subscriptions
 - Control access to sensitive information
@@ -16,11 +17,12 @@ A resource consists of:
 
 ```typescript
 interface Resource {
-  uri: string;              // Unique identifier (URI format)
-  name: string;             // Human-readable name
-  description?: string;     // What the resource contains
-  mimeType?: string;       // Content type
-  annotations?: {          // Additional metadata
+  uri: string; // Unique identifier (URI format)
+  name: string; // Human-readable name
+  description?: string; // What the resource contains
+  mimeType?: string; // Content type
+  annotations?: {
+    // Additional metadata
     [key: string]: any;
   };
 }
@@ -29,6 +31,7 @@ interface Resource {
 ### URI Schemes
 
 Resources use URI schemes to identify content:
+
 - `file:///path/to/file` - Local filesystem
 - `git://repo/path` - Git repository content
 - `db://database/table` - Database content
@@ -53,6 +56,7 @@ Resources use URI schemes to identify content:
 Discover available resources with pagination:
 
 **Request:**
+
 ```json
 {
   "jsonrpc": "2.0",
@@ -65,6 +69,7 @@ Discover available resources with pagination:
 ```
 
 **Response:**
+
 ```json
 {
   "jsonrpc": "2.0",
@@ -92,6 +97,7 @@ Discover available resources with pagination:
 Read resource content:
 
 **Request:**
+
 ```json
 {
   "jsonrpc": "2.0",
@@ -104,6 +110,7 @@ Read resource content:
 ```
 
 **Response:**
+
 ```json
 {
   "jsonrpc": "2.0",
@@ -125,6 +132,7 @@ Read resource content:
 Resources can use templates for dynamic URIs:
 
 **List with template:**
+
 ```json
 {
   "resources": [
@@ -146,6 +154,7 @@ Resources can use templates for dynamic URIs:
 ```
 
 **Read with template:**
+
 ```json
 {
   "method": "resources/read",
@@ -162,6 +171,7 @@ Resources can use templates for dynamic URIs:
 Monitor resources for changes:
 
 **Request:**
+
 ```json
 {
   "jsonrpc": "2.0",
@@ -174,6 +184,7 @@ Monitor resources for changes:
 ```
 
 **Response:**
+
 ```json
 {
   "jsonrpc": "2.0",
@@ -201,6 +212,7 @@ When subscribed resources change:
 Stop monitoring a resource:
 
 **Request:**
+
 ```json
 {
   "jsonrpc": "2.0",
@@ -231,8 +243,8 @@ Servers declare resource support:
 {
   "capabilities": {
     "resources": {
-      "subscribe": true,      // Can subscribe to updates
-      "listChanged": true     // Can notify of list changes
+      "subscribe": true, // Can subscribe to updates
+      "listChanged": true // Can notify of list changes
     }
   }
 }
@@ -243,6 +255,7 @@ Servers declare resource support:
 Resources can contain various content types:
 
 ### Text Content
+
 ```json
 {
   "uri": "file:///doc.txt",
@@ -252,6 +265,7 @@ Resources can contain various content types:
 ```
 
 ### Binary Content
+
 ```json
 {
   "uri": "file:///image.png",
@@ -261,6 +275,7 @@ Resources can contain various content types:
 ```
 
 ### Structured Data
+
 ```json
 {
   "uri": "db://users/active",
@@ -290,6 +305,7 @@ Resources can contain various content types:
 ## Common Resource Patterns
 
 ### 1. Configuration Files
+
 ```json
 {
   "uri": "file:///config/app.yaml",
@@ -299,6 +315,7 @@ Resources can contain various content types:
 ```
 
 ### 2. Live Data Feeds
+
 ```json
 {
   "uri": "metrics://cpu/usage",
@@ -308,6 +325,7 @@ Resources can contain various content types:
 ```
 
 ### 3. Database Views
+
 ```json
 {
   "uri": "db://analytics/daily_summary",
@@ -317,6 +335,7 @@ Resources can contain various content types:
 ```
 
 ### 4. API Responses
+
 ```json
 {
   "uri": "http://api.service.com/status",
@@ -347,22 +366,22 @@ mcpServers:
 
 ```typescript
 // 1. List available resources
-const { resources } = await mcpClient.request('resources/list');
+const { resources } = await mcpClient.request("resources/list");
 
 // 2. Filter allowed resources
-const allowedResources = resources.filter(r => 
-  isAllowedResource(r.uri, agent.config.resources)
+const allowedResources = resources.filter((r) =>
+  isAllowedResource(r.uri, agent.config.resources),
 );
 
 // 3. Read resource content
-const content = await mcpClient.request('resources/read', {
-  uri: 'file:///project/config.json'
+const content = await mcpClient.request("resources/read", {
+  uri: "file:///project/config.json",
 });
 
 // 4. Subscribe to updates if needed
 if (needsLiveUpdates) {
-  await mcpClient.request('resources/subscribe', {
-    uri: resource.uri
+  await mcpClient.request("resources/subscribe", {
+    uri: resource.uri,
   });
 }
 ```
@@ -371,10 +390,10 @@ if (needsLiveUpdates) {
 
 ```typescript
 // Handle resource update notifications
-mcpClient.on('notification:resources/updated', ({ uri }) => {
+mcpClient.on("notification:resources/updated", ({ uri }) => {
   // Re-read the updated resource
-  const newContent = await mcpClient.request('resources/read', { uri });
-  
+  const newContent = await mcpClient.request("resources/read", { uri });
+
   // Update agent's context
   agent.updateContext(uri, newContent);
 });
@@ -391,6 +410,7 @@ Common resource errors:
 5. **Size Exceeded**: Resource too large
 
 Example error handling:
+
 ```typescript
 try {
   const result = await readResource(uri);

@@ -1,9 +1,5 @@
-import type { Request, Response } from 'express';
-import type { 
-  AgentCard,
-  Task,
-  Message
-} from '@codespin/shaman-a2a-protocol';
+import type { Request, Response } from "express";
+import type { AgentCard, Task, Message } from "@codespin/shaman-a2a-protocol";
 
 /**
  * Transport interface for handling A2A requests
@@ -13,7 +9,7 @@ export interface A2ATransport {
    * Handle an incoming HTTP request
    */
   handle(req: Request, res: Response): Promise<void>;
-  
+
   /**
    * Get the transport type identifier
    */
@@ -37,7 +33,7 @@ export interface A2AMethodContext {
  */
 export type A2AMethodHandler<TParams = unknown, TResult = unknown> = (
   params: TParams,
-  context: A2AMethodContext
+  context: A2AMethodContext,
 ) => Promise<TResult> | TResult;
 
 /**
@@ -62,12 +58,18 @@ export interface SSEWriter {
  * Method registry for A2A handlers
  */
 export interface A2AMethodRegistry {
-  'message/send': A2AMethodHandler<unknown, Task | Message>;
-  'message/stream': A2AMethodHandler<unknown, AsyncGenerator<Task | Message>>;
-  'tasks/get': A2AMethodHandler<unknown, Task>;
-  'tasks/cancel': A2AMethodHandler<unknown, Task>;
-  'tasks/resubscribe': A2AMethodHandler<unknown, AsyncGenerator<Task | Message>>;
-  'tasks/pushNotificationConfig/set': A2AMethodHandler<unknown, { success: boolean }>;
-  'tasks/pushNotificationConfig/get': A2AMethodHandler<unknown, unknown>;
-  'agent/authenticatedExtendedCard': A2AMethodHandler<unknown, AgentCard>;
+  "message/send": A2AMethodHandler<unknown, Task | Message>;
+  "message/stream": A2AMethodHandler<unknown, AsyncGenerator<Task | Message>>;
+  "tasks/get": A2AMethodHandler<unknown, Task>;
+  "tasks/cancel": A2AMethodHandler<unknown, Task>;
+  "tasks/resubscribe": A2AMethodHandler<
+    unknown,
+    AsyncGenerator<Task | Message>
+  >;
+  "tasks/pushNotificationConfig/set": A2AMethodHandler<
+    unknown,
+    { success: boolean }
+  >;
+  "tasks/pushNotificationConfig/get": A2AMethodHandler<unknown, unknown>;
+  "agent/authenticatedExtendedCard": A2AMethodHandler<unknown, AgentCard>;
 }

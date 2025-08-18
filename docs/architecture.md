@@ -3,6 +3,7 @@
 ## System Overview
 
 Shaman implements the A2A Protocol v0.3.0 for agent-to-agent communication and has two server types:
+
 - **GraphQL Server**: Management only (users, repos, monitoring)
 - **A2A Server**: All agent execution (public and internal modes)
 
@@ -17,22 +18,27 @@ External Request → Public A2A → Foreman → Worker → Agent Executor
 Shaman fully implements the A2A v0.3.0 specification:
 
 ### Core Methods
+
 - `message/send` - Send messages to agents
 - `tasks/get` - Retrieve task status
 - `tasks/cancel` - Cancel running tasks
 
 ### Optional Methods
+
 - `message/stream` - Server-Sent Events for real-time updates
 - `tasks/pushNotificationConfig/set` - Configure webhooks
 - `agent/authenticatedExtendedCard` - Extended agent metadata
 
 ### Transport
+
 - Primary: JSON-RPC 2.0 over HTTP
 - Streaming: Server-Sent Events (SSE)
 - Future: gRPC and HTTP+JSON support
 
 ### Task Lifecycle
+
 Tasks follow the A2A state machine:
+
 - Active: `submitted`, `working`
 - Interrupted: `input-required`, `auth-required`
 - Terminal: `completed`, `failed`, `canceled`, `rejected`
@@ -40,6 +46,7 @@ Tasks follow the A2A state machine:
 ## Workflow Model
 
 Everything is a **step**:
+
 - **Agent Step**: AI agent execution with LLM
 - **Tool Step**: Tool execution (database, API, webhook, or calling another agent)
 
@@ -52,14 +59,14 @@ All workflows start with a `call_agent` tool step - even external requests. This
 ```
 1. External: "@CustomerSupport refund order #123"
    → Creates: call_agent tool step (id: step_001)
-   
+
 2. call_agent executes
    → Creates: CustomerSupport agent step (id: step_002)
-   
+
 3. CustomerSupport executes (with LLM)
    → Creates: query_database tool step (id: step_003)
    → Creates: call_agent tool step (id: step_004)
-   
+
 4. call_agent executes
    → Creates: PaymentProcessor agent step (id: step_005)
 ```
@@ -69,11 +76,13 @@ All workflows start with a `call_agent` tool step - even external requests. This
 ### Core Infrastructure
 
 **@codespin/shaman-db**
+
 - PostgreSQL connections with multi-tenancy
 - `createRlsDb(orgId)` - Tenant-scoped queries
 - `createUnrestrictedDb()` - Admin operations
 
 **Foreman (External Service)**
+
 - Handles ALL workflow orchestration via `@codespin/foreman-client`
 - Manages runs, tasks, and workflow state
 - Provides run_data storage for agent collaboration
@@ -81,6 +90,7 @@ All workflows start with a `call_agent` tool step - even external requests. This
 - REST API at `FOREMAN_ENDPOINT` (default: http://localhost:3000)
 
 **@codespin/shaman-worker**
+
 - Processes tasks from Foreman queues
 - Directly executes agents using agent-executor
 - Integrates with LLM providers (OpenAI, Anthropic)
@@ -90,17 +100,20 @@ All workflows start with a `call_agent` tool step - even external requests. This
 ### Agent System
 
 **@codespin/shaman-agents**
+
 - Unified agent resolution from all sources
 - Combines Git repos, external registry
 - Agent discovery and loading
 
 **@codespin/shaman-agent-executor**
+
 - Core agent execution engine
 - Manages conversations with LLM
 - Tracks runs and steps in PostgreSQL
 - Domain functions: `createRun()`, `createStep()`, `updateStep()`
 
 **@codespin/shaman-git-resolver**
+
 - Loads agents from Git repositories
 - Caches by commit hash
 - Supports branches
@@ -108,6 +121,7 @@ All workflows start with a `call_agent` tool step - even external requests. This
 ### Communication
 
 **@codespin/shaman-a2a-server**
+
 - Full A2A v0.3.0 protocol implementation
 - Public mode: External API gateway with AgentCard discovery
 - Internal mode: Agent execution with JWT auth
@@ -116,11 +130,13 @@ All workflows start with a `call_agent` tool step - even external requests. This
 - Supports streaming via SSE and webhook notifications
 
 **@codespin/shaman-a2a-client**
+
 - HTTP client for A2A calls
 - Used by agents to call other agents
 - JWT authentication for internal calls
 
 **@codespin/shaman-gql-server**
+
 - GraphQL API for management
 - User/repo/workflow queries
 - NO agent execution
@@ -128,16 +144,19 @@ All workflows start with a `call_agent` tool step - even external requests. This
 ### Tools & LLM
 
 **@codespin/shaman-tool-router**
+
 - Routes tool calls to handlers
-- Platform tools: run_data_*
+- Platform tools: run*data*\*
 - Handles agent-to-agent calls
 - MCP protocol support
 
 **@codespin/shaman-llm-core**
+
 - LLM provider interface
 - Model-agnostic abstraction
 
 **@codespin/shaman-llm-vercel**
+
 - Vercel AI SDK v5.0.8 implementation
 - OpenAI support via @ai-sdk/openai@2.0.5
 - Anthropic support via @ai-sdk/anthropic@2.0.1
@@ -146,41 +165,49 @@ All workflows start with a `call_agent` tool step - even external requests. This
 ### Supporting
 
 **@codespin/shaman-types**
+
 - Shared TypeScript types
 - No implementation, just interfaces
 
 **@codespin/shaman-logger**
+
 - Centralized logging
 - Structured log output
 
 **@codespin/shaman-config**
+
 - Configuration management
 - Environment variables
 
 **@codespin/shaman-security**
+
 - JWT token handling
 - Authentication utilities
 - (Note: Most auth handled by external services)
 
 **@codespin/shaman-cli**
+
 - Command-line interface
 - Development tools
 
 ## External Dependencies
 
 ### Ory Kratos (Planned Integration)
+
 - User authentication service (external)
 - Would provide identity management and sessions
 - **Status**: Not yet integrated
 - **Current Auth**: JWT tokens and API keys handled internally by shaman-security package
 
 ### Permiso (Planned Integration)
+
 - RBAC authorization service (external)
 - Would provide permission checks via GraphQL API
 - **Status**: Not yet integrated - configuration exists but no implementation
 - **Future**: Will use `@codespin/permiso-client` when implemented
 
 ### Foreman
+
 - Workflow orchestration engine
 - Run and task management
 - Workflow data storage (run_data)
@@ -188,11 +215,13 @@ All workflows start with a `call_agent` tool step - even external requests. This
 - Handles all workflow execution and state management
 
 ### PostgreSQL
+
 - All persistent data
 - Row Level Security for multi-tenancy
 - Two users: `rls_db_user` (app), `unrestricted_db_user` (admin)
 
 ### Redis
+
 - BullMQ job queues
 - Temporary workflow state
 - Can be reconstructed from PostgreSQL
@@ -202,6 +231,7 @@ All workflows start with a `call_agent` tool step - even external requests. This
 ### Core Tables
 
 **run** - Workflow instances
+
 ```sql
 CREATE TABLE run (
   id VARCHAR(26) PRIMARY KEY,
@@ -215,6 +245,7 @@ CREATE TABLE run (
 ```
 
 **step** - Units of work
+
 ```sql
 CREATE TABLE step (
   id VARCHAR(26) PRIMARY KEY,
@@ -231,6 +262,7 @@ CREATE TABLE step (
 ```
 
 **run_data** - Agent collaboration store
+
 ```sql
 CREATE TABLE run_data (
   run_id VARCHAR(26) REFERENCES run(id),
@@ -244,6 +276,7 @@ CREATE TABLE run_data (
 ## Execution Flow
 
 ### 1. External Request (A2A Protocol)
+
 ```javascript
 // A2A server receives JSON-RPC request
 POST /a2a/v1
@@ -287,6 +320,7 @@ POST /a2a/v1
 ```
 
 ### 2. Worker Processing
+
 ```javascript
 // Worker picks up job
 const request = job.data; // StepRequest
@@ -303,6 +337,7 @@ if (type === 'tool' && name === 'call_agent') {
 ```
 
 ### 3. Agent Execution
+
 ```javascript
 // Worker calls internal A2A server
 const jwt = generateInternalJWT({ runId, stepId, orgId });
@@ -318,22 +353,23 @@ const response = await a2aClient.sendMessage({
 ```
 
 ### 4. Async Handling
+
 ```javascript
 // Tool returns webhook ID
 if (tool === 'send_to_payment_api') {
   const webhookId = generateId();
-  
+
   // Configure A2A push notification
   await a2aServer.configurePushNotification({
     taskId: currentTaskId,
     webhookUrl: `https://acme.shaman.ai/a2a/v1/webhooks/${webhookId}`,
     headers: { 'X-Webhook-Secret': generateSecret() }
   });
-  
-  await callExternalAPI({ 
-    callback: `https://acme.shaman.ai/webhooks/${webhookId}` 
+
+  await callExternalAPI({
+    callback: `https://acme.shaman.ai/webhooks/${webhookId}`
   });
-  
+
   // Update step with webhook_id
   updateStep(stepId, { status: 'waiting', webhook_id: webhookId });
 }
@@ -347,11 +383,13 @@ POST /webhooks/:webhookId
 ## Security Model
 
 ### Authentication Layers
+
 1. **External**: API keys or Kratos sessions
 2. **Internal**: JWT tokens between servers
 3. **Database**: RLS policies for tenant isolation
 
 ### Multi-Tenancy
+
 - Every table has `organization_id`
 - RLS policies enforce isolation
 - Separate Redis queues per tenant (optional)
@@ -390,12 +428,14 @@ Becomes:
 ```
 
 Discovery endpoints:
+
 - `/.well-known/a2a/agents` - List all exposed agents
 - `/a2a/v1/agents/{name}` - Individual agent details
 
 ## Deployment
 
 ### Development
+
 ```bash
 # Start services
 docker-compose up -d postgres redis
@@ -411,8 +451,9 @@ npm run dev:worker
 ```
 
 ### Production
+
 - GraphQL server: Public internet
-- A2A public server: Public internet  
+- A2A public server: Public internet
 - A2A internal server: Private network only
 - Workers: Private network, multiple instances
 - PostgreSQL: Managed service with backups

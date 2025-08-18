@@ -182,6 +182,7 @@ sequenceDiagram
 ### 4. Notification Phase
 
 Servers can send notifications for:
+
 - Tool list changes
 - Resource updates
 - Prompt changes
@@ -233,7 +234,7 @@ const toolName = "calculate";
 const args = { expression: "2 + 2" };
 
 // 2. Shaman finds appropriate MCP server
-const server = mcpServers.find(s => s.hassTool(toolName));
+const server = mcpServers.find((s) => s.hassTool(toolName));
 
 // 3. Invokes tool via MCP protocol
 const result = await server.callTool(toolName, args);

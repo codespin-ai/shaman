@@ -9,6 +9,7 @@ This document describes the core methods that MUST be implemented by all A2A-com
 Sends a message to an agent to initiate or continue an interaction.
 
 **Request:**
+
 ```json
 {
   "jsonrpc": "2.0",
@@ -23,23 +24,25 @@ Sends a message to an agent to initiate or continue an interaction.
           "text": "Process order #12345"
         }
       ],
-      "messageId": "msg-123",      // Client-generated unique ID
-      "contextId": "ctx-456",      // Optional: Continue existing context
-      "taskId": "task-789"         // Optional: Continue specific task
+      "messageId": "msg-123", // Client-generated unique ID
+      "contextId": "ctx-456", // Optional: Continue existing context
+      "taskId": "task-789" // Optional: Continue specific task
     },
     "configuration": {
-      "blocking": true,            // Wait for completion
-      "pushNotificationConfig": {  // Optional: Webhook config
+      "blocking": true, // Wait for completion
+      "pushNotificationConfig": {
+        // Optional: Webhook config
         "url": "https://client.com/webhook",
         "token": "secret-token"
       }
     },
-    "metadata": {}                 // Optional: Custom metadata
+    "metadata": {} // Optional: Custom metadata
   }
 }
 ```
 
 **Response (Task):**
+
 ```json
 {
   "jsonrpc": "2.0",
@@ -59,6 +62,7 @@ Sends a message to an agent to initiate or continue an interaction.
 ```
 
 **Response (Message - for simple responses):**
+
 ```json
 {
   "jsonrpc": "2.0",
@@ -85,6 +89,7 @@ Sends a message to an agent to initiate or continue an interaction.
 Retrieves the current state of a task.
 
 **Request:**
+
 ```json
 {
   "jsonrpc": "2.0",
@@ -92,12 +97,13 @@ Retrieves the current state of a task.
   "method": "tasks/get",
   "params": {
     "id": "task-789",
-    "historyLength": 10    // Optional: Limit history
+    "historyLength": 10 // Optional: Limit history
   }
 }
 ```
 
 **Response:**
+
 ```json
 {
   "jsonrpc": "2.0",
@@ -136,6 +142,7 @@ Retrieves the current state of a task.
 Requests cancellation of an ongoing task.
 
 **Request:**
+
 ```json
 {
   "jsonrpc": "2.0",
@@ -148,6 +155,7 @@ Requests cancellation of an ongoing task.
 ```
 
 **Response:**
+
 ```json
 {
   "jsonrpc": "2.0",
@@ -178,6 +186,7 @@ Requires `capabilities.streaming: true` in AgentCard.
 **Response:** HTTP 200 with `Content-Type: text/event-stream`
 
 Each SSE event has:
+
 - `event: message` (optional, defaults to "message")
 - `data: <json>` containing the JSON-RPC response
 - `id: <timestamp>` (optional event ID)
@@ -209,6 +218,7 @@ Reconnects to streaming updates for an existing task.
 Requires `capabilities.streaming: true`.
 
 **Request:**
+
 ```json
 {
   "jsonrpc": "2.0",
@@ -228,6 +238,7 @@ Configures webhook for asynchronous task updates.
 Requires `capabilities.pushNotifications: true`.
 
 **Request:**
+
 ```json
 {
   "jsonrpc": "2.0",
@@ -247,6 +258,7 @@ Requires `capabilities.pushNotifications: true`.
 ```
 
 **Response:**
+
 ```json
 {
   "jsonrpc": "2.0",
@@ -263,6 +275,7 @@ Returns an extended AgentCard for authenticated users.
 Requires `supportsAuthenticatedExtendedCard: true`.
 
 **Request:**
+
 ```json
 {
   "jsonrpc": "2.0",
@@ -272,6 +285,7 @@ Requires `supportsAuthenticatedExtendedCard: true`.
 ```
 
 **Response:**
+
 ```json
 {
   "jsonrpc": "2.0",
@@ -284,20 +298,22 @@ Requires `supportsAuthenticatedExtendedCard: true`.
 
 ## Method Naming Across Transports
 
-| JSON-RPC | gRPC | REST |
-|----------|------|------|
-| `message/send` | `SendMessage` | `POST /v1/message:send` |
-| `message/stream` | `SendStreamingMessage` | `POST /v1/message:stream` |
-| `tasks/get` | `GetTask` | `GET /v1/tasks/{id}` |
-| `tasks/cancel` | `CancelTask` | `POST /v1/tasks/{id}:cancel` |
-| `tasks/resubscribe` | `TaskSubscription` | `POST /v1/tasks/{id}:subscribe` |
+| JSON-RPC            | gRPC                   | REST                            |
+| ------------------- | ---------------------- | ------------------------------- |
+| `message/send`      | `SendMessage`          | `POST /v1/message:send`         |
+| `message/stream`    | `SendStreamingMessage` | `POST /v1/message:stream`       |
+| `tasks/get`         | `GetTask`              | `GET /v1/tasks/{id}`            |
+| `tasks/cancel`      | `CancelTask`           | `POST /v1/tasks/{id}:cancel`    |
+| `tasks/resubscribe` | `TaskSubscription`     | `POST /v1/tasks/{id}:subscribe` |
 
 ## Event Types in Streaming
 
 When using `message/stream` or `tasks/resubscribe`, the following event types can be returned:
 
 ### Task Event
+
 Initial task creation or full task state:
+
 ```json
 {
   "kind": "task",
@@ -310,7 +326,9 @@ Initial task creation or full task state:
 ```
 
 ### Status Update Event
+
 Task status changes:
+
 ```json
 {
   "kind": "status-update",
@@ -318,15 +336,19 @@ Task status changes:
   "contextId": "ctx-456",
   "status": {
     "state": "working",
-    "message": { /* Optional message object */ },
+    "message": {
+      /* Optional message object */
+    },
     "timestamp": "..."
   },
-  "final": false  // true when this is the last update
+  "final": false // true when this is the last update
 }
 ```
 
 ### Artifact Update Event
+
 New or updated artifacts:
+
 ```json
 {
   "kind": "artifact-update",
@@ -335,17 +357,17 @@ New or updated artifacts:
   "artifact": {
     "artifactId": "art-001",
     "name": "result.txt",
-    "parts": [
-      { "kind": "text", "text": "Content..." }
-    ]
+    "parts": [{ "kind": "text", "text": "Content..." }]
   },
-  "append": false,    // Whether to append to existing artifact
-  "lastChunk": true   // Whether this is the final chunk
+  "append": false, // Whether to append to existing artifact
+  "lastChunk": true // Whether this is the final chunk
 }
 ```
 
 ### Direct Message Event
+
 For simple responses without task creation:
+
 ```json
 {
   "kind": "message",

@@ -2,25 +2,25 @@
  * Agent execution worker using Foreman
  */
 
-import { 
-  initializeForemanClient, 
+import {
+  initializeForemanClient,
   createRunData,
-  type ForemanConfig, 
-  type TaskHandler 
-} from '@codespin/foreman-client';
-import { createLogger } from '@codespin/shaman-logger';
-import { executeAgent } from '@codespin/shaman-agent-executor';
-import type { AgentExecutionRequest } from '@codespin/shaman-agent-executor';
-import { resolveAgent } from '@codespin/shaman-agents';
-import type { AgentsConfig } from '@codespin/shaman-agents';
-import { createToolRouter } from '@codespin/shaman-tool-router';
-import type { ToolExecutionContext } from '@codespin/shaman-tool-router';
-import { createVercelLLMProvider } from '@codespin/shaman-llm-vercel';
-import { v4 as uuidv4 } from 'uuid';
-import type { WorkerConfig } from './types.js';
-import type { Step } from '@codespin/shaman-types';
+  type ForemanConfig,
+  type TaskHandler,
+} from "@codespin/foreman-client";
+import { createLogger } from "@codespin/shaman-logger";
+import { executeAgent } from "@codespin/shaman-agent-executor";
+import type { AgentExecutionRequest } from "@codespin/shaman-agent-executor";
+import { resolveAgent } from "@codespin/shaman-agents";
+import type { AgentsConfig } from "@codespin/shaman-agents";
+import { createToolRouter } from "@codespin/shaman-tool-router";
+import type { ToolExecutionContext } from "@codespin/shaman-tool-router";
+import { createVercelLLMProvider } from "@codespin/shaman-llm-vercel";
+import { v4 as uuidv4 } from "uuid";
+import type { WorkerConfig } from "./types.js";
+import type { Step, RunData, AgentSource } from "@codespin/shaman-types";
 
-const logger = createLogger('AgentWorker');
+const logger = createLogger("AgentWorker");
 
 /**
  * Create agent execution worker
@@ -32,7 +32,7 @@ export async function createAgentWorker(config: WorkerConfig): Promise<{
   const foremanConfig: ForemanConfig = {
     endpoint: config.foremanEndpoint,
     apiKey: config.foremanApiKey,
-    queues: config.queues
+    queues: config.queues,
   };
 
   // Initialize Foreman client
@@ -41,32 +41,32 @@ export async function createAgentWorker(config: WorkerConfig): Promise<{
   // Create LLM provider
   const llmProvider = createVercelLLMProvider({
     models: config.llmModels || {
-      'gpt-4': {
-        provider: 'openai',
-        modelId: 'gpt-4',
+      "gpt-4": {
+        provider: "openai",
+        modelId: "gpt-4",
         defaultTemperature: 0.7,
-        defaultMaxTokens: 2000
+        defaultMaxTokens: 2000,
       },
-      'claude-3': {
-        provider: 'anthropic',
-        modelId: 'claude-3-opus-20240229',
+      "claude-3": {
+        provider: "anthropic",
+        modelId: "claude-3-opus-20240229",
         defaultTemperature: 0.5,
-        defaultMaxTokens: 4000
-      }
+        defaultMaxTokens: 4000,
+      },
     },
-    defaultModel: config.defaultModel || 'gpt-4',
+    defaultModel: config.defaultModel || "gpt-4",
     apiKeys: {
       openai: process.env.OPENAI_API_KEY,
-      anthropic: process.env.ANTHROPIC_API_KEY
-    }
+      anthropic: process.env.ANTHROPIC_API_KEY,
+    },
   });
 
   // Define task handler
   const agentExecutionHandler: TaskHandler = async (task) => {
-    logger.info('Processing agent execution task', {
+    logger.info("Processing agent execution task", {
       taskId: task.id,
       runId: task.runId,
-      type: task.type
+      type: task.type,
     });
 
     // Type cast input data
@@ -74,7 +74,7 @@ export async function createAgentWorker(config: WorkerConfig): Promise<{
     const agentName = inputData.agentName as string;
     const input = inputData.input;
 
-    const { organizationId, userId } = task.metadata as {
+    const { organizationId, userId: _userId } = task.metadata as {
       organizationId: string;
       userId?: string;
     };
@@ -83,7 +83,7 @@ export async function createAgentWorker(config: WorkerConfig): Promise<{
       // Configure agents module
       const agentsConfig: AgentsConfig = {
         gitRepositories: config.gitRepositories,
-        externalRegistries: config.externalRegistries
+        externalRegistries: config.externalRegistries,
       };
 
       // Resolve the agent
@@ -94,22 +94,22 @@ export async function createAgentWorker(config: WorkerConfig): Promise<{
 
       const agentResolution = agentResult.data;
       const unifiedAgent = agentResolution.agent;
-      
+
       // Extract agent details for the executor
-      let agentDescription: string = '';
-      let agentModel = 'gpt-4';
-      let agentTemperature = 0.7;
+      let agentDescription: string = "";
+      let agentModel = "gpt-4";
+      const agentTemperature = 0.7;
       let agentTools: string[] = [];
-      
-      if (unifiedAgent.source === 'git') {
+
+      if (unifiedAgent.source === "git") {
         const gitAgent = unifiedAgent.agent;
-        agentDescription = gitAgent.description || '';
-        agentModel = gitAgent.model || 'gpt-4';
+        agentDescription = gitAgent.description || "";
+        agentModel = gitAgent.model || "gpt-4";
         // temperature would need to be in frontmatter, not in current types
         agentTools = []; // tools would need to be extracted from frontmatter
       } else {
         const externalAgent = unifiedAgent.agent;
-        agentDescription = externalAgent.description || '';
+        agentDescription = externalAgent.description || "";
         // External agents don't have model or tools info in current types
         agentTools = [];
       }
@@ -120,7 +120,7 @@ export async function createAgentWorker(config: WorkerConfig): Promise<{
         taskId: task.id,
         agentName,
         organizationId,
-        jwtToken: config.jwtSecret // This would need a proper JWT
+        jwtToken: config.jwtSecret, // This would need a proper JWT
       };
 
       // Create tool router with Foreman config for platform tools
@@ -129,23 +129,33 @@ export async function createAgentWorker(config: WorkerConfig): Promise<{
           enablePlatformTools: true,
           foremanConfig,
           internalA2AUrl: config.internalA2AUrl,
-          jwtToken: config.jwtSecret // This would need a proper JWT
+          jwtToken: config.jwtSecret, // This would need a proper JWT
         },
         {
           persistenceLayer: {
             // Minimal persistence layer for tool router
-            createRunData: async () => ({ id: '', createdAt: new Date() } as any),
+            createRunData: async () =>
+              ({
+                id: "",
+                runId: task.runId,
+                key: "",
+                value: {},
+                createdByStepId: "",
+                createdByAgentName: agentName,
+                createdByAgentSource: "GIT" as AgentSource,
+                createdAt: new Date(),
+              }) as RunData,
             getRunData: async () => [],
             queryRunData: async () => [],
-            listRunDataKeys: async () => []
-          }
-        }
+            listRunDataKeys: async () => [],
+          },
+        },
       );
 
-      // Create agent execution request  
+      // Create agent execution request
       const executionRequest: AgentExecutionRequest = {
         agentName,
-        input: typeof input === 'string' ? input : JSON.stringify(input),
+        input: typeof input === "string" ? input : JSON.stringify(input),
         organizationId,
         runId: task.runId,
         stepId: task.id,
@@ -155,49 +165,56 @@ export async function createAgentWorker(config: WorkerConfig): Promise<{
           memory: new Map(),
           results: {
             intermediate: new Map(),
-            final: undefined
-          }
-        }
+            final: undefined,
+          },
+        },
       };
 
       // Execute the agent
-      const executionResult = await executeAgent(
-        executionRequest,
-        {
-          agentResolver: async () => ({
-            success: true,
-            data: {
-              name: agentName,
-              description: agentDescription,
-              systemPrompt: agentDescription,
-              model: agentModel,
-              temperature: agentTemperature,
-              tools: agentTools,
-              maxIterations: 10
-            }
-          }),
-          llmProvider,
-          toolRouter: {
-            executeTool: async (name, args) => 
-              toolRouter.executeTool(name, args, toolContext),
-            listTools: () => toolRouter.listTools(),
-            getTool: (name) => toolRouter.getTool(name),
-            hasTool: (name) => toolRouter.hasTool(name)
+      const executionResult = await executeAgent(executionRequest, {
+        agentResolver: async () => ({
+          success: true,
+          data: {
+            name: agentName,
+            description: agentDescription,
+            systemPrompt: agentDescription,
+            model: agentModel,
+            temperature: agentTemperature,
+            tools: agentTools,
+            maxIterations: 10,
           },
-          persistence: {
-            createStep: async (): Promise<Step> => ({ 
-              id: uuidv4(), 
+        }),
+        llmProvider,
+        toolRouter: {
+          executeTool: async (name, args) =>
+            toolRouter.executeTool(name, args, toolContext),
+          listTools: () => toolRouter.listTools(),
+          getTool: (name) => toolRouter.getTool(name),
+          hasTool: (name) => toolRouter.hasTool(name),
+        },
+        persistence: {
+          createStep: async (): Promise<Step> =>
+            ({
+              id: uuidv4(),
               runId: task.runId,
               agentName,
-              status: 'COMPLETED' as const,
+              status: "COMPLETED" as const,
               startTime: new Date(),
-              endTime: new Date()
-            } as Step),
-            updateStep: async (_id: string, updates: Partial<Step>): Promise<Step> => updates as Step,
-            getStep: async (): Promise<Step | null> => null
-          }
-        }
-      );
+              endTime: new Date(),
+            }) as Step,
+          updateStep: async (
+            _id: string,
+            updates: Partial<Step>,
+          ): Promise<Step> => ({
+            id: _id,
+            runId: task.runId,
+            type: "agent-execution",
+            status: "completed",
+            ...updates,
+          }) as Step,
+          getStep: async (): Promise<Step | null> => null,
+        },
+      });
 
       if (!executionResult.success) {
         throw new Error(`Agent execution failed`);
@@ -209,26 +226,21 @@ export async function createAgentWorker(config: WorkerConfig): Promise<{
         key: `agent-result-${task.id}`,
         value: {
           output: executionResult.data.output,
-          metadata: executionResult.data.metadata
+          metadata: executionResult.data.metadata,
         } as Record<string, unknown>,
-        tags: [
-          'agent-result',
-          `agent:${agentName}`,
-          `task:${task.id}`
-        ]
+        tags: ["agent-result", `agent:${agentName}`, `task:${task.id}`],
       });
 
       return {
         success: true,
         output: executionResult.data.output,
-        metadata: executionResult.data.metadata
+        metadata: executionResult.data.metadata,
       } as Record<string, unknown>;
-
     } catch (error) {
-      logger.error('Agent execution failed', {
+      logger.error("Agent execution failed", {
         taskId: task.id,
         agentName,
-        error
+        error,
       });
 
       // Store error in run data
@@ -237,15 +249,11 @@ export async function createAgentWorker(config: WorkerConfig): Promise<{
         key: `agent-error-${task.id}`,
         value: {
           error: error instanceof Error ? error.message : String(error),
-          stack: error instanceof Error ? error.stack : undefined
+          stack: error instanceof Error ? error.stack : undefined,
         } as Record<string, unknown>,
-        tags: [
-          'agent-error',
-          `agent:${agentName}`,
-          `task:${task.id}`
-        ]
+        tags: ["agent-error", `agent:${agentName}`, `task:${task.id}`],
       });
-      
+
       throw error;
     }
   };
@@ -253,11 +261,11 @@ export async function createAgentWorker(config: WorkerConfig): Promise<{
   // Create worker with handlers
   const worker = await client.createWorker(
     {
-      'agent-execution': agentExecutionHandler
+      "agent-execution": agentExecutionHandler,
     },
     {
-      concurrency: config.concurrency || 5
-    }
+      concurrency: config.concurrency || 5,
+    },
   );
 
   return worker;

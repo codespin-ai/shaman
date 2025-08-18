@@ -36,7 +36,7 @@ export type A2AConfig = {
   readonly port?: number;
   readonly basePath?: string;
   readonly authentication?: {
-    readonly type: 'none' | 'bearer' | 'basic';
+    readonly type: "none" | "bearer" | "basic";
     readonly token?: string;
     readonly username?: string;
     readonly password?: string;
@@ -60,7 +60,7 @@ export type GitRepoConfig = {
   readonly branch?: string;
   readonly path?: string;
   readonly authentication?: {
-    readonly type: 'none' | 'token' | 'ssh' | 'basic';
+    readonly type: "none" | "token" | "ssh" | "basic";
     readonly token?: string;
     readonly privateKeyPath?: string;
     readonly username?: string;

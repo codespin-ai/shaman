@@ -2,13 +2,13 @@
  * Core agent execution logic
  */
 
-import type { Result } from '@codespin/shaman-core';
+import type { Result } from "@codespin/shaman-core";
 import type {
   Message,
   ToolCall,
   ExecutionState,
-  RunContext
-} from '@codespin/shaman-types';
+  RunContext,
+} from "@codespin/shaman-types";
 import type {
   AgentDefinition,
   AgentExecutorDependencies,
@@ -16,18 +16,18 @@ import type {
   LLMCompletionResult,
   ToolExecutionResult,
   AgentExecutionRequest,
-  AgentExecutionResult
-} from './types.js';
-import type { LLMProvider, LLMMessage } from '@codespin/shaman-llm-core';
-import { canAgentCall } from './agent-resolver.js';
-import { v4 as uuidv4 } from 'uuid';
+  AgentExecutionResult,
+} from "./types.js";
+import type { LLMProvider, LLMMessage } from "@codespin/shaman-llm-core";
+import { canAgentCall } from "./agent-resolver.js";
+import { v4 as uuidv4 } from "uuid";
 
 /**
  * Execute an agent
  */
 export async function executeAgent(
   request: AgentExecutionRequest,
-  dependencies: AgentExecutorDependencies
+  dependencies: AgentExecutorDependencies,
 ): Promise<Result<AgentExecutionResult>> {
   try {
     // 1. Resolve the agent definition
@@ -43,22 +43,22 @@ export async function executeAgent(
       toolCalls: new Map(),
       iterations: 0,
       totalTokens: 0,
-      totalCost: 0
+      totalCost: 0,
     };
 
     // 3. Add system prompt if defined
     if (agent.systemPrompt) {
       state.messages.push({
         id: uuidv4(),
-        role: 'SYSTEM',
+        role: "SYSTEM",
         content: agent.systemPrompt,
         sequenceNumber: 0,
-        createdAt: new Date()
+        createdAt: new Date(),
       });
     }
 
     // 4. Add context from previous agents if requested
-    if (request.contextScope === 'FULL' && request.context.memory.size > 0) {
+    if (request.contextScope === "FULL" && request.context.memory.size > 0) {
       const contextMessage = buildContextMessage(request.context);
       if (contextMessage) {
         state.messages.push(contextMessage);
@@ -68,16 +68,16 @@ export async function executeAgent(
     // 5. Add user input
     state.messages.push({
       id: uuidv4(),
-      role: 'USER',
-      content: request.input || request.prompt || '',
+      role: "USER",
+      content: request.input || request.prompt || "",
       sequenceNumber: state.messages.length,
-      createdAt: new Date()
+      createdAt: new Date(),
     });
 
     // 6. Main execution loop
     const maxIterations = agent.maxIterations || 10;
     let finalResult: string | null = null;
-    let status: ExecutionState = 'WORKING';
+    let status: ExecutionState = "WORKING";
 
     while (state.iterations < maxIterations) {
       state.iterations++;
@@ -86,33 +86,37 @@ export async function executeAgent(
       const completion = await getLLMCompletion(
         state.messages,
         agent,
-        dependencies.llmProvider
+        dependencies.llmProvider,
       );
 
       if (!completion.success) {
-        status = 'FAILED';
+        status = "FAILED";
         break;
       }
 
       // Update token counts
-      state.totalTokens += completion.data.promptTokens + completion.data.completionTokens;
+      state.totalTokens +=
+        completion.data.promptTokens + completion.data.completionTokens;
       state.totalCost += completion.data.cost;
 
       // Add assistant message
       const assistantMessage: Message = {
         id: uuidv4(),
-        role: 'ASSISTANT',
+        role: "ASSISTANT",
         content: completion.data.content,
         sequenceNumber: state.messages.length,
         createdAt: new Date(),
-        toolCalls: completion.data.toolCalls
+        toolCalls: completion.data.toolCalls,
       };
       state.messages.push(assistantMessage);
 
       // If no tool calls, we're done
-      if (!completion.data.toolCalls || completion.data.toolCalls.length === 0) {
+      if (
+        !completion.data.toolCalls ||
+        completion.data.toolCalls.length === 0
+      ) {
         finalResult = completion.data.content;
-        status = 'COMPLETED';
+        status = "COMPLETED";
         break;
       }
 
@@ -121,39 +125,39 @@ export async function executeAgent(
         completion.data.toolCalls,
         agent,
         request,
-        dependencies
+        dependencies,
       );
 
       // Add tool responses to conversation
       for (const result of toolResults) {
         state.messages.push({
           id: uuidv4(),
-          role: 'TOOL',
+          role: "TOOL",
           content: JSON.stringify(result.result),
           sequenceNumber: state.messages.length,
           createdAt: new Date(),
-          toolCallId: result.toolCallId
+          toolCallId: result.toolCallId,
         });
 
         // Check if this was an agent call that needs handling
         if (result.isAgentCall && !result.success) {
-          status = 'FAILED';
+          status = "FAILED";
           finalResult = `Agent call failed: ${result.error}`;
           break;
         }
       }
 
-      if (status === 'FAILED') break;
+      if (status === "FAILED") break;
     }
 
     // 7. Check if we hit iteration limit
     if (state.iterations >= maxIterations && !finalResult) {
-      status = 'FAILED';
-      finalResult = 'Maximum iterations reached without completion';
+      status = "FAILED";
+      finalResult = "Maximum iterations reached without completion";
     }
 
     // 8. Store result in context if successful
-    if (status === 'COMPLETED' && finalResult) {
+    if (status === "COMPLETED" && finalResult) {
       request.context.memory.set(`${request.agentName}_result`, finalResult);
     }
 
@@ -162,26 +166,27 @@ export async function executeAgent(
       success: true,
       data: {
         stepId: request.parentStepId || uuidv4(),
-        output: finalResult || 'No output generated',
+        output: finalResult || "No output generated",
         status,
         childStepIds: [], // Will be populated if there were agent calls
         metadata: {
           iterations: state.iterations,
           totalTokens: state.totalTokens,
           totalCost: state.totalCost,
-          model: agent.model
+          model: agent.model,
         },
         messages: state.messages,
         finalResult: finalResult || undefined,
         state: status,
         totalTokens: state.totalTokens,
-        totalCost: state.totalCost
-      }
+        totalCost: state.totalCost,
+      },
     };
   } catch (error) {
     return {
       success: false,
-      error: error instanceof Error ? error : new Error('Agent execution failed')
+      error:
+        error instanceof Error ? error : new Error("Agent execution failed"),
     };
   }
 }
@@ -192,57 +197,58 @@ export async function executeAgent(
 async function getLLMCompletion(
   messages: Message[],
   agent: AgentDefinition,
-  llmProvider: LLMProvider
+  llmProvider: LLMProvider,
 ): Promise<Result<LLMCompletionResult>> {
   try {
     // Convert messages to LLM format
-    const llmMessages: LLMMessage[] = messages.map(msg => ({
-      role: msg.role.toLowerCase() as 'system' | 'user' | 'assistant' | 'tool',
+    const llmMessages: LLMMessage[] = messages.map((msg) => ({
+      role: msg.role.toLowerCase() as "system" | "user" | "assistant" | "tool",
       content: msg.content,
-      tool_calls: msg.toolCalls?.map(tc => ({
+      tool_calls: msg.toolCalls?.map((tc) => ({
         id: tc.id,
-        type: 'function' as const,
+        type: "function" as const,
         function: {
           name: tc.toolName,
-          arguments: JSON.stringify(tc.input)
-        }
+          arguments: JSON.stringify(tc.input),
+        },
       })),
-      tool_call_id: msg.toolCallId
+      tool_call_id: msg.toolCallId,
     }));
 
     // Call LLM
     const response = await llmProvider.complete({
       messages: llmMessages,
-      model: agent.model || 'gpt-4',
+      model: agent.model || "gpt-4",
       temperature: agent.temperature,
-      tools: [] // TODO: Add tool definitions
+      tools: [], // TODO: Add tool definitions
     });
 
     return {
       success: true,
       data: {
-        content: response.content || '',
-        toolCalls: response.tool_calls?.map(tc => ({
+        content: response.content || "",
+        toolCalls: response.tool_calls?.map((tc) => ({
           id: tc.id,
           toolName: tc.function.name,
           input: JSON.parse(tc.function.arguments) as unknown,
           isSystemTool: false,
-          isAgentCall: tc.function.name.startsWith('agent:')
+          isAgentCall: tc.function.name.startsWith("agent:"),
         })),
         promptTokens: response.usage?.prompt_tokens || 0,
         completionTokens: response.usage?.completion_tokens || 0,
         cost: calculateCost(
           response.usage?.prompt_tokens || 0,
           response.usage?.completion_tokens || 0,
-          agent.model || 'gpt-4'
+          agent.model || "gpt-4",
         ),
-        finishReason: response.finish_reason
-      }
+        finishReason: response.finish_reason,
+      },
     };
   } catch (error) {
     return {
       success: false,
-      error: error instanceof Error ? error : new Error('LLM completion failed')
+      error:
+        error instanceof Error ? error : new Error("LLM completion failed"),
     };
   }
 }
@@ -254,15 +260,15 @@ async function executeToolCalls(
   toolCalls: ToolCall[],
   agent: AgentDefinition,
   request: AgentExecutionRequest,
-  dependencies: AgentExecutorDependencies
+  dependencies: AgentExecutorDependencies,
 ): Promise<ToolExecutionResult[]> {
   const results: ToolExecutionResult[] = [];
 
   for (const toolCall of toolCalls) {
     // Check if this is an agent call
-    if (toolCall.toolName.startsWith('agent:')) {
+    if (toolCall.toolName.startsWith("agent:")) {
       const targetAgent = toolCall.toolName.substring(6);
-      
+
       // Validate agent can make this call
       if (!canAgentCall(agent, targetAgent)) {
         results.push({
@@ -271,7 +277,7 @@ async function executeToolCalls(
           result: null,
           success: false,
           error: `Agent ${agent.name} is not allowed to call ${targetAgent}`,
-          isAgentCall: true
+          isAgentCall: true,
         });
         continue;
       }
@@ -281,20 +287,22 @@ async function executeToolCalls(
         const childResult = await dependencies.a2aClient.executeAgent(
           targetAgent,
           toolCall.input as string,
-          request.context
+          request.context,
         );
 
         results.push({
           toolCallId: toolCall.id,
           toolName: toolCall.toolName,
-          result: childResult.success ? {
-            taskId: childResult.data.id,
-            state: childResult.data.status.state,
-            artifacts: childResult.data.artifacts
-          } : null,
+          result: childResult.success
+            ? {
+                taskId: childResult.data.id,
+                state: childResult.data.status.state,
+                artifacts: childResult.data.artifacts,
+              }
+            : null,
           success: childResult.success,
           error: childResult.success ? undefined : childResult.error.message,
-          isAgentCall: true
+          isAgentCall: true,
         });
       } else {
         results.push({
@@ -302,8 +310,8 @@ async function executeToolCalls(
           toolName: toolCall.toolName,
           result: null,
           success: false,
-          error: 'A2A client not available for agent calls',
-          isAgentCall: true
+          error: "A2A client not available for agent calls",
+          isAgentCall: true,
         });
       }
     } else {
@@ -313,10 +321,10 @@ async function executeToolCalls(
         toolCall.input,
         {
           runId: request.context.runId,
-          stepId: request.parentStepId || '',
+          stepId: request.parentStepId || "",
           agentName: agent.name,
-          agentSource: 'GIT'
-        }
+          agentSource: "GIT",
+        },
       );
 
       results.push({
@@ -325,7 +333,7 @@ async function executeToolCalls(
         result: toolResult.success ? toolResult.data.output : null,
         success: toolResult.success,
         error: toolResult.success ? undefined : toolResult.error.message,
-        isAgentCall: false
+        isAgentCall: false,
       });
     }
   }
@@ -341,18 +349,18 @@ function buildContextMessage(context: RunContext): Message | null {
     return null;
   }
 
-  const contextParts: string[] = ['Previous context from other agents:'];
-  
+  const contextParts: string[] = ["Previous context from other agents:"];
+
   for (const [key, value] of context.memory.entries()) {
     contextParts.push(`${key}: ${JSON.stringify(value)}`);
   }
 
   return {
     id: uuidv4(),
-    role: 'SYSTEM',
-    content: contextParts.join('\n'),
+    role: "SYSTEM",
+    content: contextParts.join("\n"),
     sequenceNumber: 1,
-    createdAt: new Date()
+    createdAt: new Date(),
   };
 }
 
@@ -362,18 +370,20 @@ function buildContextMessage(context: RunContext): Message | null {
 function calculateCost(
   promptTokens: number,
   completionTokens: number,
-  model: string
+  model: string,
 ): number {
   // Simplified cost calculation - should be configurable
   const costs: Record<string, { prompt: number; completion: number }> = {
-    'gpt-4': { prompt: 0.03, completion: 0.06 },
-    'gpt-3.5-turbo': { prompt: 0.001, completion: 0.002 },
-    'claude-3-opus': { prompt: 0.015, completion: 0.075 },
-    'claude-3-sonnet': { prompt: 0.003, completion: 0.015 }
+    "gpt-4": { prompt: 0.03, completion: 0.06 },
+    "gpt-3.5-turbo": { prompt: 0.001, completion: 0.002 },
+    "claude-3-opus": { prompt: 0.015, completion: 0.075 },
+    "claude-3-sonnet": { prompt: 0.003, completion: 0.015 },
   };
 
-  const modelCost = costs[model] || costs['gpt-4'];
-  
-  return (promptTokens * modelCost.prompt / 1000) + 
-         (completionTokens * modelCost.completion / 1000);
+  const modelCost = costs[model] || costs["gpt-4"];
+
+  return (
+    (promptTokens * modelCost.prompt) / 1000 +
+    (completionTokens * modelCost.completion) / 1000
+  );
 }

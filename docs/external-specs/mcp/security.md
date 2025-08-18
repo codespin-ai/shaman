@@ -45,11 +45,13 @@ MCP's security model is based on several principles:
 ### Transport-Level Authentication
 
 #### stdio Transport
+
 - Process-based isolation
 - Inherit parent process credentials
 - No additional authentication needed
 
 #### HTTP+SSE Transport
+
 ```typescript
 // API Key authentication
 {
@@ -74,6 +76,7 @@ MCP's security model is based on several principles:
 ### Server Authorization
 
 Servers should implement authorization for:
+
 - Tool access
 - Resource access
 - Prompt availability
@@ -88,18 +91,18 @@ interface AuthContext {
 
 async function authorizeToolCall(
   auth: AuthContext,
-  toolName: string
+  toolName: string,
 ): Promise<boolean> {
   // Check permissions
   if (!auth.permissions.includes(`tools:${toolName}`)) {
     return false;
   }
-  
+
   // Check rate limits
   if (!auth.rateLimits.checkLimit(`tool:${toolName}`)) {
     return false;
   }
-  
+
   return true;
 }
 ```
@@ -114,12 +117,12 @@ function validateServerResponse(response: any): void {
   if (!response.jsonrpc || response.jsonrpc !== "2.0") {
     throw new Error("Invalid JSON-RPC version");
   }
-  
+
   // Validate response format
-  if ('error' in response && 'result' in response) {
+  if ("error" in response && "result" in response) {
     throw new Error("Response cannot have both error and result");
   }
-  
+
   // Validate content types
   if (response.result?.content) {
     validateContent(response.result.content);
@@ -128,17 +131,17 @@ function validateServerResponse(response: any): void {
 
 function validateContent(content: any[]): void {
   for (const item of content) {
-    if (!['text', 'image', 'resource'].includes(item.type)) {
+    if (!["text", "image", "resource"].includes(item.type)) {
       throw new Error(`Invalid content type: ${item.type}`);
     }
-    
+
     // Validate text length
-    if (item.type === 'text' && item.text.length > MAX_TEXT_LENGTH) {
+    if (item.type === "text" && item.text.length > MAX_TEXT_LENGTH) {
       throw new Error("Text content too large");
     }
-    
+
     // Validate image size
-    if (item.type === 'image' && item.data.length > MAX_IMAGE_SIZE) {
+    if (item.type === "image" && item.data.length > MAX_IMAGE_SIZE) {
       throw new Error("Image content too large");
     }
   }
@@ -150,7 +153,7 @@ function validateContent(content: any[]): void {
 ```typescript
 function validateToolArguments(
   schema: JsonSchema,
-  args: any
+  args: any,
 ): Result<any, Error> {
   try {
     // Validate against schema
@@ -158,13 +161,13 @@ function validateToolArguments(
     if (!valid) {
       return {
         success: false,
-        error: new Error(ajv.errorsText())
+        error: new Error(ajv.errorsText()),
       };
     }
-    
+
     // Additional security checks
     const sanitized = sanitizeArguments(args);
-    
+
     return { success: true, data: sanitized };
   } catch (error) {
     return { success: false, error };
@@ -174,13 +177,13 @@ function validateToolArguments(
 function sanitizeArguments(args: any): any {
   // Remove potential security risks
   const cleaned = JSON.parse(JSON.stringify(args));
-  
+
   // Sanitize strings
   walkObject(cleaned, (value) => {
-    if (typeof value === 'string') {
+    if (typeof value === "string") {
       // Remove null bytes
-      value = value.replace(/\0/g, '');
-      
+      value = value.replace(/\0/g, "");
+
       // Limit length
       if (value.length > MAX_STRING_LENGTH) {
         value = value.substring(0, MAX_STRING_LENGTH);
@@ -188,7 +191,7 @@ function sanitizeArguments(args: any): any {
     }
     return value;
   });
-  
+
   return cleaned;
 }
 ```
@@ -200,34 +203,30 @@ function sanitizeArguments(args: any): any {
 ```typescript
 function validateResourceUri(uri: string): boolean {
   const parsed = new URL(uri);
-  
+
   // File URIs need special validation
-  if (parsed.protocol === 'file:') {
+  if (parsed.protocol === "file:") {
     const normalizedPath = path.normalize(parsed.pathname);
-    
+
     // Check for path traversal
-    if (normalizedPath.includes('..')) {
+    if (normalizedPath.includes("..")) {
       return false;
     }
-    
+
     // Check against allowed paths
     if (!isAllowedPath(normalizedPath)) {
       return false;
     }
   }
-  
+
   return true;
 }
 
 function isAllowedPath(filePath: string): boolean {
-  const allowedPaths = [
-    '/project/src',
-    '/project/docs',
-    '/tmp/mcp'
-  ];
-  
-  return allowedPaths.some(allowed => 
-    filePath.startsWith(path.normalize(allowed))
+  const allowedPaths = ["/project/src", "/project/docs", "/tmp/mcp"];
+
+  return allowedPaths.some((allowed) =>
+    filePath.startsWith(path.normalize(allowed)),
   );
 }
 ```
@@ -238,21 +237,21 @@ function isAllowedPath(filePath: string): boolean {
 interface ResourcePermissions {
   read: boolean;
   subscribe: boolean;
-  pattern?: string;  // Glob pattern for allowed resources
+  pattern?: string; // Glob pattern for allowed resources
 }
 
 function checkResourceAccess(
   uri: string,
-  permissions: ResourcePermissions
+  permissions: ResourcePermissions,
 ): boolean {
   if (!permissions.read) {
     return false;
   }
-  
+
   if (permissions.pattern) {
     return minimatch(uri, permissions.pattern);
   }
-  
+
   return true;
 }
 ```
@@ -264,27 +263,22 @@ function checkResourceAccess(
 ```typescript
 function sanitizeToolCommand(
   command: string,
-  args: string[]
+  args: string[],
 ): { command: string; args: string[] } {
   // Validate command is in allowlist
-  const allowedCommands = [
-    'git',
-    'npm',
-    'node',
-    'python'
-  ];
-  
+  const allowedCommands = ["git", "npm", "node", "python"];
+
   const cmdName = path.basename(command);
   if (!allowedCommands.includes(cmdName)) {
     throw new Error(`Command not allowed: ${cmdName}`);
   }
-  
+
   // Sanitize arguments
-  const safeArgs = args.map(arg => {
+  const safeArgs = args.map((arg) => {
     // Remove shell metacharacters
-    return arg.replace(/[;&|`$()<>]/g, '');
+    return arg.replace(/[;&|`$()<>]/g, "");
   });
-  
+
   return { command, args: safeArgs };
 }
 ```
@@ -302,11 +296,11 @@ interface SandboxOptions {
 async function executeInSandbox(
   command: string,
   args: string[],
-  options: SandboxOptions
+  options: SandboxOptions,
 ): Promise<Result<string, Error>> {
   // Use container or VM for isolation
   const sandbox = await createSandbox(options);
-  
+
   try {
     const result = await sandbox.execute(command, args);
     return { success: true, data: result };
@@ -325,21 +319,21 @@ async function executeInSandbox(
 ```typescript
 class SecretManager {
   private secrets = new Map<string, string>();
-  
+
   setSecret(key: string, value: string): void {
     // Encrypt in memory
     const encrypted = encrypt(value, this.masterKey);
     this.secrets.set(key, encrypted);
   }
-  
+
   getSecret(key: string): string | undefined {
     const encrypted = this.secrets.get(key);
     if (!encrypted) return undefined;
-    
+
     // Decrypt on demand
     return decrypt(encrypted, this.masterKey);
   }
-  
+
   // Clear secrets from memory
   clear(): void {
     // Overwrite memory before clearing
@@ -355,27 +349,23 @@ class SecretManager {
 
 ```typescript
 function sanitizeForLogging(data: any): any {
-  const sensitive = [
-    'password',
-    'token',
-    'api_key',
-    'secret',
-    'authorization'
-  ];
-  
-  return JSON.parse(JSON.stringify(data, (key, value) => {
-    // Redact sensitive fields
-    if (sensitive.some(s => key.toLowerCase().includes(s))) {
-      return '[REDACTED]';
-    }
-    
-    // Truncate large values
-    if (typeof value === 'string' && value.length > 1000) {
-      return value.substring(0, 100) + '...[TRUNCATED]';
-    }
-    
-    return value;
-  }));
+  const sensitive = ["password", "token", "api_key", "secret", "authorization"];
+
+  return JSON.parse(
+    JSON.stringify(data, (key, value) => {
+      // Redact sensitive fields
+      if (sensitive.some((s) => key.toLowerCase().includes(s))) {
+        return "[REDACTED]";
+      }
+
+      // Truncate large values
+      if (typeof value === "string" && value.length > 1000) {
+        return value.substring(0, 100) + "...[TRUNCATED]";
+      }
+
+      return value;
+    }),
+  );
 }
 ```
 
@@ -386,22 +376,21 @@ function sanitizeForLogging(data: any): any {
 ```typescript
 class RateLimiter {
   private buckets = new Map<string, TokenBucket>();
-  
+
   constructor(private config: RateLimitConfig) {}
-  
+
   async checkLimit(key: string): Promise<boolean> {
-    const bucket = this.buckets.get(key) || 
-      this.createBucket(key);
-    
+    const bucket = this.buckets.get(key) || this.createBucket(key);
+
     return bucket.tryConsume(1);
   }
-  
+
   private createBucket(key: string): TokenBucket {
     const bucket = new TokenBucket({
       capacity: this.config.requestsPerMinute,
-      fillRate: this.config.requestsPerMinute / 60
+      fillRate: this.config.requestsPerMinute / 60,
     });
-    
+
     this.buckets.set(key, bucket);
     return bucket;
   }
@@ -417,7 +406,7 @@ async function enforceRateLimit(
 ): Promise<void> {
   const key = `${clientId}:${operation}`;
   const limit = await rateLimiter.checkLimit(key);
-  
+
   if (!limit.allowed) {
     throw new MCP Error({
       code: -32003,
@@ -440,7 +429,7 @@ interface AuditLog {
   clientId: string;
   operation: string;
   resource?: string;
-  result: 'success' | 'failure';
+  result: "success" | "failure";
   error?: string;
   metadata?: Record<string, any>;
 }
@@ -452,34 +441,32 @@ class AuditLogger {
       ...entry,
       ip: this.getClientIp(),
       userAgent: this.getUserAgent(),
-      sessionId: this.getSessionId()
+      sessionId: this.getSessionId(),
     };
-    
+
     // Write to secure audit log
     await this.writeToAuditLog(enriched);
-    
+
     // Alert on suspicious activity
     if (this.isSuspicious(enriched)) {
       await this.alertSecurity(enriched);
     }
   }
-  
+
   private isSuspicious(entry: AuditLog): boolean {
     // Multiple failed attempts
-    if (entry.result === 'failure') {
-      const failures = await this.getRecentFailures(
-        entry.clientId
-      );
+    if (entry.result === "failure") {
+      const failures = await this.getRecentFailures(entry.clientId);
       if (failures > FAILURE_THRESHOLD) {
         return true;
       }
     }
-    
+
     // Unusual patterns
     if (this.isUnusualPattern(entry)) {
       return true;
     }
-    
+
     return false;
   }
 }
@@ -490,20 +477,20 @@ class AuditLogger {
 ```typescript
 class SecurityMetrics {
   private metrics = {
-    authFailures: new Counter('mcp_auth_failures_total'),
-    rateLimitHits: new Counter('mcp_rate_limit_hits_total'),
-    invalidRequests: new Counter('mcp_invalid_requests_total'),
-    suspiciousActivity: new Counter('mcp_suspicious_activity_total')
+    authFailures: new Counter("mcp_auth_failures_total"),
+    rateLimitHits: new Counter("mcp_rate_limit_hits_total"),
+    invalidRequests: new Counter("mcp_invalid_requests_total"),
+    suspiciousActivity: new Counter("mcp_suspicious_activity_total"),
   };
-  
+
   recordAuthFailure(reason: string): void {
     this.metrics.authFailures.inc({ reason });
   }
-  
+
   recordRateLimitHit(operation: string): void {
     this.metrics.rateLimitHits.inc({ operation });
   }
-  
+
   getMetrics(): Metrics {
     return this.metrics;
   }
@@ -518,28 +505,29 @@ class SecurityMetrics {
 const defaultConfig: SecurityConfig = {
   // Require authentication
   requireAuth: true,
-  
+
   // Strict validation
   strictValidation: true,
-  
+
   // Conservative rate limits
   rateLimits: {
     requestsPerMinute: 60,
-    burstSize: 10
+    burstSize: 10,
   },
-  
+
   // Comprehensive logging
   auditLogging: true,
-  
+
   // Timeout settings
   requestTimeout: 30000,
-  connectionTimeout: 10000
+  connectionTimeout: 10000,
 };
 ```
 
 ### 2. Defense in Depth
 
 Layer multiple security controls:
+
 1. Network security (TLS, firewalls)
 2. Authentication (API keys, mTLS)
 3. Authorization (permissions, ACLs)
@@ -552,41 +540,41 @@ Layer multiple security controls:
 ```typescript
 // Grant minimal permissions
 const agentPermissions = {
-  tools: ['search', 'read_file'],  // Not 'execute_command'
+  tools: ["search", "read_file"], // Not 'execute_command'
   resources: {
-    pattern: '/project/docs/**',   // Not '/**'
-    operations: ['read']           // Not ['read', 'write']
+    pattern: "/project/docs/**", // Not '/**'
+    operations: ["read"], // Not ['read', 'write']
   },
-  prompts: ['help', 'explain']     // Specific prompts only
+  prompts: ["help", "explain"], // Specific prompts only
 };
 ```
 
 ### 4. Security Testing
 
 ```typescript
-describe('Security Tests', () => {
-  test('prevents path traversal', async () => {
+describe("Security Tests", () => {
+  test("prevents path traversal", async () => {
     const maliciousUris = [
-      'file:///../etc/passwd',
-      'file:///project/../../../etc/hosts',
-      'file:///project/..%2F..%2Fetc/shadow'
+      "file:///../etc/passwd",
+      "file:///project/../../../etc/hosts",
+      "file:///project/..%2F..%2Fetc/shadow",
     ];
-    
+
     for (const uri of maliciousUris) {
-      await expect(readResource(uri))
-        .rejects.toThrow('Invalid resource URI');
+      await expect(readResource(uri)).rejects.toThrow("Invalid resource URI");
     }
   });
-  
-  test('enforces rate limits', async () => {
+
+  test("enforces rate limits", async () => {
     // Exhaust rate limit
     for (let i = 0; i < 100; i++) {
-      await callTool('search', { query: 'test' });
+      await callTool("search", { query: "test" });
     }
-    
+
     // Next call should fail
-    await expect(callTool('search', { query: 'test' }))
-      .rejects.toThrow('Rate limit exceeded');
+    await expect(callTool("search", { query: "test" })).rejects.toThrow(
+      "Rate limit exceeded",
+    );
   });
 });
 ```
@@ -620,21 +608,26 @@ describe('Security Tests', () => {
 ## Common Vulnerabilities
 
 ### 1. Injection Attacks
+
 - **Risk**: Command/SQL injection through tool arguments
 - **Mitigation**: Parameterized queries, argument validation
 
 ### 2. Path Traversal
+
 - **Risk**: Access to unauthorized files
 - **Mitigation**: Path normalization, allowlists
 
 ### 3. Denial of Service
+
 - **Risk**: Resource exhaustion
 - **Mitigation**: Rate limiting, timeouts, resource limits
 
 ### 4. Information Disclosure
+
 - **Risk**: Leaking sensitive data
 - **Mitigation**: Output filtering, error sanitization
 
 ### 5. Privilege Escalation
+
 - **Risk**: Gaining unauthorized capabilities
 - **Mitigation**: Strict authorization, least privilege

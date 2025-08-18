@@ -50,6 +50,7 @@ GraphQL Server (Management)     A2A Server (Execution)
 ### Key Components Status
 
 #### ✅ Fully Implemented
+
 - Agent discovery and resolution
 - Git-based agent caching
 - LLM integration (OpenAI, Anthropic)
@@ -61,11 +62,13 @@ GraphQL Server (Management)     A2A Server (Execution)
 - Security (JWT, API keys)
 
 #### 🚧 Partial Implementation
+
 - MCP server integration (stub only)
 - Observability (basic logging only)
 - Integration tests (written, not running)
 
 #### ❌ Not Implemented
+
 - Permiso RBAC integration
 - Ory Kratos authentication
 - Client SDK
@@ -103,18 +106,21 @@ WORKER_CONCURRENCY=5
 ### Quick Start
 
 1. **Setup Environment**
+
    ```bash
    docker-compose up -d  # PostgreSQL, Redis, Foreman
    ./build.sh --install  # Build all packages
    ```
 
 2. **Initialize Database**
+
    ```bash
    npm run migrate:shaman:latest
    npm run seed:shaman:run
    ```
 
 3. **Start Services**
+
    ```bash
    # Terminal 1: GraphQL API
    cd node/packages/shaman-gql-server && npm start
@@ -129,18 +135,21 @@ WORKER_CONCURRENCY=5
 ### Next Steps
 
 #### Immediate (MVP)
+
 1. Test complete agent execution flow
 2. Verify Foreman integration works end-to-end
 3. Run integration test suite
 4. Document agent creation process
 
 #### Short Term
+
 1. Implement proper JWT token generation in worker
 2. Add retry logic and error recovery
 3. Implement health checks
 4. Add basic metrics collection
 
 #### Long Term
+
 1. Permiso RBAC integration
 2. Client SDK development
 3. Admin UI

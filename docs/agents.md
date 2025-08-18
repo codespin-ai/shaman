@@ -9,11 +9,11 @@ Agents are Markdown files with YAML frontmatter in Git repositories.
 ```markdown
 ---
 name: CustomerSupport
-exposed: true              # Can be called externally
+exposed: true # Can be called externally
 description: Handles customer inquiries
-model: gpt-4              # LLM model to use
+model: gpt-4 # LLM model to use
 temperature: 0.7
-tools:                    # Available tools
+tools: # Available tools
   - run_data_write
   - run_data_read
   - call_agent
@@ -22,6 +22,7 @@ tools:                    # Available tools
 You are a helpful customer support agent for ACME Corp.
 
 Your responsibilities:
+
 - Answer customer questions
 - Process refunds (delegate to PaymentProcessor)
 - Check order status
@@ -34,10 +35,12 @@ Task: {{task}}
 ### Agent Properties
 
 **Required:**
+
 - `name` - Unique agent identifier
 - `model` - LLM model (gpt-4, claude-3, etc.)
 
 **Optional:**
+
 - `exposed` - Whether external systems can call this agent (default: false)
 - `description` - Human-readable description
 - `temperature` - LLM temperature (0-2)
@@ -52,6 +55,7 @@ Task: {{task}}
 Built-in tools available to all agents:
 
 **run_data_write**
+
 ```yaml
 # Store data for other agents
 - tool: run_data_write
@@ -61,6 +65,7 @@ Built-in tools available to all agents:
 ```
 
 **run_data_read**
+
 ```yaml
 # Retrieve stored data
 - tool: run_data_read
@@ -69,6 +74,7 @@ Built-in tools available to all agents:
 ```
 
 **call_agent**
+
 ```yaml
 # Call another agent (A2A protocol)
 - tool: call_agent
@@ -92,8 +98,13 @@ model: gpt-4
 mcpServers:
   postgres-tools:
     command: "npx"
-    args: ["-y", "@modelcontextprotocol/server-postgres", "postgresql://localhost/mydb"]
-    tools: ["query", "schema"]  # Limit available tools
+    args:
+      [
+        "-y",
+        "@modelcontextprotocol/server-postgres",
+        "postgresql://localhost/mydb",
+      ]
+    tools: ["query", "schema"] # Limit available tools
 ---
 ```
 
@@ -108,8 +119,9 @@ tools: [call_agent]
 ---
 
 You process orders by delegating to specialized agents:
+
 - For inventory: call InventoryChecker
-- For payment: call PaymentProcessor  
+- For payment: call PaymentProcessor
 - For shipping: call ShippingAgent
 
 Coordinate between agents to complete orders.
@@ -126,6 +138,7 @@ tools: [run_data_write, call_agent]
 You collect customer information and share it with other agents.
 
 Always write collected data using run_data_write before calling other agents:
+
 - customer_email
 - order_items
 - shipping_address
@@ -136,10 +149,11 @@ Always write collected data using run_data_write before calling other agents:
 ```markdown
 ---
 name: PaymentProcessor
-tools: [process_payment]  # Async tool with webhook
+tools: [process_payment] # Async tool with webhook
 ---
 
 You handle payments. The process_payment tool is asynchronous:
+
 1. Call the tool with payment details
 2. System will wait for payment provider webhook
 3. You'll get the result when complete
@@ -215,7 +229,8 @@ tools: [run_data_read, run_data_write]
 You help test the workflow system.
 
 Test scenarios:
-1. Write test data: use run_data_write with key "test_{{timestamp}}"
+
+1. Write test data: use run*data_write with key "test*{{timestamp}}"
 2. Read test data: use run_data_read
 3. Report results clearly
 ```
@@ -231,6 +246,7 @@ tools: [call_agent, run_data_read]
 ---
 
 Route requests based on context:
+
 - If amount > $1000: call FraudChecker first
 - If customer is VIP (check run_data): call VIPHandler
 - Otherwise: process normally
@@ -245,6 +261,7 @@ tools: [call_agent, run_data_write]
 ---
 
 Handle errors gracefully:
+
 1. If agent call fails, write error to run_data
 2. Try alternative agent if available
 3. Always provide helpful error messages
@@ -263,7 +280,7 @@ tools: [call_agent, run_data_write, run_data_read]
 Orchestrate complex workflows:
 
 1. Validate input (call DataValidator)
-2. Store validation result  
+2. Store validation result
 3. Process each step sequentially
 4. If any step fails, call ErrorHandler
 5. Write final status
@@ -274,24 +291,31 @@ Always maintain workflow state in run_data.
 ## Best Practices
 
 ### 1. Clear Responsibilities
+
 Each agent should have a single, clear purpose.
 
 ### 2. Proper Tool Declaration
+
 Only request tools the agent actually needs.
 
 ### 3. Error Messages
+
 Provide helpful error messages for debugging.
 
 ### 4. Data Validation
+
 Validate inputs before processing or delegating.
 
 ### 5. Idempotency
+
 Design agents to handle repeated calls safely.
 
 ### 6. Documentation
+
 Document expected inputs/outputs in the prompt.
 
 ### 7. Security
+
 - Never log sensitive data
 - Validate all inputs
 - Use internal agents for sensitive operations
@@ -307,20 +331,23 @@ GET /.well-known/a2a/agents
 ```
 
 Returns:
+
 ```json
 {
   "protocolVersion": "0.3.0",
-  "agents": [{
-    "name": "CustomerSupport",
-    "description": "Handles customer inquiries",
-    "version": "1.0.0",
-    "url": "https://your-domain.shaman.ai/a2a/v1",
-    "preferredTransport": "JSONRPC",
-    "capabilities": {
-      "streaming": true,
-      "pushNotifications": true
+  "agents": [
+    {
+      "name": "CustomerSupport",
+      "description": "Handles customer inquiries",
+      "version": "1.0.0",
+      "url": "https://your-domain.shaman.ai/a2a/v1",
+      "preferredTransport": "JSONRPC",
+      "capabilities": {
+        "streaming": true,
+        "pushNotifications": true
+      }
     }
-  }]
+  ]
 }
 ```
 
@@ -332,7 +359,7 @@ All agent interactions create tasks with proper lifecycle:
 // Agent execution creates task
 const response = await call_agent({
   agent: "Helper",
-  message: { role: "user", parts: [{type: "text", text: "Help"}] }
+  message: { role: "user", parts: [{ type: "text", text: "Help" }] },
 });
 // Returns: { taskId: "task_123", status: { state: "submitted" } }
 
@@ -353,16 +380,19 @@ export A2A_LOG_REQUESTS=true  # Log all A2A requests/responses
 ### Common Issues
 
 **Tool not found**
+
 - Check tool is listed in agent's `tools` array
 - Verify MCP server is configured correctly
 - Check tool handler is registered
 
 **Agent call fails**
+
 - Verify target agent exists
 - Check agent is accessible (exposed vs internal)
 - Review logs for auth errors
 
 **Async tool timeout**
+
 - Check webhook URL is correct
 - Verify external system can reach webhook endpoint
 - Look for webhook_id in logs

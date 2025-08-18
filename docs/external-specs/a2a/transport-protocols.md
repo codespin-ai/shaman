@@ -9,16 +9,19 @@ A2A supports multiple transport protocols for agent communication. Agents MUST i
 The primary and most common transport protocol.
 
 **Characteristics:**
+
 - Uses HTTP POST requests to a single endpoint
 - Content-Type: `application/json`
 - Follows JSON-RPC 2.0 specification
 - Single endpoint handles all methods via JSON-RPC routing
 
 **Endpoint Pattern:**
+
 - All requests go to: `POST /` (at the configured base URL)
 - Example: If base URL is `/a2a/v1`, then endpoint is `POST /a2a/v1/`
 
 **Request Format:**
+
 ```json
 {
   "jsonrpc": "2.0",
@@ -31,6 +34,7 @@ The primary and most common transport protocol.
 ```
 
 **Response Format:**
+
 ```json
 {
   "jsonrpc": "2.0",
@@ -42,6 +46,7 @@ The primary and most common transport protocol.
 ```
 
 **Error Format:**
+
 ```json
 {
   "jsonrpc": "2.0",
@@ -61,12 +66,14 @@ The primary and most common transport protocol.
 High-performance binary protocol using Protocol Buffers.
 
 **Characteristics:**
+
 - Uses HTTP/2
 - Binary serialization with Protocol Buffers v3
 - Supports bidirectional streaming
 - Defined in `a2a.proto` specification
 
 **Service Definition:**
+
 ```proto
 service A2AService {
   rpc SendMessage(SendMessageRequest) returns (SendMessageResponse);
@@ -82,12 +89,14 @@ service A2AService {
 RESTful API following standard HTTP conventions.
 
 **Characteristics:**
+
 - Uses appropriate HTTP verbs (GET, POST, PUT, DELETE)
 - Resource-based URLs
 - Content-Type: `application/json`
 - HTTP status codes for errors
 
 **URL Patterns:**
+
 - `POST /v1/message:send` - Send message
 - `POST /v1/message:stream` - Stream message
 - `GET /v1/tasks/{id}` - Get task
@@ -95,6 +104,7 @@ RESTful API following standard HTTP conventions.
 - `GET /v1/card` - Get agent card
 
 **Request Example:**
+
 ```http
 POST /v1/message:send HTTP/1.1
 Host: api.example.com
@@ -116,7 +126,7 @@ Agents declare supported transports in their AgentCard:
 ```json
 {
   "url": "https://api.example.com/a2a/v1",
-  "preferredTransport": "JSONRPC",    // Transport at main URL
+  "preferredTransport": "JSONRPC", // Transport at main URL
   "additionalInterfaces": [
     {
       "url": "https://api.example.com/a2a/v1",
@@ -141,11 +151,13 @@ Agents declare supported transports in their AgentCard:
 Used by JSON-RPC and REST transports for streaming responses.
 
 **Characteristics:**
+
 - Content-Type: `text/event-stream`
 - Each event contains a complete response object
 - Connection closes after final event
 
 **SSE Format:**
+
 ```
 data: {"jsonrpc": "2.0", "id": "req-1", "result": {"kind": "task", "id": "task-123", "status": {"state": "submitted"}}}
 
@@ -178,6 +190,7 @@ rpc SendStreamingMessage(SendMessageRequest) returns (stream StreamResponse);
 All transports should provide agent discovery:
 
 **JSON-RPC/HTTP Discovery:**
+
 - `GET /.well-known/agent.json` - Returns the AgentCard for this agent
 - `GET /.well-known/a2a/agents` - Returns list of available agents (optional)
 
@@ -200,16 +213,19 @@ Authentication is handled at the HTTP transport layer:
 ### Common Schemes
 
 **Bearer Token:**
+
 ```http
 Authorization: Bearer <token>
 ```
 
 **API Key:**
+
 ```http
 X-API-Key: <api-key>
 ```
 
 **Basic Auth:**
+
 ```http
 Authorization: Basic <base64-credentials>
 ```
@@ -231,8 +247,8 @@ Authorization: Basic <base64-credentials>
     }
   },
   "security": [
-    {"bearer": []},    // Option 1
-    {"apiKey": []}     // Option 2
+    { "bearer": [] }, // Option 1
+    { "apiKey": [] } // Option 2
   ]
 }
 ```
@@ -241,13 +257,13 @@ Authorization: Basic <base64-credentials>
 
 Different transports map A2A errors differently:
 
-| A2A Error | JSON-RPC Code | gRPC Status | HTTP Status |
-|-----------|---------------|-------------|-------------|
-| TaskNotFound | -32001 | NOT_FOUND | 404 |
-| InvalidParams | -32602 | INVALID_ARGUMENT | 400 |
-| InternalError | -32603 | INTERNAL | 500 |
-| Unauthorized | N/A | UNAUTHENTICATED | 401 |
-| Forbidden | N/A | PERMISSION_DENIED | 403 |
+| A2A Error     | JSON-RPC Code | gRPC Status       | HTTP Status |
+| ------------- | ------------- | ----------------- | ----------- |
+| TaskNotFound  | -32001        | NOT_FOUND         | 404         |
+| InvalidParams | -32602        | INVALID_ARGUMENT  | 400         |
+| InternalError | -32603        | INTERNAL          | 500         |
+| Unauthorized  | N/A           | UNAUTHENTICATED   | 401         |
+| Forbidden     | N/A           | PERMISSION_DENIED | 403         |
 
 ## Best Practices
 

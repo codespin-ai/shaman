@@ -6,11 +6,11 @@
  * LLM message format
  */
 export type LLMMessage = {
-  role: 'system' | 'user' | 'assistant' | 'tool';
+  role: "system" | "user" | "assistant" | "tool";
   content: string;
   tool_calls?: Array<{
     id: string;
-    type: 'function';
+    type: "function";
     function: {
       name: string;
       arguments: string;
@@ -23,7 +23,7 @@ export type LLMMessage = {
  * Tool definition for function calling
  */
 export type LLMTool = {
-  type: 'function';
+  type: "function";
   function: {
     name: string;
     description: string;
@@ -40,7 +40,10 @@ export type LLMCompletionRequest = {
   temperature?: number;
   max_tokens?: number;
   tools?: LLMTool[];
-  tool_choice?: 'auto' | 'none' | { type: 'function'; function: { name: string } };
+  tool_choice?:
+    | "auto"
+    | "none"
+    | { type: "function"; function: { name: string } };
 };
 
 /**
@@ -52,13 +55,13 @@ export type LLMCompletionResponse = {
   content?: string;
   tool_calls?: Array<{
     id: string;
-    type: 'function';
+    type: "function";
     function: {
       name: string;
       arguments: string;
     };
   }>;
-  finish_reason?: 'stop' | 'length' | 'tool_calls';
+  finish_reason?: "stop" | "length" | "tool_calls";
   usage?: {
     prompt_tokens: number;
     completion_tokens: number;
@@ -74,12 +77,12 @@ export interface LLMProvider {
    * Get a completion from the LLM
    */
   complete(request: LLMCompletionRequest): Promise<LLMCompletionResponse>;
-  
+
   /**
    * Stream a completion from the LLM
    */
   stream?(request: LLMCompletionRequest): AsyncIterable<LLMStreamChunk>;
-  
+
   /**
    * List available models
    */
@@ -90,7 +93,7 @@ export interface LLMProvider {
  * Stream chunk for streaming responses
  */
 export type LLMStreamChunk = {
-  type: 'content' | 'tool_call' | 'finish';
+  type: "content" | "tool_call" | "finish";
   content?: string;
   tool_call?: {
     index: number;
@@ -100,5 +103,5 @@ export type LLMStreamChunk = {
       arguments?: string;
     };
   };
-  finish_reason?: 'stop' | 'length' | 'tool_calls';
+  finish_reason?: "stop" | "length" | "tool_calls";
 };

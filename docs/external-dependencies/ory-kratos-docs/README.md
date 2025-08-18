@@ -92,7 +92,7 @@ selfservice:
             client_id: $GOOGLE_CLIENT_ID
             client_secret: $GOOGLE_CLIENT_SECRET
             mapper_url: file:///etc/config/kratos/oidc.google.jsonnet
-          
+
           - id: github
             provider: github
             client_id: $GITHUB_CLIENT_ID
@@ -102,27 +102,27 @@ selfservice:
   flows:
     error:
       ui_url: http://localhost:3000/error
-    
+
     settings:
       ui_url: http://localhost:3000/settings
       privileged_session_max_age: 15m
-    
+
     recovery:
       enabled: true
       ui_url: http://localhost:3000/recovery
-      
+
     verification:
       enabled: true
       ui_url: http://localhost:3000/verification
-      
+
     logout:
       after:
         default_browser_return_url: http://localhost:3000/login
-        
+
     login:
       ui_url: http://localhost:3000/login
       lifespan: 10m
-      
+
     registration:
       lifespan: 10m
       ui_url: http://localhost:3000/registration
@@ -198,9 +198,7 @@ courier:
           "title": "Organization"
         }
       },
-      "required": [
-        "email"
-      ],
+      "required": ["email"],
       "additionalProperties": false
     }
   }
@@ -269,7 +267,7 @@ Configure cookies to work across subdomains:
 ```yaml
 session:
   cookie:
-    domain: .shaman.ai  # Note the leading dot
+    domain: .shaman.ai # Note the leading dot
     same_site: Lax
     path: /
 ```
@@ -279,12 +277,14 @@ session:
 Kratos provides two sets of APIs:
 
 ### Public API (Port 4433)
+
 - `/self-service/login/browser` - Initialize login flow
 - `/self-service/registration/browser` - Initialize registration
 - `/sessions/whoami` - Get current session
 - `/self-service/logout` - Logout
 
 ### Admin API (Port 4434)
+
 - `/admin/identities` - Manage identities
 - `/admin/sessions` - Manage sessions
 - `/admin/recovery` - Trigger recovery flows
@@ -315,28 +315,30 @@ SMTP_CONNECTION_URI=smtps://username:password@smtp.example.com:465
 
 ```typescript
 // When Kratos creates a new identity
-kratos.on('identity.created', async (identity) => {
+kratos.on("identity.created", async (identity) => {
   // Extract org from subdomain or email domain
   const org = determineOrganization(identity);
-  
+
   // Create user in Permiso
   await permiso.createUser({
     id: identity.id,
     orgId: org.id,
-    identityProvider: 'kratos',
+    identityProvider: "kratos",
     identityProviderUserId: identity.id,
-    properties: [{
-      name: 'email',
-      value: identity.traits.email
-    }]
+    properties: [
+      {
+        name: "email",
+        value: identity.traits.email,
+      },
+    ],
   });
-  
+
   // Create local mirror
   await db.createUserMirror({
     permiso_id: identity.id,
     org_id: org.id,
-    identity_provider: 'kratos',
-    identity_provider_user_id: identity.id
+    identity_provider: "kratos",
+    identity_provider_user_id: identity.id,
   });
 });
 ```
@@ -347,30 +349,31 @@ kratos.on('identity.created', async (identity) => {
 // API Gateway validates every request
 async function validateRequest(req: Request) {
   // Get session from cookie or header
-  const session = req.cookies['ory_kratos_session'] || 
-                  req.headers['authorization']?.replace('Bearer ', '');
-  
+  const session =
+    req.cookies["ory_kratos_session"] ||
+    req.headers["authorization"]?.replace("Bearer ", "");
+
   // Validate with Kratos
   const whoami = await kratos.toSession(session);
   if (!whoami.active) {
-    throw new UnauthorizedError('Invalid session');
+    throw new UnauthorizedError("Invalid session");
   }
-  
+
   // Get org from subdomain
   const orgId = extractOrgFromSubdomain(req.hostname);
-  
+
   // Verify user belongs to org (via Permiso)
   const hasAccess = await permiso.hasPermission(
     orgId,
     whoami.identity.id,
     `/orgs/${orgId}`,
-    'access'
+    "access",
   );
-  
+
   if (!hasAccess) {
-    throw new ForbiddenError('No access to organization');
+    throw new ForbiddenError("No access to organization");
   }
-  
+
   return { identity: whoami.identity, orgId };
 }
 ```

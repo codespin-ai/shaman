@@ -3,7 +3,7 @@
  * Provides consistent logging interface across all packages
  */
 
-export type LogLevel = 'debug' | 'info' | 'warn' | 'error';
+export type LogLevel = "debug" | "info" | "warn" | "error";
 
 export interface LogContext {
   [key: string]: unknown;
@@ -16,9 +16,13 @@ export interface Logger {
   error(message: string, error?: unknown, context?: LogContext): void;
 }
 
-function formatMessage(level: string, message: string, context?: LogContext): string {
+function formatMessage(
+  level: string,
+  message: string,
+  context?: LogContext,
+): string {
   const timestamp = new Date().toISOString();
-  const contextStr = context ? ` ${JSON.stringify(context)}` : '';
+  const contextStr = context ? ` ${JSON.stringify(context)}` : "";
   return `[${timestamp}] [${level.toUpperCase()}] ${message}${contextStr}`;
 }
 
@@ -31,27 +35,27 @@ function formatError(error: unknown): string {
 
 export const logger: Logger = {
   debug(message: string, context?: LogContext): void {
-    console.log(formatMessage('debug', message, context));
+    console.log(formatMessage("debug", message, context));
   },
 
   info(message: string, context?: LogContext): void {
-    console.log(formatMessage('info', message, context));
+    console.log(formatMessage("info", message, context));
   },
 
   warn(message: string, context?: LogContext): void {
-    console.warn(formatMessage('warn', message, context));
+    console.warn(formatMessage("warn", message, context));
   },
 
   error(message: string, error?: unknown, context?: LogContext): void {
-    let errorMsg = '';
+    let errorMsg = "";
     if (error) {
       errorMsg = formatError(error);
     } else if (context && !error) {
       // If no error provided but context exists, don't append error formatting
-      errorMsg = '';
+      errorMsg = "";
     }
-    console.error(formatMessage('error', message, context) + errorMsg);
-  }
+    console.error(formatMessage("error", message, context) + errorMsg);
+  },
 };
 
 // Create scoped loggers for specific modules
@@ -68,7 +72,7 @@ export function createLogger(scope: string): Logger {
     },
     error(message: string, error?: unknown, context?: LogContext): void {
       logger.error(`[${scope}] ${message}`, error, context);
-    }
+    },
   };
 }
 

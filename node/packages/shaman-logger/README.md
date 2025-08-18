@@ -17,13 +17,13 @@ npm install @codespin/shaman-logger
 ### Basic Usage
 
 ```typescript
-import { logger } from '@codespin/shaman-logger';
+import { logger } from "@codespin/shaman-logger";
 
 // Simple logging
-logger.info('Application started');
-logger.debug('Processing request', { requestId: '123' });
-logger.warn('Deprecated function called');
-logger.error('Failed to connect', new Error('Connection timeout'));
+logger.info("Application started");
+logger.debug("Processing request", { requestId: "123" });
+logger.warn("Deprecated function called");
+logger.error("Failed to connect", new Error("Connection timeout"));
 ```
 
 ### Scoped Loggers
@@ -31,12 +31,12 @@ logger.error('Failed to connect', new Error('Connection timeout'));
 Create loggers scoped to specific modules:
 
 ```typescript
-import { createLogger } from '@codespin/shaman-logger';
+import { createLogger } from "@codespin/shaman-logger";
 
-const log = createLogger('AgentExecutor');
+const log = createLogger("AgentExecutor");
 
-log.info('Executing agent', { agentName: 'assistant' });
-log.error('Agent execution failed', error);
+log.info("Executing agent", { agentName: "assistant" });
+log.error("Agent execution failed", error);
 ```
 
 ## API
@@ -67,11 +67,13 @@ interface Logger {
 ## Log Format
 
 Logs are formatted as:
+
 ```
 [ISO-8601 timestamp] [LEVEL] [scope?] message {context?}
 ```
 
 Example:
+
 ```
 [2024-01-20T10:30:45.123Z] [INFO] [AgentExecutor] Executing agent {"agentName":"assistant"}
 ```

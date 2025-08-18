@@ -63,6 +63,7 @@ export ANALYTICS_DB_PASSWORD=analytics_pass
 ```
 
 If environment variables are not set, the following defaults are used:
+
 - Host: `localhost`
 - Port: `5432`
 - Database: lowercase database name (e.g., `shaman`, `analytics`)
@@ -72,21 +73,24 @@ If environment variables are not set, the following defaults are used:
 ### Adding a New Database
 
 1. Create a new directory under `database/`:
+
    ```bash
    mkdir -p database/mydb/migrations database/mydb/seeds
    ```
 
 2. Create a knexfile.js for the database:
+
    ```javascript
    // database/mydb/knexfile.js
-   import { createDbConfig } from '../../knexfile.js';
+   import { createDbConfig } from "../../knexfile.js";
 
-   export default createDbConfig('mydb', {
+   export default createDbConfig("mydb", {
      // Any database-specific overrides
    });
    ```
 
 3. Add scripts to package.json:
+
    ```json
    "migrate:mydb:make": "knex migrate:make --knexfile database/mydb/knexfile.js",
    "migrate:mydb:latest": "knex migrate:latest --knexfile database/mydb/knexfile.js",
@@ -104,6 +108,7 @@ If environment variables are not set, the following defaults are used:
 ### Script Naming Convention
 
 All database-specific scripts follow this pattern:
+
 - `migrate:[dbname]:make` - Create a new migration
 - `migrate:[dbname]:latest` - Run pending migrations
 - `migrate:[dbname]:rollback` - Rollback last migration
@@ -112,6 +117,7 @@ All database-specific scripts follow this pattern:
 - `seed:[dbname]:run` - Run seed files
 
 The `:all` scripts operate on all databases:
+
 - `migrate:all` - Run latest migrations on all databases
 - `migrate:all:rollback` - Rollback all databases
 - `migrate:all:status` - Check status of all databases

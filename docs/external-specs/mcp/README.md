@@ -46,13 +46,15 @@ Shaman integrates MCP through:
 4. **Resource Access**: Agents read resources from MCP servers
 
 Example agent configuration:
+
 ```yaml
 ---
 name: DataAnalyzer
 mcpServers:
   database:
     command: "npx"
-    args: ["@modelcontextprotocol/server-postgres", "postgresql://localhost/mydb"]
+    args:
+      ["@modelcontextprotocol/server-postgres", "postgresql://localhost/mydb"]
     tools:
       - "query_database"
       - "list_tables"

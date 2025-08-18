@@ -11,24 +11,25 @@ Shaman automatically generates AgentCards compliant with the A2A Protocol v0.3.0
 When you define an agent in Shaman, the system automatically generates an AgentCard:
 
 **Agent Definition:**
+
 ```yaml
 ---
 name: CustomerSupport
 description: Handles customer inquiries and support requests
 model: gpt-4
 temperature: 0.7
-exposed: true  # Must be true to appear in AgentCard
+exposed: true # Must be true to appear in AgentCard
 tools:
   - run_data_read
   - run_data_write
   - call_agent
 tags: ["support", "customer-service"]
 ---
-
 You are a helpful customer support agent...
 ```
 
 **Generated AgentCard:**
+
 ```json
 {
   "protocolVersion": "0.3.0",
@@ -78,6 +79,7 @@ Authorization: Bearer {api_key}
 ```
 
 **Response:**
+
 ```json
 {
   "protocolVersion": "0.3.0",
@@ -110,6 +112,7 @@ Authorization: Bearer {api_key}
 ```
 
 **Response:**
+
 ```json
 {
   "protocolVersion": "0.3.0",
@@ -155,18 +158,12 @@ Authorization: Bearer {api_key}
     {
       "name": "order-tracking",
       "description": "Track order status and shipping information",
-      "examples": [
-        "Where is my order #12345?",
-        "When will my package arrive?"
-      ]
+      "examples": ["Where is my order #12345?", "When will my package arrive?"]
     },
     {
       "name": "refunds",
       "description": "Process refund requests",
-      "examples": [
-        "I want to return this item",
-        "Can I get a refund?"
-      ]
+      "examples": ["I want to return this item", "Can I get a refund?"]
     }
   ],
   "securitySchemes": {
@@ -199,6 +196,7 @@ Authorization: Bearer {api_key}
 ```
 
 **Response:**
+
 ```json
 {
   "jsonrpc": "2.0",
@@ -256,13 +254,13 @@ Authorization: Bearer {api_key}
 
 ```typescript
 interface Capabilities {
-  streaming?: boolean;           // Supports message/stream
-  pushNotifications?: boolean;   // Supports webhook callbacks
-  stateHistory?: boolean;       // Maintains conversation history
-  multiModal?: boolean;         // Accepts images/audio/video
-  parallelToolCalls?: boolean;  // Can execute multiple tools at once
-  authentication?: boolean;     // Requires authentication
-  rateLimit?: boolean;         // Has rate limiting
+  streaming?: boolean; // Supports message/stream
+  pushNotifications?: boolean; // Supports webhook callbacks
+  stateHistory?: boolean; // Maintains conversation history
+  multiModal?: boolean; // Accepts images/audio/video
+  parallelToolCalls?: boolean; // Can execute multiple tools at once
+  authentication?: boolean; // Requires authentication
+  rateLimit?: boolean; // Has rate limiting
 }
 ```
 
@@ -304,12 +302,12 @@ Only agents with `exposed: true` appear in public AgentCards:
 ```yaml
 ---
 name: PublicAgent
-exposed: true    # Appears in /.well-known/a2a/agents
+exposed: true # Appears in /.well-known/a2a/agents
 ---
 
 ---
 name: InternalAgent
-exposed: false   # Only accessible internally
+exposed: false # Only accessible internally
 ---
 ```
 
@@ -374,6 +372,7 @@ Define external agents in `agents.json`:
 ### Agent Not Appearing in AgentCard
 
 Check:
+
 1. `exposed: true` in frontmatter
 2. Agent file is in Git repository
 3. Repository has been synced
@@ -382,6 +381,7 @@ Check:
 ### Invalid AgentCard
 
 Validate:
+
 1. Required fields present
 2. Valid protocol version (0.3.0)
 3. Proper JSON structure
@@ -390,6 +390,7 @@ Validate:
 ### Authentication Issues
 
 Ensure:
+
 1. API key has agent discovery permissions
 2. Security schemes properly configured
 3. Bearer token format is correct

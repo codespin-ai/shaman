@@ -3,7 +3,14 @@
 # Exit on error
 set -e
 
-echo "Running linting across all packages..."
+# Check for --fix flag
+FIX_FLAG=""
+if [[ "${1:-}" == "--fix" ]]; then
+  FIX_FLAG="--fix"
+  echo "Running linting with auto-fix across all packages..."
+else
+  echo "Running linting across all packages..."
+fi
 
 # Define packages in build order (from build.sh)
 PACKAGES=(
@@ -43,11 +50,23 @@ for package in "${PACKAGES[@]}"; do
     echo "Linting @codespin/${package}..."
     
     # Check if lint script exists in package.json
-    if (cd "$PACKAGE_DIR" && npm run lint --if-present); then
-      echo "✓ @codespin/${package} lint passed"
+    if [ -n "$FIX_FLAG" ]; then
+      # Run lint:fix if available, otherwise run lint
+      if (cd "$PACKAGE_DIR" && npm run lint:fix --if-present 2>/dev/null); then
+        echo "✓ @codespin/${package} lint:fix passed"
+      elif (cd "$PACKAGE_DIR" && npm run lint -- $FIX_FLAG --if-present); then
+        echo "✓ @codespin/${package} lint with fix passed"
+      else
+        echo "✗ @codespin/${package} lint failed"
+        FAILED_PACKAGES+=("$package")
+      fi
     else
-      echo "✗ @codespin/${package} lint failed"
-      FAILED_PACKAGES+=("$package")
+      if (cd "$PACKAGE_DIR" && npm run lint --if-present); then
+        echo "✓ @codespin/${package} lint passed"
+      else
+        echo "✗ @codespin/${package} lint failed"
+        FAILED_PACKAGES+=("$package")
+      fi
     fi
   else
     echo "Warning: Package directory $PACKAGE_DIR not found"

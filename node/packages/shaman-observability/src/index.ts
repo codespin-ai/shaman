@@ -3,10 +3,10 @@
  */
 
 // Main observability manager
-export { 
+export {
   getObservabilityManager,
-  initializeFromConfig 
-} from './observability-manager.js';
+  initializeFromConfig,
+} from "./observability-manager.js";
 
 // Tracing utilities
 export {
@@ -19,7 +19,7 @@ export {
   createAgentSpan,
   createToolSpan,
   extractTraceContext,
-} from './tracing.js';
+} from "./tracing.js";
 
 // Metrics utilities
 export {
@@ -31,7 +31,7 @@ export {
   recordLLMTokenUsage,
   updateActiveAgents,
   createTimer,
-} from './metrics.js';
+} from "./metrics.js";
 
 // Types
 export type {
@@ -44,7 +44,7 @@ export type {
   CreateSpanOptions,
   AgentMetrics,
   TraceContext,
-} from './types.js';
+} from "./types.js";
 
 // HTTP instrumentation
 export {
@@ -53,11 +53,8 @@ export {
   observabilityMiddleware,
   getRequestSpan,
   addRequestSpanAttributes,
-} from './instrumentation/http.js';
+} from "./instrumentation/http.js";
 
 // Re-export commonly used OpenTelemetry types
-export { 
-  SpanKind, 
-  SpanStatusCode
-} from '@opentelemetry/api';
-export type { Span, SpanOptions, Attributes } from '@opentelemetry/api';
+export { SpanKind, SpanStatusCode } from "@opentelemetry/api";
+export type { Span, SpanOptions, Attributes } from "@opentelemetry/api";

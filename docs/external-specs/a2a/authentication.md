@@ -32,8 +32,8 @@ Client discovers authentication requirements from AgentCard:
     }
   },
   "security": [
-    {"bearer": ["read", "write"]},  // Option 1: Bearer with scopes
-    {"apiKey": []}                   // Option 2: API key
+    { "bearer": ["read", "write"] }, // Option 1: Bearer with scopes
+    { "apiKey": [] } // Option 2: API key
   ]
 }
 ```
@@ -41,6 +41,7 @@ Client discovers authentication requirements from AgentCard:
 ### 2. Credential Acquisition
 
 Client obtains credentials through provider-specific process:
+
 - OAuth 2.0 flow for bearer tokens
 - Developer portal for API keys
 - Identity provider for OIDC tokens
@@ -72,7 +73,7 @@ Content-Type: application/json
   "bearer": {
     "type": "http",
     "scheme": "bearer",
-    "bearerFormat": "JWT"  // Optional: JWT, OAuth2, etc.
+    "bearerFormat": "JWT" // Optional: JWT, OAuth2, etc.
   },
   "basic": {
     "type": "http",
@@ -87,7 +88,7 @@ Content-Type: application/json
 {
   "apiKey": {
     "type": "apiKey",
-    "in": "header",      // or "query", "cookie"
+    "in": "header", // or "query", "cookie"
     "name": "X-API-Key"
   }
 }
@@ -133,7 +134,7 @@ The `security` field defines which schemes can be used:
 ```json
 {
   "security": [
-    {"bearer": []}  // Only bearer token accepted
+    { "bearer": [] } // Only bearer token accepted
   ]
 }
 ```
@@ -143,9 +144,9 @@ The `security` field defines which schemes can be used:
 ```json
 {
   "security": [
-    {"bearer": []},     // Option 1: Bearer token
-    {"apiKey": []},     // Option 2: API key
-    {"basic": []}       // Option 3: Basic auth
+    { "bearer": [] }, // Option 1: Bearer token
+    { "apiKey": [] }, // Option 2: API key
+    { "basic": [] } // Option 3: Basic auth
   ]
 }
 ```
@@ -156,8 +157,8 @@ The `security` field defines which schemes can be used:
 {
   "security": [
     {
-      "apiKey": [],     // Requires BOTH
-      "mtls": []        // API key AND mTLS
+      "apiKey": [], // Requires BOTH
+      "mtls": [] // API key AND mTLS
     }
   ]
 }
@@ -169,7 +170,7 @@ The `security` field defines which schemes can be used:
 {
   "security": [
     {
-      "oauth2": ["read", "write", "admin"]  // Required scopes
+      "oauth2": ["read", "write", "admin"] // Required scopes
     }
   ]
 }
@@ -183,15 +184,15 @@ The `security` field defines which schemes can be used:
 def handle_request(request):
     # Extract credentials
     auth_header = request.headers.get('Authorization')
-    
+
     # Validate based on declared schemes
     if not validate_credentials(auth_header):
         return error_401_unauthorized()
-    
+
     # Check authorization
     if not check_permissions(auth_header, request.method):
         return error_403_forbidden()
-    
+
     # Process request
     return process_a2a_request(request)
 ```
@@ -199,6 +200,7 @@ def handle_request(request):
 ### 2. Return Appropriate Errors
 
 **401 Unauthorized**: Missing or invalid credentials
+
 ```http
 HTTP/1.1 401 Unauthorized
 WWW-Authenticate: Bearer realm="A2A API"
@@ -215,6 +217,7 @@ Content-Type: application/json
 ```
 
 **403 Forbidden**: Valid credentials but insufficient permissions
+
 ```http
 HTTP/1.1 403 Forbidden
 Content-Type: application/json
@@ -240,16 +243,18 @@ Sometimes agents need additional credentials during task execution:
   "status": {
     "state": "auth-required",
     "message": {
-      "parts": [{
-        "kind": "data",
-        "data": {
-          "authRequired": {
-            "service": "google-drive",
-            "scopes": ["drive.readonly"],
-            "authUrl": "https://accounts.google.com/oauth/authorize?..."
+      "parts": [
+        {
+          "kind": "data",
+          "data": {
+            "authRequired": {
+              "service": "google-drive",
+              "scopes": ["drive.readonly"],
+              "authUrl": "https://accounts.google.com/oauth/authorize?..."
+            }
           }
         }
-      }]
+      ]
     }
   }
 }
@@ -262,6 +267,7 @@ Client performs out-of-band authentication flow.
 ### 3. Client Provides Credentials
 
 How credentials are provided depends on the use case:
+
 - As data in the next message
 - As new HTTP headers
 - Through a separate secure channel
@@ -291,7 +297,7 @@ Shaman automatically adds security schemes based on organization configuration:
 authentication:
   type: bearer
   provider: permiso
-  
+
 # Generated AgentCard includes:
 "securitySchemes": {
   "bearer": {

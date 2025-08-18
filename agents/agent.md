@@ -11,88 +11,97 @@ Welcome, Agent. This is your primary operational guide. Adherence to these instr
 
 ## 2. Environment Setup
 
--   **Environment Variables**: The project requires PostgreSQL connection variables. Create a `.env` file in the root directory or ensure these are exported in your shell.
-    
-    **Database Connection (Required):**
-    -   `SHAMAN_DB_HOST` - PostgreSQL host
-    -   `SHAMAN_DB_PORT` - PostgreSQL port (default: 5432)
-    -   `SHAMAN_DB_NAME` - Database name
-    -   `RLS_DB_USER` and `RLS_DB_USER_PASSWORD` - For application queries (with Row Level Security)
-    -   `UNRESTRICTED_DB_USER` and `UNRESTRICTED_DB_USER_PASSWORD` - For migrations and admin tasks
-    
-    **External Services (Required):**
-    -   `FOREMAN_ENDPOINT` - Foreman workflow engine URL (default: http://localhost:3000)
-    -   `FOREMAN_API_KEY` - Foreman API key (format: fmn_[env]_[orgId]_[random])
-    
-    **LLM Providers (At least one required):**
-    -   `OPENAI_API_KEY` - For OpenAI models
-    -   `ANTHROPIC_API_KEY` - For Anthropic models
-    
-    **Security (Required):**
-    -   `INTERNAL_JWT_SECRET` - For internal service-to-service authentication
-    -   `ENCRYPTION_KEY` - For data encryption
+- **Environment Variables**: The project requires PostgreSQL connection variables. Create a `.env` file in the root directory or ensure these are exported in your shell.
+
+  **Database Connection (Required):**
+  - `SHAMAN_DB_HOST` - PostgreSQL host
+  - `SHAMAN_DB_PORT` - PostgreSQL port (default: 5432)
+  - `SHAMAN_DB_NAME` - Database name
+  - `RLS_DB_USER` and `RLS_DB_USER_PASSWORD` - For application queries (with Row Level Security)
+  - `UNRESTRICTED_DB_USER` and `UNRESTRICTED_DB_USER_PASSWORD` - For migrations and admin tasks
+
+  **External Services (Required):**
+  - `FOREMAN_ENDPOINT` - Foreman workflow engine URL (default: http://localhost:3000)
+  - `FOREMAN_API_KEY` - Foreman API key (format: fmn*[env]*[orgId]\_[random])
+
+  **LLM Providers (At least one required):**
+  - `OPENAI_API_KEY` - For OpenAI models
+  - `ANTHROPIC_API_KEY` - For Anthropic models
+
+  **Security (Required):**
+  - `INTERNAL_JWT_SECRET` - For internal service-to-service authentication
+  - `ENCRYPTION_KEY` - For data encryption
 
 ## 3. Project Architecture & Conventions
 
 ### Monorepo Structure
+
 The codebase is a NodeJS/TypeScript monorepo located under `/node/packages`. Each package has a single responsibility.
 
 **Core Infrastructure:**
--   **`@codespin/shaman-types`**: Shared TypeScript interfaces. **Always start here.**
--   **`@codespin/shaman-db`**: Database connections with Row Level Security.
--   **`@codespin/shaman-logger`**: Centralized logging.
--   **`@codespin/shaman-config`**: Configuration management.
--   **`@codespin/shaman-security`**: JWT tokens and API key validation.
+
+- **`@codespin/shaman-types`**: Shared TypeScript interfaces. **Always start here.**
+- **`@codespin/shaman-db`**: Database connections with Row Level Security.
+- **`@codespin/shaman-logger`**: Centralized logging.
+- **`@codespin/shaman-config`**: Configuration management.
+- **`@codespin/shaman-security`**: JWT tokens and API key validation.
 
 **Agent System:**
--   **`@codespin/shaman-agents`**: Unified agent resolution from all sources.
--   **`@codespin/shaman-git-resolver`**: Git-based agent discovery with caching.
--   **`@codespin/shaman-external-registry`**: External agent registry.
--   **`@codespin/shaman-agent-executor`**: Core agent execution engine.
+
+- **`@codespin/shaman-agents`**: Unified agent resolution from all sources.
+- **`@codespin/shaman-git-resolver`**: Git-based agent discovery with caching.
+- **`@codespin/shaman-external-registry`**: External agent registry.
+- **`@codespin/shaman-agent-executor`**: Core agent execution engine.
 
 **Communication:**
--   **`@codespin/shaman-a2a-server`**: A2A protocol server (public/internal modes).
--   **`@codespin/shaman-a2a-client`**: HTTP client for agent-to-agent calls.
--   **`@codespin/shaman-gql-server`**: GraphQL management API (no execution).
+
+- **`@codespin/shaman-a2a-server`**: A2A protocol server (public/internal modes).
+- **`@codespin/shaman-a2a-client`**: HTTP client for agent-to-agent calls.
+- **`@codespin/shaman-gql-server`**: GraphQL management API (no execution).
 
 **Execution:**
--   **`@codespin/shaman-worker`**: Processes tasks from Foreman queues.
--   **`@codespin/shaman-tool-router`**: Routes tool calls to handlers.
--   **`@codespin/shaman-llm-vercel`**: Vercel AI SDK provider (OpenAI/Anthropic).
--   **`@codespin/foreman-client`**: Integration with external Foreman service.
+
+- **`@codespin/shaman-worker`**: Processes tasks from Foreman queues.
+- **`@codespin/shaman-tool-router`**: Routes tool calls to handlers.
+- **`@codespin/shaman-llm-vercel`**: Vercel AI SDK provider (OpenAI/Anthropic).
+- **`@codespin/foreman-client`**: Integration with external Foreman service.
 
 ### Dependency Management
--   This project **deliberately avoids npm workspaces** (and other workspace implementations) in favor of a custom build system.
--   Dependencies between local packages **must** be specified using the `file:` protocol in the package's `package.json`.
-    -   Example: `"@codespin/shaman-types": "file:../shaman-types"`
+
+- This project **deliberately avoids npm workspaces** (and other workspace implementations) in favor of a custom build system.
+- Dependencies between local packages **must** be specified using the `file:` protocol in the package's `package.json`.
+  - Example: `"@codespin/shaman-types": "file:../shaman-types"`
 
 ### Build System
--   The project uses a **custom build system** via the **`./build.sh`** script in the root directory instead of npm workspaces.
--   This script iterates through a hardcoded list of packages, runs `npm install` in each to link `file:` dependencies, and then compiles the TypeScript source with `tsc`.
--   **If you add a new package, you MUST update `./build.sh` to include it in the build sequence.**
+
+- The project uses a **custom build system** via the **`./build.sh`** script in the root directory instead of npm workspaces.
+- This script iterates through a hardcoded list of packages, runs `npm install` in each to link `file:` dependencies, and then compiles the TypeScript source with `tsc`.
+- **If you add a new package, you MUST update `./build.sh` to include it in the build sequence.**
 
 ### Database and Persistence
--   **Database**: PostgreSQL with Row Level Security for multi-tenancy.
--   **Migrations**: Managed by **Knex.js**.
-    -   Migration files are located in `/database/shaman/migrations`.
-    -   Use `npm run migrate:shaman:make migration_name` to create.
-    -   Use `npm run migrate:shaman:latest` to apply.
--   **Data Access**: Handled by **`pg-promise`**.
-    -   **Do not use an ORM**. 
-    -   Each package uses a `src/domain/` directory with modular structure.
-    -   DbRow types mirror exact database schema with snake_case.
-    -   Mapper functions handle snake_case to camelCase conversion.
+
+- **Database**: PostgreSQL with Row Level Security for multi-tenancy.
+- **Migrations**: Managed by **Knex.js**.
+  - Migration files are located in `/database/shaman/migrations`.
+  - Use `npm run migrate:shaman:make migration_name` to create.
+  - Use `npm run migrate:shaman:latest` to apply.
+- **Data Access**: Handled by **`pg-promise`**.
+  - **Do not use an ORM**.
+  - Each package uses a `src/domain/` directory with modular structure.
+  - DbRow types mirror exact database schema with snake_case.
+  - Mapper functions handle snake_case to camelCase conversion.
 
 ### Naming and Coding Conventions
+
 1.  **TypeScript (`.ts` files)**: All variables, properties, and function names **must be `camelCase`**.
 2.  **Database (SQL files)**: All table and column names **must be `snake_case`**.
 3.  **Table Names**: All database table names **must be singular** (e.g., `agent_repository`, not `agent_repositories`).
 4.  **File Paths**: Module imports/exports **must include the `.js` file extension** (e.g., `from './db.js'`).
-5.  **Domain Structure**: 
-    -   One function per file in `src/domain/[entity]/`
-    -   DbRow types in `src/domain/[entity]/types.ts`
-    -   Mappers in `src/domain/[entity]/mappers/`
-    -   Clean exports in `src/domain/[entity]/index.ts`
+5.  **Domain Structure**:
+    - One function per file in `src/domain/[entity]/`
+    - DbRow types in `src/domain/[entity]/types.ts`
+    - Mappers in `src/domain/[entity]/mappers/`
+    - Clean exports in `src/domain/[entity]/index.ts`
 6.  **Type Safety**: Use `db.one<XxxDbRow>()` with explicit type parameters.
 7.  **Result Types**: Use Result<T, E> for error handling instead of exceptions.
 
@@ -105,10 +114,10 @@ Follow these steps **in order**:
 3.  **Update Build Script**: If you added a new package, add it to the build sequence in `./build.sh` (respect dependency order).
 4.  **Create Migration**: Use `npm run migrate:shaman:make migration_name` to create a new migration file. Define the `snake_case`, singular-named tables and columns here.
 5.  **Implement Domain Functions**: In the appropriate package:
-    -   Create `src/domain/[entity]/types.ts` with DbRow types
-    -   Create mapper functions in `src/domain/[entity]/mappers/`
-    -   Create one file per domain function
-    -   All functions must receive a `Database` connection as their first parameter
+    - Create `src/domain/[entity]/types.ts` with DbRow types
+    - Create mapper functions in `src/domain/[entity]/mappers/`
+    - Create one file per domain function
+    - All functions must receive a `Database` connection as their first parameter
 6.  **Implement Business Logic**: Import domain functions to implement the core feature logic.
 7.  **Lint**: Run `./lint-all.sh` to check for issues.
 8.  **Build**: Run `./build.sh` from the root directory to compile everything.

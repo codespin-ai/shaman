@@ -2,16 +2,16 @@
  * Agent executor types
  */
 
-import type { Result } from '@codespin/shaman-core';
+import type { Result } from "@codespin/shaman-core";
 import type {
   Message,
   ToolCall,
   Step,
   RunContext,
-  ExecutionState
-} from '@codespin/shaman-types';
-import type { ToolRouter } from '@codespin/shaman-tool-router';
-import type { LLMProvider } from '@codespin/shaman-llm-core';
+  ExecutionState,
+} from "@codespin/shaman-types";
+import type { ToolRouter } from "@codespin/shaman-tool-router";
+import type { LLMProvider } from "@codespin/shaman-llm-core";
 
 /**
  * Agent definition (from Git or A2A)
@@ -22,11 +22,11 @@ export type AgentDefinition = {
   readonly version?: string;
   readonly model?: string;
   readonly systemPrompt?: string;
-  readonly mcpServers?: Record<string, string[] | '*' | null>;
+  readonly mcpServers?: Record<string, string[] | "*" | null>;
   readonly allowedAgents?: string[];
   readonly maxIterations?: number;
   readonly temperature?: number;
-  readonly contextScope?: 'FULL' | 'NONE' | 'SPECIFIC';
+  readonly contextScope?: "FULL" | "NONE" | "SPECIFIC";
 };
 
 /**
@@ -42,7 +42,13 @@ export type AgentExecutorDependencies = {
     getStep: (id: string) => Promise<Step | null>;
   };
   readonly a2aClient?: {
-    executeAgent: (agentName: string, prompt: string, context: RunContext) => Promise<Result<{ id: string; status: { state: string }; artifacts: unknown[] }>>;
+    executeAgent: (
+      agentName: string,
+      prompt: string,
+      context: RunContext,
+    ) => Promise<
+      Result<{ id: string; status: { state: string }; artifacts: unknown[] }>
+    >;
   };
 };
 
@@ -54,7 +60,7 @@ export type AgentExecutionRequest = {
   prompt?: string;
   input?: string;
   contextId?: string;
-  contextScope?: 'FULL' | 'NONE';
+  contextScope?: "FULL" | "NONE";
   context: RunContext;
   organizationId: string;
   runId: string;
@@ -121,5 +127,5 @@ export type LLMCompletionResult = {
   readonly promptTokens: number;
   readonly completionTokens: number;
   readonly cost: number;
-  readonly finishReason?: 'stop' | 'length' | 'tool_calls';
+  readonly finishReason?: "stop" | "length" | "tool_calls";
 };

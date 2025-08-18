@@ -64,11 +64,13 @@ npm start
 ```graphql
 # GraphQL mutation
 mutation {
-  addAgentRepository(input: {
-    name: "customer-support-agents"
-    gitUrl: "https://github.com/your-org/agents.git"
-    branch: "main"
-  }) {
+  addAgentRepository(
+    input: {
+      name: "customer-support-agents"
+      gitUrl: "https://github.com/your-org/agents.git"
+      branch: "main"
+    }
+  ) {
     id
     name
   }
@@ -164,12 +166,14 @@ FOREMAN_API_KEY=fmn_dev_default_key  # Required
 ### Multi-Tenant Setup
 
 1. Create organization:
+
 ```sql
-INSERT INTO organization (id, name, subdomain) 
+INSERT INTO organization (id, name, subdomain)
 VALUES ('acme', 'ACME Corp', 'acme');
 ```
 
 2. Use subdomain in requests:
+
 ```bash
 curl -X POST https://acme.your-domain.com/a2a/v1
 ```
@@ -181,11 +185,13 @@ curl -X POST https://acme.your-domain.com/a2a/v1
 ### Adding a New Package
 
 1. Create package directory:
+
 ```bash
 mkdir -p node/packages/shaman-newfeature/src
 ```
 
 2. Add to build script:
+
 ```bash
 # Edit build.sh, add to PACKAGES array:
 PACKAGES=(
@@ -195,6 +201,7 @@ PACKAGES=(
 ```
 
 3. Create package.json:
+
 ```json
 {
   "name": "@codespin/shaman-newfeature",
@@ -223,6 +230,7 @@ npm run migrate:shaman:latest
 ### Testing Agents Locally
 
 Use the CLI tool:
+
 ```bash
 cd node/packages/shaman-cli
 npm start -- run CustomerSupport "Help me with my order"
@@ -250,6 +258,7 @@ query {
 ### View Logs
 
 All packages use structured logging:
+
 ```bash
 # Set log level
 export LOG_LEVEL=debug
@@ -261,6 +270,7 @@ export LOG_PRETTY=true
 ### BullMQ Dashboard
 
 Access queue monitoring:
+
 ```bash
 npm install -g bull-board
 bull-board -q step-execution -q async-polling
@@ -281,6 +291,7 @@ CMD ["npm", "start"]
 ### Kubernetes
 
 See example manifests in `/k8s` directory:
+
 - `gql-server-deployment.yaml`
 - `a2a-public-deployment.yaml`
 - `a2a-internal-deployment.yaml`
@@ -289,6 +300,7 @@ See example manifests in `/k8s` directory:
 ### Health Checks
 
 All servers expose health endpoints:
+
 - GraphQL: `GET /health`
 - A2A: `GET /a2a/v1/health`
 
@@ -297,16 +309,19 @@ All servers expose health endpoints:
 ### Common Issues
 
 **"Agent not found"**
+
 - Check agent is in Git repository
 - Verify repository is synced
 - Check agent has `exposed: true` for external access
 
 **"Step stuck in queued"**
+
 - Ensure worker is running
 - Check Redis connection
 - Look for errors in worker logs
 
 **"Webhook not received"**
+
 - Verify webhook URL is accessible
 - Check webhook_id matches
 - Look for errors in A2A server logs

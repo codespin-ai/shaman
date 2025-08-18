@@ -28,21 +28,21 @@ export interface DatabaseConfig {
 // Create RLS-enabled database connection
 export function createRlsDb(orgId: string): Database {
   if (!orgId) {
-    throw new Error('Organization ID is required for RLS database');
+    throw new Error("Organization ID is required for RLS database");
   }
 
   const config: DatabaseConfig = {
-    host: process.env.SHAMAN_DB_HOST || 'localhost',
+    host: process.env.SHAMAN_DB_HOST || "localhost",
     port: process.env.SHAMAN_DB_PORT
       ? parseInt(process.env.SHAMAN_DB_PORT, 10)
       : 5432,
-    database: process.env.SHAMAN_DB_NAME || 'shaman',
-    user: process.env.RLS_DB_USER || 'rls_db_user',
-    password: process.env.RLS_DB_USER_PASSWORD || '',
+    database: process.env.SHAMAN_DB_NAME || "shaman",
+    user: process.env.RLS_DB_USER || "rls_db_user",
+    password: process.env.RLS_DB_USER_PASSWORD || "",
   };
 
   if (!config.password) {
-    throw new Error('RLS_DB_USER_PASSWORD environment variable is required');
+    throw new Error("RLS_DB_USER_PASSWORD environment variable is required");
   }
 
   const db = pgp(config) as pgPromise.IDatabase<any>;
@@ -52,17 +52,19 @@ export function createRlsDb(orgId: string): Database {
 // Create unrestricted database connection (for migrations, admin tasks)
 export function createUnrestrictedDb(): Database {
   const config: DatabaseConfig = {
-    host: process.env.SHAMAN_DB_HOST || 'localhost',
+    host: process.env.SHAMAN_DB_HOST || "localhost",
     port: process.env.SHAMAN_DB_PORT
       ? parseInt(process.env.SHAMAN_DB_PORT, 10)
       : 5432,
-    database: process.env.SHAMAN_DB_NAME || 'shaman',
-    user: process.env.UNRESTRICTED_DB_USER || 'unrestricted_db_user',
-    password: process.env.UNRESTRICTED_DB_USER_PASSWORD || '',
+    database: process.env.SHAMAN_DB_NAME || "shaman",
+    user: process.env.UNRESTRICTED_DB_USER || "unrestricted_db_user",
+    password: process.env.UNRESTRICTED_DB_USER_PASSWORD || "",
   };
 
   if (!config.password) {
-    throw new Error('UNRESTRICTED_DB_USER_PASSWORD environment variable is required');
+    throw new Error(
+      "UNRESTRICTED_DB_USER_PASSWORD environment variable is required",
+    );
   }
 
   return pgp(config) as Database;
@@ -71,13 +73,13 @@ export function createUnrestrictedDb(): Database {
 // Legacy functions for backwards compatibility
 // Default database connection (for backwards compatibility - uses unrestricted user)
 const defaultDb = pgp({
-  host: process.env.SHAMAN_DB_HOST || 'localhost',
+  host: process.env.SHAMAN_DB_HOST || "localhost",
   port: process.env.SHAMAN_DB_PORT
     ? parseInt(process.env.SHAMAN_DB_PORT, 10)
     : 5432,
-  database: process.env.SHAMAN_DB_NAME || 'shaman',
-  user: process.env.SHAMAN_DB_USER || 'postgres',
-  password: process.env.SHAMAN_DB_PASSWORD || 'postgres',
+  database: process.env.SHAMAN_DB_NAME || "shaman",
+  user: process.env.SHAMAN_DB_USER || "postgres",
+  password: process.env.SHAMAN_DB_PASSWORD || "postgres",
 });
 
 export function getDb(): Database {
@@ -98,13 +100,13 @@ export function getDatabaseConnection(dbName: string): Database {
   }
 
   const config: DatabaseConfig = {
-    host: process.env[`${dbName.toUpperCase()}_DB_HOST`] || 'localhost',
+    host: process.env[`${dbName.toUpperCase()}_DB_HOST`] || "localhost",
     port: process.env[`${dbName.toUpperCase()}_DB_PORT`]
       ? parseInt(process.env[`${dbName.toUpperCase()}_DB_PORT`]!, 10)
       : 5432,
     database: process.env[`${dbName.toUpperCase()}_DB_NAME`] || dbName,
-    user: process.env[`${dbName.toUpperCase()}_DB_USER`] || 'postgres',
-    password: process.env[`${dbName.toUpperCase()}_DB_PASSWORD`] || 'postgres',
+    user: process.env[`${dbName.toUpperCase()}_DB_USER`] || "postgres",
+    password: process.env[`${dbName.toUpperCase()}_DB_PASSWORD`] || "postgres",
   };
 
   const connection = createDatabaseConnection(config);

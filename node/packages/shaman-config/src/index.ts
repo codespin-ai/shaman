@@ -6,11 +6,11 @@ export {
   // Main loader functions
   loadConfig,
   loadConfigSync,
-  
+
   // Schema functions
   validateConfig,
-  mergeConfigs
-} from './loader.js';
+  mergeConfigs,
+} from "./loader.js";
 
 export {
   // Types
@@ -21,8 +21,8 @@ export {
   type AgentsConfig,
   type GitRepoConfig,
   type ConfigLoaderOptions,
-  type ValidationResult
-} from './types.js';
+  type ValidationResult,
+} from "./types.js";
 
 // Re-export Result type for convenience
-export type { Result } from '@codespin/shaman-core';
+export type { Result } from "@codespin/shaman-core";

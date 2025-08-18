@@ -2,8 +2,8 @@
  * Tool router types
  */
 
-import type { Result } from '@codespin/shaman-core';
-import type { RunData, AgentSource } from '@codespin/shaman-types';
+import type { Result } from "@codespin/shaman-core";
+import type { RunData, AgentSource } from "@codespin/shaman-types";
 
 /**
  * Tool execution context
@@ -22,13 +22,13 @@ export type ToolExecutionContext = {
 /**
  * Platform tool types
  */
-export type PlatformToolName = 
-  | 'run_data_write'
-  | 'run_data_read'
-  | 'run_data_query'
-  | 'run_data_list'
-  | 'run_data_delete'
-  | 'call_agent';
+export type PlatformToolName =
+  | "run_data_write"
+  | "run_data_read"
+  | "run_data_query"
+  | "run_data_list"
+  | "run_data_delete"
+  | "call_agent";
 
 /**
  * Platform tool schemas
@@ -77,7 +77,7 @@ export type PlatformToolResults = {
  */
 export type ToolHandler<TInput = unknown, TOutput = unknown> = (
   input: TInput,
-  context: ToolExecutionContext
+  context: ToolExecutionContext,
 ) => Promise<Result<TOutput>>;
 
 /**
@@ -108,7 +108,7 @@ export type ToolDefinition = {
  */
 export type McpServerConnection = {
   readonly name: string;
-  readonly type: 'HTTP' | 'STDIO';
+  readonly type: "HTTP" | "STDIO";
   readonly endpoint: string;
   readonly apiKey?: string;
 };
@@ -118,13 +118,28 @@ export type McpServerConnection = {
  */
 export type ToolRouterDependencies = {
   readonly persistenceLayer: {
-    createRunData: (data: Omit<RunData, 'id' | 'createdAt'>) => Promise<RunData>;
+    createRunData: (
+      data: Omit<RunData, "id" | "createdAt">,
+    ) => Promise<RunData>;
     getRunData: (runId: string, key: string) => Promise<RunData[]>;
-    queryRunData: (runId: string, pattern: string, limit?: number) => Promise<RunData[]>;
-    listRunDataKeys: (runId: string, filters?: { agentName?: string; prefix?: string }) => Promise<Array<{ key: string; count: number; agents: string[] }>>;
+    queryRunData: (
+      runId: string,
+      pattern: string,
+      limit?: number,
+    ) => Promise<RunData[]>;
+    listRunDataKeys: (
+      runId: string,
+      filters?: { agentName?: string; prefix?: string },
+    ) => Promise<Array<{ key: string; count: number; agents: string[] }>>;
   };
   readonly mcpClient?: {
-    callTool: (server: McpServerConnection, toolName: string, args: unknown) => Promise<Result<unknown>>;
-    listTools: (server: McpServerConnection) => Promise<Result<ToolDefinition[]>>;
+    callTool: (
+      server: McpServerConnection,
+      toolName: string,
+      args: unknown,
+    ) => Promise<Result<unknown>>;
+    listTools: (
+      server: McpServerConnection,
+    ) => Promise<Result<ToolDefinition[]>>;
   };
 };

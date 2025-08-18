@@ -1,5 +1,5 @@
-import * as jwt from 'jsonwebtoken';
-import type { InternalJWTPayload } from './types.js';
+import * as jwt from "jsonwebtoken";
+import type { InternalJWTPayload } from "./types.js";
 
 /**
  * Generate an internal JWT token for agent-to-agent communication
@@ -7,9 +7,11 @@ import type { InternalJWTPayload } from './types.js';
 export function generateInternalJWT(
   payload: InternalJWTPayload,
   secret: string,
-  expiresIn: string | number = '1h'
+  expiresIn: string | number = "1h",
 ): string {
-  const options: jwt.SignOptions = { expiresIn: expiresIn as jwt.SignOptions['expiresIn'] };
+  const options: jwt.SignOptions = {
+    expiresIn: expiresIn as jwt.SignOptions["expiresIn"],
+  };
   return jwt.sign(payload, secret, options);
 }
 
@@ -18,7 +20,7 @@ export function generateInternalJWT(
  */
 export function verifyInternalJWT(
   token: string,
-  secret: string
+  secret: string,
 ): InternalJWTPayload {
   return jwt.verify(token, secret) as InternalJWTPayload;
 }

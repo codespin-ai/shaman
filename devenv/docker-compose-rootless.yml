@@ -15,7 +15,7 @@ services:
       - ./pgdata:/var/lib/postgresql/data
       - ./init.sql:/docker-entrypoint-initdb.d/init.sql
     command: ["postgres", "-c", "log_statement=all"]
-  
+
   redis:
     image: redis:7-alpine
     user: ${RUNAS_UID}:${RUNAS_GID}

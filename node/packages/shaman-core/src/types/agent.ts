@@ -24,7 +24,7 @@ export type AgentLLMConfig = {
  * An agent defined in a Git repository, executed by the system.
  */
 export type GitAgent = BaseAgent & {
-  readonly source: 'git';
+  readonly source: "git";
   readonly repositoryUrl: string;
   readonly commitHash: string;
   readonly filePath: string;
@@ -38,7 +38,7 @@ export type GitAgent = BaseAgent & {
  * An agent hosted on an external system, accessible via A2A protocol.
  */
 export type ExternalAgent = BaseAgent & {
-  readonly source: 'external';
+  readonly source: "external";
   readonly endpoint: string;
   readonly agentCard?: Record<string, unknown>;
 };

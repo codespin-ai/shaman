@@ -5,6 +5,7 @@ Transports define how MCP clients and servers communicate. MCP supports multiple
 ## Overview
 
 MCP transports provide:
+
 - Bidirectional message exchange
 - Connection lifecycle management
 - Error handling and recovery
@@ -27,6 +28,7 @@ The default transport for local processes:
 ```
 
 **Characteristics:**
+
 - Process spawning by client
 - JSON-RPC over stdin/stdout
 - stderr for logging
@@ -34,6 +36,7 @@ The default transport for local processes:
 - Ideal for local tools
 
 **Message Flow:**
+
 ```
 Client Process                Server Process
      |                             |
@@ -63,6 +66,7 @@ For web-based and remote servers:
 ```
 
 **Characteristics:**
+
 - RESTful HTTP for requests
 - SSE for server-to-client messages
 - Supports authentication
@@ -70,6 +74,7 @@ For web-based and remote servers:
 - Scalable for cloud deployment
 
 **Endpoints:**
+
 - `POST /messages` - Send requests
 - `GET /sse` - Receive notifications
 
@@ -86,6 +91,7 @@ Full-duplex communication:
 ```
 
 **Characteristics:**
+
 - Bidirectional streaming
 - Low latency
 - Persistent connections
@@ -98,6 +104,7 @@ All transports use JSON-RPC 2.0:
 ### Message Framing
 
 **stdio Transport:**
+
 - Line-delimited JSON
 - Each message on a single line
 - `\n` as delimiter
@@ -108,6 +115,7 @@ All transports use JSON-RPC 2.0:
 ```
 
 **HTTP+SSE Transport:**
+
 - Requests: JSON in POST body
 - Responses: JSON in response body
 - Notifications: SSE format
@@ -141,14 +149,15 @@ data: {"jsonrpc":"2.0","method":"notifications/tools/list_changed"}\n\n
 
 ```typescript
 interface StdioTransportConfig {
-  command: string;        // Executable to run
-  args?: string[];       // Command arguments
-  env?: Record<string, string>;  // Environment variables
-  cwd?: string;          // Working directory
+  command: string; // Executable to run
+  args?: string[]; // Command arguments
+  env?: Record<string, string>; // Environment variables
+  cwd?: string; // Working directory
 }
 ```
 
 Example:
+
 ```yaml
 mcpServers:
   filesystem:
@@ -163,14 +172,15 @@ mcpServers:
 
 ```typescript
 interface HttpSseTransportConfig {
-  url: string;           // Server URL
-  headers?: Record<string, string>;  // HTTP headers
-  timeout?: number;      // Request timeout (ms)
-  retryInterval?: number;  // SSE retry interval
+  url: string; // Server URL
+  headers?: Record<string, string>; // HTTP headers
+  timeout?: number; // Request timeout (ms)
+  retryInterval?: number; // SSE retry interval
 }
 ```
 
 Example:
+
 ```yaml
 mcpServers:
   remote:
@@ -191,33 +201,33 @@ class StdioTransport {
   async connect(config: StdioTransportConfig) {
     // 1. Spawn server process
     this.process = spawn(config.command, config.args, {
-      stdio: ['pipe', 'pipe', 'pipe'],
+      stdio: ["pipe", "pipe", "pipe"],
       env: { ...process.env, ...config.env },
-      cwd: config.cwd
+      cwd: config.cwd,
     });
-    
+
     // 2. Setup streams
     this.stdin = this.process.stdin;
     this.stdout = this.process.stdout;
     this.stderr = this.process.stderr;
-    
+
     // 3. Handle process events
-    this.process.on('exit', this.handleExit);
-    this.process.on('error', this.handleError);
-    
+    this.process.on("exit", this.handleExit);
+    this.process.on("error", this.handleError);
+
     // 4. Parse stdout messages
-    this.stdout.on('data', this.parseMessages);
-    
+    this.stdout.on("data", this.parseMessages);
+
     // 5. Log stderr
-    this.stderr.on('data', this.logError);
+    this.stderr.on("data", this.logError);
   }
-  
+
   async send(message: any) {
-    this.stdin.write(JSON.stringify(message) + '\n');
+    this.stdin.write(JSON.stringify(message) + "\n");
   }
-  
+
   async close() {
-    this.process.kill('SIGTERM');
+    this.process.kill("SIGTERM");
     await this.process.waitForExit();
   }
 }
@@ -229,32 +239,31 @@ class StdioTransport {
 class HttpSseTransport {
   async connect(config: HttpSseTransportConfig) {
     // 1. Establish SSE connection
-    this.eventSource = new EventSource(
-      `${config.url}/sse`,
-      { headers: config.headers }
-    );
-    
+    this.eventSource = new EventSource(`${config.url}/sse`, {
+      headers: config.headers,
+    });
+
     // 2. Setup event handlers
     this.eventSource.onmessage = this.handleMessage;
     this.eventSource.onerror = this.handleError;
-    
+
     // 3. Wait for connection
     await this.waitForConnection();
   }
-  
+
   async send(message: any) {
     const response = await fetch(`${this.config.url}/messages`, {
-      method: 'POST',
+      method: "POST",
       headers: {
-        'Content-Type': 'application/json',
-        ...this.config.headers
+        "Content-Type": "application/json",
+        ...this.config.headers,
       },
-      body: JSON.stringify(message)
+      body: JSON.stringify(message),
     });
-    
+
     return response.json();
   }
-  
+
   async close() {
     this.eventSource.close();
   }
@@ -282,13 +291,13 @@ class TransportWithRetry {
         return;
       } catch (error) {
         if (attempt === maxAttempts) throw error;
-        
+
         const delay = Math.min(1000 * Math.pow(2, attempt), 10000);
         await sleep(delay);
       }
     }
   }
-  
+
   async sendWithRetry(message: any, maxAttempts = 2) {
     for (let attempt = 1; attempt <= maxAttempts; attempt++) {
       try {
@@ -321,17 +330,17 @@ function spawnSecurely(config: StdioTransportConfig) {
   if (!isAllowedCommand(config.command)) {
     throw new Error("Unauthorized command");
   }
-  
+
   // Sanitize arguments
   const safeArgs = config.args?.map(sanitizeArg) || [];
-  
+
   // Filter environment
   const safeEnv = filterEnv(config.env);
-  
+
   return spawn(config.command, safeArgs, {
     env: safeEnv,
-    uid: processUid,  // Drop privileges
-    gid: processGid
+    uid: processUid, // Drop privileges
+    gid: processGid,
   });
 }
 ```
@@ -349,24 +358,24 @@ function spawnSecurely(config: StdioTransportConfig) {
 class SecureHttpTransport {
   constructor(config: HttpSseTransportConfig) {
     // Require HTTPS
-    if (!config.url.startsWith('https://')) {
+    if (!config.url.startsWith("https://")) {
       throw new Error("HTTPS required");
     }
-    
+
     // Validate headers
     this.headers = this.sanitizeHeaders(config.headers);
   }
-  
+
   async send(message: any) {
     // Rate limiting
     await this.rateLimiter.check();
-    
+
     // Size limit
     const body = JSON.stringify(message);
     if (body.length > MAX_MESSAGE_SIZE) {
       throw new Error("Message too large");
     }
-    
+
     return this.sendSecurely(body);
   }
 }
@@ -385,29 +394,29 @@ class SecureHttpTransport {
 class OptimizedStdioTransport {
   private messageQueue: any[] = [];
   private flushTimer?: NodeJS.Timeout;
-  
+
   async send(message: any) {
     this.messageQueue.push(message);
-    
+
     if (this.messageQueue.length >= BATCH_SIZE) {
       this.flush();
     } else if (!this.flushTimer) {
       this.flushTimer = setTimeout(() => this.flush(), BATCH_DELAY);
     }
   }
-  
+
   private flush() {
     if (this.messageQueue.length === 0) return;
-    
+
     const batch = this.messageQueue.splice(0);
     const batchMessage = {
       jsonrpc: "2.0",
       method: "batch",
-      params: { messages: batch }
+      params: { messages: batch },
     };
-    
-    this.stdin.write(JSON.stringify(batchMessage) + '\n');
-    
+
+    this.stdin.write(JSON.stringify(batchMessage) + "\n");
+
     if (this.flushTimer) {
       clearTimeout(this.flushTimer);
       this.flushTimer = undefined;
@@ -429,23 +438,23 @@ class OptimizedStdioTransport {
 
 ```typescript
 function createTransport(config: MCPServerConfig): Transport {
-  const transportType = config.transport || 'stdio';
-  
+  const transportType = config.transport || "stdio";
+
   switch (transportType) {
-    case 'stdio':
+    case "stdio":
       return new StdioTransport({
         command: config.command!,
         args: config.args,
-        env: config.env
+        env: config.env,
       });
-      
-    case 'http+sse':
+
+    case "http+sse":
       return new HttpSseTransport({
         url: config.url!,
         headers: config.headers,
-        timeout: config.timeout
+        timeout: config.timeout,
       });
-      
+
     default:
       throw new Error(`Unknown transport: ${transportType}`);
   }
@@ -460,14 +469,14 @@ mcpServers:
   local_db:
     command: "mcp-server-sqlite"
     args: ["--db", "local.db"]
-    
+
   # Remote service via HTTP+SSE
   cloud_api:
     url: "https://api.service.com/mcp"
     transport: "http+sse"
     headers:
       Authorization: "Bearer ${API_KEY}"
-      
+
   # Another local tool
   filesystem:
     command: "npx"
@@ -479,21 +488,17 @@ mcpServers:
 1. **Choose Appropriate Transport**:
    - stdio for local tools
    - HTTP+SSE for remote/web services
-   
 2. **Handle Disconnections Gracefully**:
    - Implement reconnection logic
    - Queue messages during outages
-   
 3. **Monitor Transport Health**:
    - Track connection status
    - Log transport errors
    - Alert on failures
-   
 4. **Secure All Transports**:
    - Validate all inputs
    - Use encryption where possible
    - Implement authentication
-   
 5. **Optimize for Use Case**:
    - Batch for throughput
    - Stream for real-time

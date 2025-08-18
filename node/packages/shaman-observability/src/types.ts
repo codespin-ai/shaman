@@ -2,8 +2,8 @@
  * Observability types and interfaces
  */
 
-import type { Span, SpanOptions, Attributes } from '@opentelemetry/api';
-import type { Counter, Histogram, UpDownCounter } from '@opentelemetry/api';
+import type { Span, SpanOptions, Attributes } from "@opentelemetry/api";
+import type { Counter, Histogram, UpDownCounter } from "@opentelemetry/api";
 
 /**
  * Observability configuration
@@ -31,45 +31,48 @@ export type ObservabilityConfig = {
  * GenAI semantic convention attributes
  */
 export type GenAIAttributes = {
-  readonly 'gen_ai.system': string; // e.g., "openai", "anthropic"
-  readonly 'gen_ai.request.model': string;
-  readonly 'gen_ai.request.temperature'?: number;
-  readonly 'gen_ai.request.max_tokens'?: number;
-  readonly 'gen_ai.request.top_p'?: number;
-  readonly 'gen_ai.response.model'?: string;
-  readonly 'gen_ai.response.id'?: string;
-  readonly 'gen_ai.response.finish_reasons'?: string[];
-  readonly 'gen_ai.usage.input_tokens'?: number;
-  readonly 'gen_ai.usage.output_tokens'?: number;
-  readonly 'gen_ai.operation.name'?: string;
+  readonly "gen_ai.system": string; // e.g., "openai", "anthropic"
+  readonly "gen_ai.request.model": string;
+  readonly "gen_ai.request.temperature"?: number;
+  readonly "gen_ai.request.max_tokens"?: number;
+  readonly "gen_ai.request.top_p"?: number;
+  readonly "gen_ai.response.model"?: string;
+  readonly "gen_ai.response.id"?: string;
+  readonly "gen_ai.response.finish_reasons"?: string[];
+  readonly "gen_ai.usage.input_tokens"?: number;
+  readonly "gen_ai.usage.output_tokens"?: number;
+  readonly "gen_ai.operation.name"?: string;
 };
 
 /**
  * Agent-specific attributes
  */
 export type AgentAttributes = {
-  readonly 'agent.name': string;
-  readonly 'agent.source': 'git' | 'external' | 'a2a';
-  readonly 'agent.version'?: string;
-  readonly 'agent.namespace'?: string;
-  readonly 'workflow.run_id'?: string;
-  readonly 'workflow.step_id'?: string;
+  readonly "agent.name": string;
+  readonly "agent.source": "git" | "external" | "a2a";
+  readonly "agent.version"?: string;
+  readonly "agent.namespace"?: string;
+  readonly "workflow.run_id"?: string;
+  readonly "workflow.step_id"?: string;
 };
 
 /**
  * Tool execution attributes
  */
 export type ToolAttributes = {
-  readonly 'tool.name': string;
-  readonly 'tool.type': 'sync' | 'async' | 'agent_call' | 'mcp';
-  readonly 'tool.call_id'?: string;
-  readonly 'tool.duration_ms'?: number;
+  readonly "tool.name": string;
+  readonly "tool.type": "sync" | "async" | "agent_call" | "mcp";
+  readonly "tool.call_id"?: string;
+  readonly "tool.duration_ms"?: number;
 };
 
 /**
  * Combined attributes for Shaman
  */
-export type ShamanSpanAttributes = Partial<GenAIAttributes & AgentAttributes & ToolAttributes> & Attributes;
+export type ShamanSpanAttributes = Partial<
+  GenAIAttributes & AgentAttributes & ToolAttributes
+> &
+  Attributes;
 
 /**
  * Span creation options
@@ -124,9 +127,14 @@ export interface ObservabilityManager {
    * Log a GenAI event
    */
   logGenAIEvent(
-    eventName: 'gen_ai.system.message' | 'gen_ai.user.message' | 'gen_ai.assistant.message' | 'gen_ai.tool.message' | 'gen_ai.choice',
+    eventName:
+      | "gen_ai.system.message"
+      | "gen_ai.user.message"
+      | "gen_ai.assistant.message"
+      | "gen_ai.tool.message"
+      | "gen_ai.choice",
     attributes: Record<string, unknown>,
-    content?: string
+    content?: string,
   ): void;
 }
 

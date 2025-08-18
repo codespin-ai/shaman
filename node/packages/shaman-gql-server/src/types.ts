@@ -23,7 +23,7 @@ export type GraphQLServerConfig = {
     };
   };
   logging: {
-    level: 'debug' | 'info' | 'warn' | 'error';
-    format: 'json' | 'pretty';
+    level: "debug" | "info" | "warn" | "error";
+    format: "json" | "pretty";
   };
 };

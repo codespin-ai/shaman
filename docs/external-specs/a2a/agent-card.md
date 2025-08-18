@@ -8,11 +8,11 @@ The AgentCard is a JSON document that describes an agent's identity, capabilitie
 
 ```json
 {
-  "protocolVersion": "0.3.0",        // A2A protocol version
-  "name": "ProcessOrder",            // Human-readable name
+  "protocolVersion": "0.3.0", // A2A protocol version
+  "name": "ProcessOrder", // Human-readable name
   "description": "Processes incoming orders from external partners",
-  "version": "1.0.0",                // Agent's own version
-  "url": "https://api.acme.com/a2a/v1"  // Primary endpoint
+  "version": "1.0.0", // Agent's own version
+  "url": "https://api.acme.com/a2a/v1" // Primary endpoint
 }
 ```
 
@@ -20,8 +20,9 @@ The AgentCard is a JSON document that describes an agent's identity, capabilitie
 
 ```json
 {
-  "preferredTransport": "JSONRPC",   // REQUIRED: Transport at main URL
-  "additionalInterfaces": [          // Optional: Alternative transports
+  "preferredTransport": "JSONRPC", // REQUIRED: Transport at main URL
+  "additionalInterfaces": [
+    // Optional: Alternative transports
     {
       "url": "https://api.acme.com/a2a/v1",
       "transport": "JSONRPC"
@@ -35,6 +36,7 @@ The AgentCard is a JSON document that describes an agent's identity, capabilitie
 ```
 
 Supported transport values:
+
 - `"JSONRPC"` - JSON-RPC 2.0 over HTTP (default)
 - `"GRPC"` - gRPC over HTTP/2
 - `"HTTP+JSON"` - REST-style HTTP with JSON
@@ -44,8 +46,8 @@ Supported transport values:
 ```json
 {
   "capabilities": {
-    "streaming": true,              // Supports Server-Sent Events
-    "pushNotifications": true,      // Supports webhooks
+    "streaming": true, // Supports Server-Sent Events
+    "pushNotifications": true, // Supports webhooks
     "stateTransitionHistory": false // Provides task state history
   }
 }
@@ -111,8 +113,8 @@ Supported transport values:
     }
   },
   "security": [
-    {"bearer": []},     // Option 1: Bearer token
-    {"apiKey": []}      // Option 2: API key
+    { "bearer": [] }, // Option 1: Bearer token
+    { "apiKey": [] } // Option 2: API key
   ]
 }
 ```
@@ -160,7 +162,7 @@ Supported transport values:
       "bearerFormat": "JWT"
     }
   },
-  "security": [{"bearer": []}],
+  "security": [{ "bearer": [] }],
   "defaultInputModes": ["application/json", "text/plain"],
   "defaultOutputModes": ["application/json"],
   "skills": [
@@ -214,6 +216,5 @@ mcpServers:
     - "create_order"
     - "validate_inventory"
 ---
-
 You are an order processing specialist...
 ```

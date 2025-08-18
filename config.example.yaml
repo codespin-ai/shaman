@@ -26,21 +26,21 @@ a2a:
   port: 3001
   basePath: /a2a/v1
   authentication:
-    type: none  # Options: none, bearer, basic
+    type: none # Options: none, bearer, basic
     # token: your-bearer-token  # For bearer auth
     # username: user  # For basic auth
     # password: pass  # For basic auth
   rateLimiting:
     enabled: false
     maxRequests: 100
-    windowMs: 60000  # 1 minute
+    windowMs: 60000 # 1 minute
   metadata:
     organizationName: Shaman Development
     documentation: https://github.com/codespin-ai/shaman
 
 # Agent repository configuration (optional)
 agents:
-  syncInterval: 300000  # 5 minutes in milliseconds
+  syncInterval: 300000 # 5 minutes in milliseconds
   gitRepos:
     - url: https://github.com/your-org/agents-main.git
       branch: main

@@ -52,7 +52,7 @@ Shaman follows a dual-server architecture with clear separation between manageme
 
 ### Prerequisites
 
-- Node.js 18+ 
+- Node.js 18+
 - PostgreSQL 14+
 - Redis (required by Foreman for queue management)
 - Foreman service running (or use Docker Compose)
@@ -142,6 +142,7 @@ This is a TypeScript monorepo that deliberately avoids npm workspaces in favor o
 ## Core Packages
 
 ### Agent Management
+
 - `@codespin/shaman-agents` - Unified agent resolution
 - `@codespin/shaman-agent-executor` - Agent execution engine
 - `@codespin/shaman-git-resolver` - Git-based agent discovery
@@ -149,20 +150,24 @@ This is a TypeScript monorepo that deliberately avoids npm workspaces in favor o
 - `@codespin/shaman-a2a-server` - A2A protocol server
 
 ### LLM & Tools
+
 - `@codespin/shaman-llm-core` - LLM provider interface
 - `@codespin/shaman-llm-vercel` - Vercel AI SDK implementation
 - `@codespin/shaman-tool-router` - Tool execution routing
 
 ### Workflow & Orchestration
+
 - `@codespin/foreman-client` - Integration with Foreman workflow service (handles all task management)
 - `@codespin/shaman-worker` - Processes tasks from Foreman queues
 
 ### Servers
+
 - `@codespin/shaman-gql-server` - GraphQL management API
 - `@codespin/shaman-a2a-server` - A2A execution server
 - `@codespin/shaman-worker` - Job processing worker
 
 ### Infrastructure
+
 - `@codespin/shaman-types` - Shared TypeScript types
 - `@codespin/shaman-logger` - Centralized logging
 - `@codespin/shaman-db` - Database connection management

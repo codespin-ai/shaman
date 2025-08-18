@@ -7,21 +7,25 @@ Tasks are the fundamental unit of work in A2A. This document describes task stat
 ### Active States
 
 **submitted**
+
 - Initial state when a task is created
 - Agent has acknowledged the request but hasn't started processing
 
 **working**
+
 - Agent is actively processing the task
 - May emit status updates and artifact chunks during this state
 
 ### Interrupted States
 
 **input-required**
+
 - Agent needs additional information from the client
 - Task is paused until client provides required input
 - Client continues by sending a new message with the same `taskId`
 
 **auth-required**
+
 - Agent needs additional authentication/credentials
 - Not a terminal state - task can continue after auth is provided
 - Authentication happens out-of-band
@@ -29,21 +33,25 @@ Tasks are the fundamental unit of work in A2A. This document describes task stat
 ### Terminal States
 
 **completed**
+
 - Task finished successfully
 - Final artifacts are available
 - **Task CANNOT be restarted**
 
 **failed**
+
 - Task encountered an error and cannot proceed
 - Error details in status message
 - **Task CANNOT be restarted**
 
 **canceled**
+
 - Task was canceled before completion
 - May be client-initiated or agent-initiated
 - **Task CANNOT be restarted**
 
 **rejected**
+
 - Agent declined to perform the task
 - Can happen during initial validation or later
 - **Task CANNOT be restarted**
@@ -113,6 +121,7 @@ Tasks are the fundamental unit of work in A2A. This document describes task stat
 ### 1. Terminal State Immutability
 
 Once a task reaches a terminal state, it CANNOT be restarted or modified. This ensures:
+
 - **Task Immutability**: Reliable references to tasks and their outputs
 - **Clear Units of Work**: Each task represents a distinct, traceable unit
 - **Simpler Implementation**: No ambiguity about task boundaries
@@ -127,9 +136,11 @@ For `input-required` or `auth-required` states:
   "params": {
     "message": {
       "role": "user",
-      "parts": [{"kind": "text", "text": "Here's the information you requested"}],
-      "taskId": "task-123",        // Continue existing task
-      "contextId": "ctx-456"       // Same context
+      "parts": [
+        { "kind": "text", "text": "Here's the information you requested" }
+      ],
+      "taskId": "task-123", // Continue existing task
+      "contextId": "ctx-456" // Same context
     }
   }
 }
@@ -145,9 +156,9 @@ To refine or follow up on a completed task, create a NEW task:
   "params": {
     "message": {
       "role": "user",
-      "parts": [{"kind": "text", "text": "Make the logo bigger"}],
-      "contextId": "ctx-456",              // Same context
-      "referenceTaskIds": ["task-123"]    // Reference previous task
+      "parts": [{ "kind": "text", "text": "Make the logo bigger" }],
+      "contextId": "ctx-456", // Same context
+      "referenceTaskIds": ["task-123"] // Reference previous task
     }
   }
 }
@@ -156,12 +167,14 @@ To refine or follow up on a completed task, create a NEW task:
 ## Context Management
 
 **contextId** groups related tasks and messages:
+
 - Server-generated on first interaction
 - Client includes in subsequent messages to maintain context
 - Enables conversation continuity across multiple tasks
 - Supports parallel task execution within same context
 
 Example parallel tasks in same context:
+
 ```
 Context: ctx-travel-planning
 ├── Task 1: Book flight to Helsinki (completed)
@@ -175,6 +188,7 @@ Context: ctx-travel-planning
 ### During Task Execution
 
 Artifacts can be:
+
 - Created incrementally (via streaming)
 - Updated/replaced during execution
 - Marked with `append: true/false` for streaming updates
@@ -189,6 +203,7 @@ Artifacts can be:
 ## Error Handling
 
 If a task fails:
+
 1. State transitions to `failed`
 2. Error details in `status.message`
 3. Partial artifacts may be available

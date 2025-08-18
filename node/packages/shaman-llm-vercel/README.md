@@ -5,6 +5,7 @@ Vercel AI SDK implementation of the Shaman LLM provider interface. This package 
 ## Overview
 
 This package provides:
+
 - Unified interface for multiple LLM providers
 - Support for OpenAI models (GPT-4, GPT-3.5-turbo)
 - Support for Anthropic models (Claude-3)
@@ -23,28 +24,28 @@ npm install @codespin/shaman-llm-vercel
 ### Basic Setup
 
 ```typescript
-import { createVercelLLMProvider } from '@codespin/shaman-llm-vercel';
+import { createVercelLLMProvider } from "@codespin/shaman-llm-vercel";
 
 const provider = createVercelLLMProvider({
   models: {
-    'gpt-4': { 
-      provider: 'openai', 
-      modelId: 'gpt-4' 
+    "gpt-4": {
+      provider: "openai",
+      modelId: "gpt-4",
     },
-    'gpt-3.5-turbo': { 
-      provider: 'openai', 
-      modelId: 'gpt-3.5-turbo' 
+    "gpt-3.5-turbo": {
+      provider: "openai",
+      modelId: "gpt-3.5-turbo",
     },
-    'claude-3': { 
-      provider: 'anthropic', 
-      modelId: 'claude-3-opus-20240229' 
-    }
+    "claude-3": {
+      provider: "anthropic",
+      modelId: "claude-3-opus-20240229",
+    },
   },
-  defaultModel: 'gpt-4',
+  defaultModel: "gpt-4",
   apiKeys: {
     openai: process.env.OPENAI_API_KEY,
-    anthropic: process.env.ANTHROPIC_API_KEY
-  }
+    anthropic: process.env.ANTHROPIC_API_KEY,
+  },
 });
 ```
 
@@ -54,11 +55,11 @@ const provider = createVercelLLMProvider({
 // Simple completion
 const response = await provider.complete({
   messages: [
-    { role: 'system', content: 'You are a helpful assistant' },
-    { role: 'user', content: 'What is the capital of France?' }
+    { role: "system", content: "You are a helpful assistant" },
+    { role: "user", content: "What is the capital of France?" },
   ],
-  model: 'gpt-4',
-  temperature: 0.7
+  model: "gpt-4",
+  temperature: 0.7,
 });
 
 // Output: "The capital of France is Paris."
@@ -68,28 +69,28 @@ const response = await provider.complete({
 
 ```typescript
 // Define tools
-const tools = [{
-  type: 'function' as const,
-  function: {
-    name: 'get_weather',
-    description: 'Get weather information',
-    parameters: {
-      type: 'object',
-      properties: {
-        location: { type: 'string' }
+const tools = [
+  {
+    type: "function" as const,
+    function: {
+      name: "get_weather",
+      description: "Get weather information",
+      parameters: {
+        type: "object",
+        properties: {
+          location: { type: "string" },
+        },
+        required: ["location"],
       },
-      required: ['location']
-    }
-  }
-}];
+    },
+  },
+];
 
 // Completion with tools
 const response = await provider.complete({
-  messages: [
-    { role: 'user', content: 'What\'s the weather in London?' }
-  ],
-  model: 'gpt-4',
-  tools
+  messages: [{ role: "user", content: "What's the weather in London?" }],
+  model: "gpt-4",
+  tools,
 });
 
 // Handle tool calls
@@ -105,11 +106,9 @@ if (response.tool_calls) {
 
 ```typescript
 const stream = await provider.streamComplete({
-  messages: [
-    { role: 'user', content: 'Write a short story' }
-  ],
-  model: 'gpt-4',
-  stream: true
+  messages: [{ role: "user", content: "Write a short story" }],
+  model: "gpt-4",
+  stream: true,
 });
 
 for await (const chunk of stream) {
@@ -128,20 +127,20 @@ type VercelLLMProviderConfig = {
   // Model routing configuration
   models: {
     [modelName: string]: {
-      provider: 'openai' | 'anthropic';
+      provider: "openai" | "anthropic";
       modelId: string;
     };
   };
-  
+
   // Default model if none specified
   defaultModel?: string;
-  
+
   // API keys for providers
   apiKeys: {
     openai?: string;
     anthropic?: string;
   };
-  
+
   // Optional base URLs for custom endpoints
   baseUrls?: {
     openai?: string;
@@ -153,12 +152,14 @@ type VercelLLMProviderConfig = {
 ### Supported Models
 
 #### OpenAI Models
+
 - `gpt-4`: Latest GPT-4 model
 - `gpt-4-turbo-preview`: GPT-4 Turbo
 - `gpt-3.5-turbo`: GPT-3.5 Turbo
 - `gpt-3.5-turbo-16k`: Extended context window
 
 #### Anthropic Models
+
 - `claude-3-opus-20240229`: Most capable Claude model
 - `claude-3-sonnet-20240229`: Balanced performance
 - `claude-3-haiku-20240307`: Fast and efficient
@@ -170,9 +171,7 @@ type VercelLLMProviderConfig = {
 Creates a new LLM provider instance.
 
 ```typescript
-function createVercelLLMProvider(
-  config: VercelLLMProviderConfig
-): LLMProvider
+function createVercelLLMProvider(config: VercelLLMProviderConfig): LLMProvider;
 ```
 
 ### LLMProvider Interface
@@ -181,13 +180,15 @@ function createVercelLLMProvider(
 interface LLMProvider {
   // Non-streaming completion
   complete(request: LLMCompletionRequest): Promise<LLMCompletionResponse>;
-  
+
   // Streaming completion
-  streamComplete(request: LLMStreamingRequest): Promise<AsyncIterable<LLMStreamChunk>>;
-  
+  streamComplete(
+    request: LLMStreamingRequest,
+  ): Promise<AsyncIterable<LLMStreamChunk>>;
+
   // List available models
   listModels(): Promise<LLMModel[]>;
-  
+
   // Check if a model is available
   hasModel(modelId: string): Promise<boolean>;
 }
@@ -203,15 +204,18 @@ type LLMCompletionRequest = {
   temperature?: number;
   max_tokens?: number;
   tools?: LLMTool[];
-  tool_choice?: 'auto' | 'none' | { type: 'function'; function: { name: string } };
-  response_format?: { type: 'json_object' | 'text' };
+  tool_choice?:
+    | "auto"
+    | "none"
+    | { type: "function"; function: { name: string } };
+  response_format?: { type: "json_object" | "text" };
   stop?: string | string[];
   stream?: false;
 };
 
 // Message format
 type LLMMessage = {
-  role: 'system' | 'user' | 'assistant' | 'tool';
+  role: "system" | "user" | "assistant" | "tool";
   content: string;
   tool_calls?: LLMToolCall[];
   tool_call_id?: string;
@@ -220,7 +224,7 @@ type LLMMessage = {
 // Tool call
 type LLMToolCall = {
   id: string;
-  type: 'function';
+  type: "function";
   function: {
     name: string;
     arguments: string;
@@ -231,7 +235,7 @@ type LLMToolCall = {
 type LLMCompletionResponse = {
   content: string | null;
   tool_calls?: LLMToolCall[];
-  finish_reason: 'stop' | 'length' | 'tool_calls' | 'content_filter' | null;
+  finish_reason: "stop" | "length" | "tool_calls" | "content_filter" | null;
   usage?: {
     prompt_tokens: number;
     completion_tokens: number;
@@ -247,13 +251,13 @@ The provider handles common errors gracefully:
 ```typescript
 try {
   const response = await provider.complete({
-    messages: [{ role: 'user', content: 'Hello' }],
-    model: 'gpt-4'
+    messages: [{ role: "user", content: "Hello" }],
+    model: "gpt-4",
   });
 } catch (error) {
-  if (error.code === 'rate_limit_exceeded') {
+  if (error.code === "rate_limit_exceeded") {
     // Handle rate limiting
-  } else if (error.code === 'invalid_api_key') {
+  } else if (error.code === "invalid_api_key") {
     // Handle authentication error
   } else {
     // Handle other errors
@@ -268,12 +272,13 @@ try {
    - GPT-3.5-turbo: Fast, cost-effective for simple tasks
    - Claude-3-opus: Long context, nuanced understanding
 
-2. **Temperature Settings**: 
+2. **Temperature Settings**:
    - 0.0-0.3: Deterministic, factual responses
    - 0.4-0.7: Balanced creativity and consistency
    - 0.8-1.0: Creative, varied responses
 
 3. **Token Management**: Monitor token usage to control costs
+
    ```typescript
    const response = await provider.complete({ ... });
    // Tokens used: 150

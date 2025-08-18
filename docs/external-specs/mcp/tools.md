@@ -5,6 +5,7 @@ Tools in MCP enable language models to interact with external systems through we
 ## Overview
 
 Tools allow agents to:
+
 - Query databases
 - Call APIs
 - Perform computations
@@ -18,12 +19,13 @@ A tool consists of:
 
 ```typescript
 interface Tool {
-  name: string;              // Unique identifier
-  title?: string;            // Human-readable name
-  description: string;       // What the tool does
-  inputSchema: JsonSchema;   // Expected parameters
+  name: string; // Unique identifier
+  title?: string; // Human-readable name
+  description: string; // What the tool does
+  inputSchema: JsonSchema; // Expected parameters
   outputSchema?: JsonSchema; // Expected output structure
-  annotations?: {            // Additional metadata
+  annotations?: {
+    // Additional metadata
     [key: string]: any;
   };
 }
@@ -77,6 +79,7 @@ interface Tool {
 Discover available tools with pagination support:
 
 **Request:**
+
 ```json
 {
   "jsonrpc": "2.0",
@@ -89,6 +92,7 @@ Discover available tools with pagination support:
 ```
 
 **Response:**
+
 ```json
 {
   "jsonrpc": "2.0",
@@ -119,6 +123,7 @@ Discover available tools with pagination support:
 Invoke a tool with arguments:
 
 **Request:**
+
 ```json
 {
   "jsonrpc": "2.0",
@@ -135,6 +140,7 @@ Invoke a tool with arguments:
 ```
 
 **Response (Success):**
+
 ```json
 {
   "jsonrpc": "2.0",
@@ -152,6 +158,7 @@ Invoke a tool with arguments:
 ```
 
 **Response (Error):**
+
 ```json
 {
   "jsonrpc": "2.0",
@@ -187,7 +194,7 @@ Servers declare tool support in capabilities:
 {
   "capabilities": {
     "tools": {
-      "listChanged": true  // Can notify of tool changes
+      "listChanged": true // Can notify of tool changes
     }
   }
 }
@@ -198,6 +205,7 @@ Servers declare tool support in capabilities:
 Tool results use a content array that can contain:
 
 ### Text Content
+
 ```json
 {
   "type": "text",
@@ -206,6 +214,7 @@ Tool results use a content array that can contain:
 ```
 
 ### Image Content
+
 ```json
 {
   "type": "image",
@@ -215,6 +224,7 @@ Tool results use a content array that can contain:
 ```
 
 ### Embedded Resources
+
 ```json
 {
   "type": "resource",
@@ -249,6 +259,7 @@ Tool results use a content array that can contain:
 ## Common Tool Patterns
 
 ### 1. Query Tools
+
 ```json
 {
   "name": "search_documents",
@@ -263,6 +274,7 @@ Tool results use a content array that can contain:
 ```
 
 ### 2. Action Tools
+
 ```json
 {
   "name": "send_email",
@@ -279,6 +291,7 @@ Tool results use a content array that can contain:
 ```
 
 ### 3. Transformation Tools
+
 ```json
 {
   "name": "convert_currency",
@@ -318,12 +331,12 @@ mcpServers:
 const dbServer = await connectMCPServer(config.database);
 
 // 2. Discover available tools
-const { tools } = await dbServer.request('tools/list');
+const { tools } = await dbServer.request("tools/list");
 
 // 3. Filter allowed tools
-const allowedTools = tools.filter(tool => 
-  config.database.tools === '*' || 
-  config.database.tools.includes(tool.name)
+const allowedTools = tools.filter(
+  (tool) =>
+    config.database.tools === "*" || config.database.tools.includes(tool.name),
 );
 
 // 4. Make tools available to agent
@@ -337,21 +350,21 @@ agent.availableTools = allowedTools;
 async function executeToolCall(toolName: string, args: any) {
   // Find the appropriate server
   const server = findServerWithTool(toolName);
-  
+
   // Validate arguments against schema
   validateArguments(args, tool.inputSchema);
-  
+
   // Call the tool
-  const result = await server.request('tools/call', {
+  const result = await server.request("tools/call", {
     name: toolName,
-    arguments: args
+    arguments: args,
   });
-  
+
   // Handle result
   if (result.isError) {
     throw new Error(result.content[0].text);
   }
-  
+
   return result.content;
 }
 ```
@@ -367,6 +380,7 @@ Common tool errors:
 5. **Permission Denied**: Tool requires permissions not granted
 
 Example error handling:
+
 ```typescript
 try {
   const result = await callTool(name, args);

@@ -5,6 +5,7 @@ Core agent execution engine for the Shaman framework. This package provides the 
 ## Overview
 
 The agent executor is responsible for:
+
 - Managing agent conversation state
 - Integrating with LLM providers for completions
 - Executing tool calls through the tool router
@@ -20,45 +21,51 @@ npm install @codespin/shaman-agent-executor
 ## Usage
 
 ```typescript
-import { executeAgent } from '@codespin/shaman-agent-executor';
-import { createVercelLLMProvider } from '@codespin/shaman-llm-vercel';
-import { createToolRouter } from '@codespin/shaman-tool-router';
+import { executeAgent } from "@codespin/shaman-agent-executor";
+import { createVercelLLMProvider } from "@codespin/shaman-llm-vercel";
+import { createToolRouter } from "@codespin/shaman-tool-router";
 
 // Set up dependencies
 const llmProvider = createVercelLLMProvider({
   models: {
-    'gpt-4': { provider: 'openai', modelId: 'gpt-4' }
+    "gpt-4": { provider: "openai", modelId: "gpt-4" },
   },
   apiKeys: {
-    openai: process.env.OPENAI_API_KEY
-  }
+    openai: process.env.OPENAI_API_KEY,
+  },
 });
 
-const toolRouter = createToolRouter({
-  enablePlatformTools: true
-}, dependencies);
+const toolRouter = createToolRouter(
+  {
+    enablePlatformTools: true,
+  },
+  dependencies,
+);
 
 // Execute an agent
-const result = await executeAgent({
-  agentName: 'example-agent',
-  input: 'Hello, how can you help me?',
-  context: {
-    runId: 'run-123',
-    memory: new Map(),
-    createdAt: new Date()
+const result = await executeAgent(
+  {
+    agentName: "example-agent",
+    input: "Hello, how can you help me?",
+    context: {
+      runId: "run-123",
+      memory: new Map(),
+      createdAt: new Date(),
+    },
+    contextScope: "FULL",
+    agentSource: { type: "GIT", repoUrl: "https://github.com/org/agents.git" },
+    depth: 0,
   },
-  contextScope: 'FULL',
-  agentSource: { type: 'GIT', repoUrl: 'https://github.com/org/agents.git' },
-  depth: 0
-}, {
-  agentResolver: async (name) => {
-    // Your agent resolution logic
-    return { success: true, data: agent };
+  {
+    agentResolver: async (name) => {
+      // Your agent resolution logic
+      return { success: true, data: agent };
+    },
+    llmProvider,
+    toolRouter,
+    workflowEngine, // Optional: for agent-to-agent calls
   },
-  llmProvider,
-  toolRouter,
-  workflowEngine // Optional: for agent-to-agent calls
-});
+);
 ```
 
 ## Core Concepts
@@ -74,6 +81,7 @@ const result = await executeAgent({
 ### Conversation State
 
 The executor maintains conversation state including:
+
 - Message history (system, user, assistant, tool messages)
 - Tool call tracking
 - Token usage and cost calculation
@@ -82,6 +90,7 @@ The executor maintains conversation state including:
 ### Tool Execution
 
 Tools are executed through the tool router with support for:
+
 - Platform tools (`run_data_*`)
 - MCP server tools
 - Agent calls (delegated to workflow engine)
@@ -89,6 +98,7 @@ Tools are executed through the tool router with support for:
 ### Agent-to-Agent Communication
 
 When an agent calls another agent:
+
 1. Tool call is detected (format: `agent:target-agent-name`)
 2. Permission is validated against agent's allowed calls
 3. Workflow engine executes child agent
@@ -103,8 +113,8 @@ Main execution function for running an agent.
 ```typescript
 function executeAgent(
   request: AgentExecutionRequest,
-  dependencies: AgentExecutorDependencies
-): Promise<Result<AgentExecutionResult>>
+  dependencies: AgentExecutorDependencies,
+): Promise<Result<AgentExecutionResult>>;
 ```
 
 #### Parameters
@@ -127,6 +137,7 @@ function executeAgent(
 #### Returns
 
 Result containing:
+
 - `stepId`: Unique identifier for this execution step
 - `output`: Final agent response
 - `status`: Execution status (COMPLETED, FAILED, WORKING)
@@ -184,13 +195,13 @@ allowedAgentCalls:
   - helper-agent
   - validator-agent
 ---
-
 You are an example agent...
 ```
 
 ### Cost Calculation
 
 The executor includes built-in cost calculation for common models:
+
 - GPT-4: $0.03/1K prompt tokens, $0.06/1K completion tokens
 - GPT-3.5-turbo: $0.001/1K prompt tokens, $0.002/1K completion tokens
 - Claude-3-opus: $0.015/1K prompt tokens, $0.075/1K completion tokens
@@ -203,10 +214,10 @@ All functions return `Result<T, Error>` types for explicit error handling:
 ```typescript
 const result = await executeAgent(request, dependencies);
 if (!result.success) {
-  logger.error('Execution failed:', result.error);
+  logger.error("Execution failed:", result.error);
   return;
 }
-logger.info('Agent output:', { output: result.data.output });
+logger.info("Agent output:", { output: result.data.output });
 ```
 
 ## Best Practices

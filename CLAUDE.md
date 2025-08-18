@@ -43,12 +43,20 @@ Shaman is a comprehensive backend framework for managing and coordinating AI age
 ### Git Workflow Rules
 
 **IMPORTANT**: NEVER commit or push changes without explicit user instruction
+
 - Only run `git add`, `git commit`, or `git push` when the user explicitly asks
 - Common explicit instructions include: "commit", "push", "commit and push", "save to git"
 - If unsure, ask the user if they want to commit the changes
 - Always wait for user approval before making any git operations
 
+When the user asks you to commit and push:
+
+1. Run `./format-all.sh` to format all files with Prettier
+2. Run `./lint-all.sh` to ensure code passes linting
+3. Follow the git commit guidelines in the main Claude system prompt
+
 ### Build Commands
+
 ```bash
 # Build entire project (from root)
 ./build.sh              # Standard build
@@ -64,11 +72,17 @@ Shaman is a comprehensive backend framework for managing and coordinating AI age
 
 # Lint entire project (from root)
 ./lint-all.sh           # Run ESLint on all packages
+./lint-all.sh --fix     # Run ESLint with auto-fix
+
+# Format code with Prettier (MUST run before committing)
+./format-all.sh         # Format all files
+./format-all.sh --check # Check formatting without changing files
 ```
 
 ### Database Commands
 
 **IMPORTANT**: NEVER run database migrations or seeds unless explicitly instructed by the user
+
 - Only run migration/seed commands that modify the database when the user specifically asks
 - You can run status checks and create new migration/seed files without explicit permission
 - There is NO DEFAULT database - all commands must specify the database name
@@ -111,6 +125,7 @@ npm run seed:all             # Run seeds on all databases
 ```
 
 ### Development Commands
+
 ```bash
 # Start server and UI
 npm start
@@ -130,17 +145,20 @@ cd node/packages/[package-name] && npm run lint:fix
 ## Critical Architecture Decisions
 
 ### 1. Monorepo Without Workspaces
+
 - **NO npm workspaces** - Uses custom `./build.sh` script instead
 - Dependencies between packages use `file:` protocol (e.g., `"@codespin/shaman-types": "file:../shaman-types"`)
 - **IMPORTANT**: When adding new packages, you MUST update the `PACKAGES` array in `./build.sh`
 
 ### 2. Functional Programming Only
+
 - **NO CLASSES** - Export functions from modules only
 - Use pure functions with explicit dependency injection
 - Prefer `type` over `interface` (use `interface` only for extensible contracts)
 - Use Result types for error handling instead of exceptions
 
 ### 3. Database Conventions
+
 - **PostgreSQL** with **Knex.js** for migrations
 - **pg-promise** for data access (NO ORMs)
 - Table names: **singular** and **snake_case** (e.g., `agent_repository`)
@@ -151,11 +169,13 @@ cd node/packages/[package-name] && npm run lint:fix
 - **Type-safe Queries**: All queries use `db.one<XxxDbRow>()` with explicit type parameters
 
 ### 4. ESM Modules
+
 - All imports MUST include `.js` extension: `import { foo } from './bar.js'`
 - TypeScript configured for `"module": "NodeNext"`
 - Type: `"module"` in all package.json files
 
 ### 5. TypeScript Configuration
+
 - **NO tsconfig.base.json** - Each package uses its own simple, consistent tsconfig.json
 - Standard tsconfig pattern for all packages:
   ```json
@@ -216,16 +236,19 @@ Located in `/node/packages/`, build order matters:
 **IMPORTANT**: Each database uses its own set of environment variables with the pattern `[DBNAME]_DB_*`.
 
 Required PostgreSQL connection variables for the 'shaman' database:
+
 - `SHAMAN_DB_HOST`
 - `SHAMAN_DB_PORT`
 - `SHAMAN_DB_NAME`
 
 Database users (Row Level Security):
+
 - `RLS_DB_USER` and `RLS_DB_USER_PASSWORD` - For application queries (restricted by org)
 - `UNRESTRICTED_DB_USER` and `UNRESTRICTED_DB_USER_PASSWORD` - For migrations and admin
 - `SHAMAN_DB_USER` and `SHAMAN_DB_PASSWORD` - Legacy (deprecated)
 
 For additional databases, use the same pattern:
+
 - `[DBNAME]_DB_HOST`
 - `[DBNAME]_DB_PORT`
 - `[DBNAME]_DB_NAME`
@@ -233,6 +256,7 @@ For additional databases, use the same pattern:
 - `[DBNAME]_DB_PASSWORD`
 
 External service configuration:
+
 - `FOREMAN_ENDPOINT` - Foreman REST API endpoint (default: http://localhost:3000)
 - `FOREMAN_API_KEY` - API key for Foreman authentication (format: `fmn_[env]_[orgId]_[random]`)
 - `SHAMAN_TASK_QUEUE` - Optional: Override Foreman task queue name (default: 'shaman:tasks')
@@ -246,23 +270,24 @@ External service configuration:
 
 ```typescript
 // ✅ Good - Create RLS-enabled database for application queries
-import { createRlsDb } from '@codespin/shaman-db';
+import { createRlsDb } from "@codespin/shaman-db";
 
 // In GraphQL context or request handler
 const db = createRlsDb(organizationId); // Automatically filters by org
 
 // ✅ Good - Create unrestricted database for migrations
-import { createUnrestrictedDb } from '@codespin/shaman-db';
+import { createUnrestrictedDb } from "@codespin/shaman-db";
 
 // In migration scripts
 const db = createUnrestrictedDb(); // Full access
 
 // ❌ Bad - Legacy approach (deprecated)
-import { getDb } from '@codespin/shaman-db';
+import { getDb } from "@codespin/shaman-db";
 const db = getDb(); // Shows deprecation warning
 ```
 
 ### Database Row Pattern (DbRow) - Domain Structure
+
 ```typescript
 // ✅ Good - Modular domain structure with individual files
 
@@ -270,53 +295,56 @@ const db = getDb(); // Shows deprecation warning
 export type AgentRepositoryDbRow = {
   id: number;
   name: string;
-  git_url: string;  // snake_case matching DB column
+  git_url: string; // snake_case matching DB column
   branch: string;
   is_root: boolean;
   last_sync_commit_hash: string | null;
   last_sync_at: Date | null;
   last_sync_status: string;
-  last_sync_errors: unknown;  // JSONB fields typed as unknown
+  last_sync_errors: unknown; // JSONB fields typed as unknown
   created_at: Date;
   updated_at: Date;
 };
 
 // In src/domain/agent-repository/mappers/map-agent-repository-from-db.ts
-export function mapAgentRepositoryFromDb(row: AgentRepositoryDbRow): AgentRepository {
+export function mapAgentRepositoryFromDb(
+  row: AgentRepositoryDbRow,
+): AgentRepository {
   return {
     id: row.id,
     name: row.name,
-    gitUrl: row.git_url,  // snake_case to camelCase
+    gitUrl: row.git_url, // snake_case to camelCase
     branch: row.branch,
     isRoot: row.is_root,
     lastSyncCommitHash: row.last_sync_commit_hash,
     lastSyncAt: row.last_sync_at,
-    lastSyncStatus: row.last_sync_status as AgentRepository['lastSyncStatus'],
+    lastSyncStatus: row.last_sync_status as AgentRepository["lastSyncStatus"],
     lastSyncErrors: row.last_sync_errors as Record<string, unknown> | null,
     createdAt: row.created_at,
-    updatedAt: row.updated_at
+    updatedAt: row.updated_at,
   };
 }
 
 // In src/domain/agent-repository/get-agent-repository.ts
 export async function getAgentRepository(
-  db: Database, 
-  id: number
+  db: Database,
+  id: number,
 ): Promise<AgentRepository | null> {
   const result = await db.oneOrNone<AgentRepositoryDbRow>(
     `SELECT * FROM agent_repository WHERE id = $(id)`,
-    { id }
+    { id },
   );
   return result ? mapAgentRepositoryFromDb(result) : null;
 }
 
 // In src/domain/agent-repository/index.ts - Clean exports
-export { getAgentRepository } from './get-agent-repository.js';
-export { mapAgentRepositoryFromDb } from './mappers/map-agent-repository-from-db.js';
-export type { AgentRepositoryDbRow } from './types.js';
+export { getAgentRepository } from "./get-agent-repository.js";
+export { mapAgentRepositoryFromDb } from "./mappers/map-agent-repository-from-db.js";
+export type { AgentRepositoryDbRow } from "./types.js";
 ```
 
 ### Function Export Pattern
+
 ```typescript
 // ✅ Good - Pure function with explicit dependencies
 export async function executeAgent(
@@ -326,25 +354,28 @@ export async function executeAgent(
   dependencies: {
     llmProvider: LLMProvider;
     toolRouter: ToolRouter;
-  }
+  },
 ): Promise<Result<AgentExecutionResult, Error>> {
   // Implementation
 }
 
 // ❌ Bad - Class-based approach
-export class AgentRunner { /* ... */ }
+export class AgentRunner {
+  /* ... */
+}
 ```
 
 ### Result Type Pattern
+
 ```typescript
-import { createLogger } from '@codespin/shaman-logger';
+import { createLogger } from "@codespin/shaman-logger";
 
 export type Result<T, E = Error> =
   | { readonly success: true; readonly data: T }
   | { readonly success: false; readonly error: E };
 
 // Usage
-const logger = createLogger('AgentValidator');
+const logger = createLogger("AgentValidator");
 const result = await validateAgent(agent);
 if (!result.success) {
   logger.error("Validation failed:", result.error);
@@ -354,6 +385,7 @@ const validAgent = result.data; // Type-safe
 ```
 
 ### Import Pattern
+
 ```typescript
 // ✅ Good - Always include .js extension
 import { executeAgent } from "./agent-runner.js";
@@ -386,6 +418,7 @@ import { executeAgent } from "./agent-runner";
 ### Important Build & Lint Workflow
 
 **ALWAYS follow this sequence:**
+
 1. Run `./lint-all.sh` first
 2. Run `./build.sh`
 3. **If build fails and you make changes**: You MUST run `./lint-all.sh` again before building
@@ -396,6 +429,7 @@ import { executeAgent } from "./agent-runner";
 ## Common Tasks
 
 ### Adding a New Package
+
 1. Create directory in `/node/packages/`
 2. Add package.json with `file:` dependencies
 3. Add to `PACKAGES` array in `./build.sh` (respect dependency order)
@@ -403,6 +437,7 @@ import { executeAgent } from "./agent-runner";
 5. Run `./build.sh --install`
 
 ### Working with Agents
+
 - Agents are Markdown files with YAML frontmatter
 - Agent discovery through Git repositories
 - See `/docs/02-use-cases-and-agent-model.md` for patterns
@@ -410,6 +445,7 @@ import { executeAgent } from "./agent-runner";
 ### Database Changes
 
 **Database Structure**: The project follows a multi-database pattern:
+
 ```
 /
 ├── knexfile.js             # Base configuration only (no default export)
@@ -431,11 +467,13 @@ import { executeAgent } from "./agent-runner";
 ## Git Agent Caching
 
 The git-resolver implements intelligent caching:
+
 - Repository-level: Checks if commit hash changed before processing
 - File-level: Only re-processes agent files that have been modified
 - Branch-aware: Different branches are treated as separate repositories
 
 Key functions:
+
 - `resolveAgents(repoUrl, branch)` - Syncs and caches agents from a git repo
 - `getAgentRepositoryByUrlAndBranch()` - Queries repos by URL and branch
 - Commit hashes stored in `agent_repository.last_sync_commit_hash`
@@ -446,6 +484,7 @@ Key functions:
 **IMPORTANT**: Shaman splits functionality into two distinct servers:
 
 ### GraphQL Server (`shaman-gql-server`)
+
 - Pure management API - NO agent execution
 - Handles user authentication via Ory Kratos
 - Agent repository management
@@ -454,6 +493,7 @@ Key functions:
 - Exposed to the internet
 
 ### A2A Server (`shaman-a2a-server`)
+
 - Handles ALL agent execution
 - Supports two deployment modes:
   - `--role public`: Accepts external A2A requests, exposed to internet
@@ -462,6 +502,7 @@ Key functions:
 - Validates JWT tokens (internal) or API keys (external)
 
 ### Starting Servers
+
 ```bash
 # GraphQL management server
 cd node/packages/shaman-gql-server && npm start
@@ -469,27 +510,32 @@ cd node/packages/shaman-gql-server && npm start
 # A2A server (public mode - accepts external requests)
 cd node/packages/shaman-a2a-server && npm start -- --role public --port 5000
 
-# A2A server (internal mode - only internal requests)  
+# A2A server (internal mode - only internal requests)
 cd node/packages/shaman-a2a-server && npm start -- --role internal --port 5001
 ```
 
 ## A2A Architecture
 
 ### A2A Server
+
 The shaman-a2a-server is the execution gateway for all agents:
+
 - Receives agent execution requests via A2A protocol
 - Starts workflow jobs using BullMQ
 - Supports both public and internal deployment modes
 - Validates authentication (JWT for internal, API keys for external)
 
 Key endpoints:
+
 - `GET /a2a/v1/agents` - Discover available agents
 - `POST /a2a/v1/message/send` - Send message to agents (JSON-RPC)
 - `POST /a2a/v1/tasks/get` - Get task status (JSON-RPC)
 - `GET /a2a/v1/health` - Health check
 
 ### A2A Client
+
 The shaman-a2a-client module enables agent-to-agent communication:
+
 - HTTP client for A2A protocol
 - Internal JWT token generation
 - Retry logic with exponential backoff
@@ -498,6 +544,7 @@ The shaman-a2a-client module enables agent-to-agent communication:
 ## Agent Executor
 
 The agent-executor package provides the core execution engine:
+
 - Manages agent conversations with full message history
 - Handles tool calls and agent-to-agent communication
 - Integrates with LLM providers for AI responses
@@ -507,21 +554,23 @@ The agent-executor package provides the core execution engine:
 ## LLM Provider (Vercel AI SDK)
 
 The llm-vercel package implements the LLM provider interface:
+
 ```typescript
 const provider = createVercelLLMProvider({
   models: {
-    'gpt-4': { provider: 'openai', modelId: 'gpt-4' },
-    'claude-3': { provider: 'anthropic', modelId: 'claude-3-opus-20240229' }
+    "gpt-4": { provider: "openai", modelId: "gpt-4" },
+    "claude-3": { provider: "anthropic", modelId: "claude-3-opus-20240229" },
   },
-  defaultModel: 'gpt-4',
+  defaultModel: "gpt-4",
   apiKeys: {
     openai: process.env.OPENAI_API_KEY,
-    anthropic: process.env.ANTHROPIC_API_KEY
-  }
+    anthropic: process.env.ANTHROPIC_API_KEY,
+  },
 });
 ```
 
 Features:
+
 - Support for OpenAI and Anthropic models
 - Streaming responses
 - Token usage tracking
@@ -530,6 +579,7 @@ Features:
 ## Platform Tools
 
 The tool-router provides built-in platform tools for workflow data management:
+
 - `run_data_write` - Store data for agent collaboration
 - `run_data_read` - Retrieve specific data by key
 - `run_data_query` - Search data by patterns
@@ -542,51 +592,54 @@ All workflow data is stored in Foreman and tracked by agent/step for full audita
 Shaman uses Foreman as an external service for all workflow orchestration:
 
 ### Initialization
+
 ```typescript
 // In shaman-a2a-server/src/start.ts
-import { initializeForemanClient } from '@codespin/foreman-client';
+import { initializeForemanClient } from "@codespin/foreman-client";
 
 await initializeForemanClient({
-  endpoint: process.env.FOREMAN_ENDPOINT || 'http://localhost:3000',
-  apiKey: process.env.FOREMAN_API_KEY || 'fmn_dev_default_key',
+  endpoint: process.env.FOREMAN_ENDPOINT || "http://localhost:3000",
+  apiKey: process.env.FOREMAN_API_KEY || "fmn_dev_default_key",
   timeout: 30000,
   queues: {
-    taskQueue: process.env.SHAMAN_TASK_QUEUE || 'shaman:tasks',
-    resultQueue: process.env.SHAMAN_RESULT_QUEUE || 'shaman:results'
-  }
+    taskQueue: process.env.SHAMAN_TASK_QUEUE || "shaman:tasks",
+    resultQueue: process.env.SHAMAN_RESULT_QUEUE || "shaman:results",
+  },
 });
 ```
 
 ### Creating Workflow Runs
+
 ```typescript
-import { createRun, createTask } from '@codespin/foreman-client';
+import { createRun, createTask } from "@codespin/foreman-client";
 
 // Create a run
 const runResult = await createRun(config, {
   inputData: {
-    agentName: 'my-agent',
-    input: { message: 'Hello' }
+    agentName: "my-agent",
+    input: { message: "Hello" },
   },
-  metadata: { 
-    source: 'a2a',
-    organizationId: 'org-123' 
-  }
+  metadata: {
+    source: "a2a",
+    organizationId: "org-123",
+  },
 });
 
 if (runResult.success) {
   // Create initial task
   const taskResult = await createTask(config, {
     runId: runResult.data.id,
-    type: 'agent-execution',
+    type: "agent-execution",
     inputData: {
-      agentName: 'my-agent',
-      input: { message: 'Hello' }
-    }
+      agentName: "my-agent",
+      input: { message: "Hello" },
+    },
   });
 }
 ```
 
 ### Storing and Querying Run Data
+
 ```typescript
 import { createRunData, queryRunData } from '@codespin/foreman-client';
 
@@ -613,3 +666,4 @@ const queryResult = await queryRunData(config, 'run-123', {
 - Start fresh with any component or subsystem
 
 There is no need to preserve existing functionality if a better approach is available. Focus on building the right solution rather than maintaining compatibility with early prototypes.
+```

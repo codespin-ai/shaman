@@ -5,6 +5,7 @@ This example demonstrates a real-world scenario where multiple agents collaborat
 ## Scenario Overview
 
 An e-commerce platform needs to process a customer order that requires:
+
 1. Inventory checking (InventoryAgent)
 2. Fraud detection (FraudDetectionAgent)
 3. Payment processing (PaymentAgent)
@@ -85,14 +86,17 @@ exposed: false
 mcpServers:
   database:
     command: "npx"
-    args: ["@modelcontextprotocol/server-postgres", "postgresql://inventory_db:5432/inventory"]
+    args:
+      [
+        "@modelcontextprotocol/server-postgres",
+        "postgresql://inventory_db:5432/inventory",
+      ]
     tools:
       - "query_database"
       - "execute_transaction"
     env:
       POSTGRES_SCHEMA: "inventory"
 ---
-
 You manage inventory. Use the database tools to check stock levels and manage reservations.
 ```
 
@@ -116,7 +120,6 @@ mcpServers:
       - "get_risk_score"
       - "check_blacklist"
 ---
-
 You detect fraudulent transactions. Use the fraud detection tools to analyze orders.
 ```
 
@@ -125,22 +128,19 @@ You detect fraudulent transactions. Use the fraud detection tools to analyze ord
 ### Step 1: Client Initiates Order
 
 **GraphQL Request to Public Server:**
+
 ```graphql
 mutation ProcessOrder {
   executeAgent(
-    agentId: "OrderProcessingAgent",
+    agentId: "OrderProcessingAgent"
     input: {
-      orderId: "ORD-2024-001",
-      customerId: "CUST-123",
+      orderId: "ORD-2024-001"
+      customerId: "CUST-123"
       items: [
-        { productId: "PROD-456", quantity: 2 },
+        { productId: "PROD-456", quantity: 2 }
         { productId: "PROD-789", quantity: 1 }
-      ],
-      paymentMethod: {
-        type: "credit_card",
-        last4: "1234",
-        token: "tok_abc123"
-      }
+      ]
+      paymentMethod: { type: "credit_card", last4: "1234", token: "tok_abc123" }
     }
   ) {
     success
@@ -153,6 +153,7 @@ mutation ProcessOrder {
 ### Step 2: Public Server Routes to Internal Server
 
 **A2A Request (Public → Internal):**
+
 ```http
 POST https://internal.acme.com/a2a/v1
 Content-Type: application/json
@@ -179,6 +180,7 @@ Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
 ### Step 3: OrderProcessingAgent Checks Inventory
 
 **A2A Request (Internal → Internal):**
+
 ```http
 POST https://internal.acme.com/a2a/v1
 Content-Type: application/json
@@ -205,6 +207,7 @@ Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
 ### Step 4: InventoryAgent Uses MCP Database Tool
 
 **MCP Tool Call (stdio transport):**
+
 ```json
 {
   "jsonrpc": "2.0",
@@ -221,6 +224,7 @@ Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
 ```
 
 **MCP Tool Response:**
+
 ```json
 {
   "jsonrpc": "2.0",
@@ -238,6 +242,7 @@ Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
 ```
 
 **A2A Response (InventoryAgent → OrderProcessingAgent):**
+
 ```json
 {
   "jsonrpc": "2.0",
@@ -249,18 +254,20 @@ Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
       "state": "completed",
       "timestamp": "2024-03-15T10:31:00Z"
     },
-    "artifacts": [{
-      "type": "application/json",
-      "name": "inventory-check",
-      "mimeType": "application/json",
-      "data": {
-        "available": true,
-        "items": [
-          { "productId": "PROD-456", "available": 15, "requested": 2 },
-          { "productId": "PROD-789", "available": 3, "requested": 1 }
-        ]
+    "artifacts": [
+      {
+        "type": "application/json",
+        "name": "inventory-check",
+        "mimeType": "application/json",
+        "data": {
+          "available": true,
+          "items": [
+            { "productId": "PROD-456", "available": 15, "requested": 2 },
+            { "productId": "PROD-789", "available": 3, "requested": 1 }
+          ]
+        }
       }
-    }]
+    ]
   }
 }
 ```
@@ -268,6 +275,7 @@ Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
 ### Step 5: OrderProcessingAgent Checks for Fraud
 
 **A2A Request (Internal → Internal):**
+
 ```http
 POST https://internal.acme.com/a2a/v1
 Content-Type: application/json
@@ -294,6 +302,7 @@ Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
 ### Step 6: FraudDetectionAgent Uses MCP Fraud API
 
 **MCP Tool Call (HTTP+SSE transport):**
+
 ```http
 POST https://fraud-service.internal/mcp/messages
 Content-Type: application/json
@@ -320,6 +329,7 @@ Authorization: Bearer fraud-api-key-123
 ```
 
 **MCP Tool Response:**
+
 ```json
 {
   "jsonrpc": "2.0",
@@ -339,6 +349,7 @@ Authorization: Bearer fraud-api-key-123
 ### Step 7: Progress Notification
 
 **A2A Progress Update (via SSE):**
+
 ```
 id: 1710504720000
 event: message
@@ -352,6 +363,7 @@ data: {"jsonrpc": "2.0", "id": "pub-req-001", "result": {"kind": "status-update"
 ### Step 8: Final Response Chain
 
 **A2A Response (OrderProcessingAgent → Public Server):**
+
 ```json
 {
   "jsonrpc": "2.0",
@@ -363,29 +375,31 @@ data: {"jsonrpc": "2.0", "id": "pub-req-001", "result": {"kind": "status-update"
       "state": "completed",
       "timestamp": "2024-03-15T10:35:00Z"
     },
-    "artifacts": [{
-      "type": "application/json",
-      "name": "order-result",
-      "mimeType": "application/json",
-      "data": {
-        "orderId": "ORD-2024-001",
-        "status": "processing",
-        "steps": {
-          "inventory": "reserved",
-          "fraud": "approved",
-          "payment": "pending",
-          "fulfillment": "queued"
-        },
-        "estimatedDelivery": "2024-03-20"
+    "artifacts": [
+      {
+        "type": "application/json",
+        "name": "order-result",
+        "mimeType": "application/json",
+        "data": {
+          "orderId": "ORD-2024-001",
+          "status": "processing",
+          "steps": {
+            "inventory": "reserved",
+            "fraud": "approved",
+            "payment": "pending",
+            "fulfillment": "queued"
+          },
+          "estimatedDelivery": "2024-03-20"
+        }
       }
-    }],
+    ],
     "history": [
       {
         "timestamp": "2024-03-15T10:30:00Z",
         "type": "message",
         "message": {
           "role": "user",
-          "parts": [{"kind": "text", "text": "Process order ORD-2024-001..."}]
+          "parts": [{ "kind": "text", "text": "Process order ORD-2024-001..." }]
         }
       },
       {
@@ -393,13 +407,18 @@ data: {"jsonrpc": "2.0", "id": "pub-req-001", "result": {"kind": "status-update"
         "type": "message",
         "message": {
           "role": "assistant",
-          "parts": [{"kind": "text", "text": "Processing order. Checking inventory..."}]
+          "parts": [
+            {
+              "kind": "text",
+              "text": "Processing order. Checking inventory..."
+            }
+          ]
         }
       },
       {
         "timestamp": "2024-03-15T10:35:00Z",
         "type": "status",
-        "status": {"state": "completed"}
+        "status": { "state": "completed" }
       }
     ]
   }
@@ -407,6 +426,7 @@ data: {"jsonrpc": "2.0", "id": "pub-req-001", "result": {"kind": "status-update"
 ```
 
 **GraphQL Response to Client:**
+
 ```json
 {
   "data": {
@@ -426,26 +446,31 @@ data: {"jsonrpc": "2.0", "id": "pub-req-001", "result": {"kind": "status-update"
 ## Authentication Flow
 
 ### 1. External Client → Public Server
+
 - Uses API key or OAuth token
 - Validated by public server's auth middleware
 
 ### 2. Public Server → Internal Server
+
 - Uses internal JWT with short expiry
 - Contains tenant context and permissions
 - Signed with shared secret
 
 ### 3. Internal Agent → Internal Agent
+
 - Reuses JWT from incoming request
 - Adds agent-specific claims
 - Maintains audit trail
 
 ### 4. Agent → MCP Server
+
 - stdio: Inherits process credentials
 - HTTP+SSE: Uses service-specific API keys
 
 ## Error Handling Examples
 
 ### MCP Tool Error
+
 ```json
 {
   "jsonrpc": "2.0",
@@ -463,6 +488,7 @@ data: {"jsonrpc": "2.0", "id": "pub-req-001", "result": {"kind": "status-update"
 ```
 
 ### A2A Agent Error
+
 ```json
 {
   "jsonrpc": "2.0",
@@ -480,30 +506,31 @@ data: {"jsonrpc": "2.0", "id": "pub-req-001", "result": {"kind": "status-update"
 ```
 
 ### Cascading Error Handling
+
 ```typescript
 // In OrderProcessingAgent
 try {
-  const inventoryResult = await callAgent('InventoryAgent', checkRequest);
+  const inventoryResult = await callAgent("InventoryAgent", checkRequest);
   if (!inventoryResult.success) {
     // Compensate - no reservation was made
     return {
       success: false,
       error: "Inventory check failed",
-      rollback: []
+      rollback: [],
     };
   }
-  
-  const fraudResult = await callAgent('FraudDetectionAgent', fraudRequest);
+
+  const fraudResult = await callAgent("FraudDetectionAgent", fraudRequest);
   if (!fraudResult.success) {
     // Compensate - release inventory reservation
-    await callAgent('InventoryAgent', {
-      action: 'release',
-      items: reservedItems
+    await callAgent("InventoryAgent", {
+      action: "release",
+      items: reservedItems,
     });
     return {
       success: false,
       error: "Fraud check failed",
-      rollback: ['inventory_released']
+      rollback: ["inventory_released"],
     };
   }
 } catch (error) {
@@ -516,6 +543,7 @@ try {
 ## Security Implementation
 
 ### JWT Token Structure
+
 ```json
 {
   "iss": "shaman-public-server",
@@ -536,15 +564,17 @@ try {
 ```
 
 ### Resource Isolation
+
 ```yaml
 # Each agent's MCP configuration is tenant-scoped
 mcpServers:
   database:
     command: "npx"
-    args: [
-      "@modelcontextprotocol/server-postgres",
-      "postgresql://localhost/tenant_${TENANT_ID}_inventory"
-    ]
+    args:
+      [
+        "@modelcontextprotocol/server-postgres",
+        "postgresql://localhost/tenant_${TENANT_ID}_inventory",
+      ]
     env:
       TENANT_ID: "${context.tenantId}"
       POSTGRES_SCHEMA: "tenant_${TENANT_ID}"
@@ -553,6 +583,7 @@ mcpServers:
 ## Monitoring and Observability
 
 ### Distributed Tracing
+
 ```json
 {
   "traceId": "4bf92f3577b34da6a3ce929d0e0e4736",
@@ -585,6 +616,7 @@ mcpServers:
 ```
 
 ### Audit Log Entry
+
 ```json
 {
   "timestamp": "2024-03-15T10:30:00Z",

@@ -5,6 +5,7 @@ Prompts in MCP enable servers to expose reusable prompt templates and interactiv
 ## Overview
 
 Prompts allow servers to:
+
 - Define reusable prompt templates
 - Create interactive workflows
 - Guide model behavior for specific tasks
@@ -17,19 +18,21 @@ A prompt consists of:
 
 ```typescript
 interface Prompt {
-  name: string;              // Unique identifier
-  title?: string;            // Human-readable name
-  description?: string;      // What the prompt does
-  arguments?: [              // Required parameters
+  name: string; // Unique identifier
+  title?: string; // Human-readable name
+  description?: string; // What the prompt does
+  arguments?: [
+    // Required parameters
     {
       name: string;
       description?: string;
       type?: "string" | "number" | "boolean";
       required?: boolean;
       default?: any;
-    }
+    },
   ];
-  annotations?: {            // Additional metadata
+  annotations?: {
+    // Additional metadata
     [key: string]: any;
   };
 }
@@ -66,6 +69,7 @@ interface Prompt {
 Discover available prompts:
 
 **Request:**
+
 ```json
 {
   "jsonrpc": "2.0",
@@ -76,6 +80,7 @@ Discover available prompts:
 ```
 
 **Response:**
+
 ```json
 {
   "jsonrpc": "2.0",
@@ -107,6 +112,7 @@ Discover available prompts:
 Retrieve a specific prompt with arguments:
 
 **Request:**
+
 ```json
 {
   "jsonrpc": "2.0",
@@ -123,6 +129,7 @@ Retrieve a specific prompt with arguments:
 ```
 
 **Response:**
+
 ```json
 {
   "jsonrpc": "2.0",
@@ -165,7 +172,7 @@ Servers declare prompt support:
 {
   "capabilities": {
     "prompts": {
-      "listChanged": true  // Can notify of prompt changes
+      "listChanged": true // Can notify of prompt changes
     }
   }
 }
@@ -184,9 +191,10 @@ interface PromptMessage {
 interface ContentBlock {
   type: "text" | "image" | "resource";
   text?: string;
-  data?: string;      // For images
+  data?: string; // For images
   mimeType?: string;
-  resource?: {        // For embedded resources
+  resource?: {
+    // For embedded resources
     uri: string;
     mimeType?: string;
     text?: string;
@@ -345,15 +353,15 @@ mcpServers:
 
 ```typescript
 // 1. Discover available prompts
-const { prompts } = await mcpClient.request('prompts/list');
+const { prompts } = await mcpClient.request("prompts/list");
 
 // 2. Get prompt with arguments
-const { prompt } = await mcpClient.request('prompts/get', {
-  name: 'code_review',
+const { prompt } = await mcpClient.request("prompts/get", {
+  name: "code_review",
   arguments: {
-    language: 'typescript',
-    focus: 'performance'
-  }
+    language: "typescript",
+    focus: "performance",
+  },
 });
 
 // 3. Use prompt messages in conversation
@@ -369,23 +377,23 @@ const response = await llm.complete(messages);
 async function buildPromptWithContext(
   promptName: string,
   args: Record<string, any>,
-  context: AgentContext
+  context: AgentContext,
 ) {
   // Get base prompt
-  const { prompt } = await mcpClient.request('prompts/get', {
+  const { prompt } = await mcpClient.request("prompts/get", {
     name: promptName,
-    arguments: args
+    arguments: args,
   });
-  
+
   // Enhance with current context
   const enhancedMessages = [
     ...prompt.messages,
     {
-      role: 'user',
-      content: `Current context: ${JSON.stringify(context)}`
-    }
+      role: "user",
+      content: `Current context: ${JSON.stringify(context)}`,
+    },
   ];
-  
+
   return enhancedMessages;
 }
 ```
@@ -404,33 +412,35 @@ async function buildPromptWithContext(
 ```typescript
 function validatePromptArguments(
   prompt: Prompt,
-  provided: Record<string, any>
+  provided: Record<string, any>,
 ): Result<Record<string, any>, Error> {
   const validated: Record<string, any> = {};
-  
+
   for (const arg of prompt.arguments || []) {
     if (arg.required && !(arg.name in provided)) {
-      return { 
-        success: false, 
-        error: new Error(`Missing required argument: ${arg.name}`) 
+      return {
+        success: false,
+        error: new Error(`Missing required argument: ${arg.name}`),
       };
     }
-    
+
     const value = provided[arg.name] ?? arg.default;
-    
+
     if (value !== undefined && arg.type) {
       const actualType = typeof value;
       if (actualType !== arg.type) {
         return {
           success: false,
-          error: new Error(`Invalid type for ${arg.name}: expected ${arg.type}, got ${actualType}`)
+          error: new Error(
+            `Invalid type for ${arg.name}: expected ${arg.type}, got ${actualType}`,
+          ),
         };
       }
     }
-    
+
     validated[arg.name] = value;
   }
-  
+
   return { success: true, data: validated };
 }
 ```

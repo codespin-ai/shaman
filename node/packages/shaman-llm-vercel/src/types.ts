@@ -7,7 +7,7 @@
 /**
  * Provider types supported
  */
-export type ProviderType = 'openai' | 'anthropic' | 'custom';
+export type ProviderType = "openai" | "anthropic" | "custom";
 
 /**
  * Model configuration

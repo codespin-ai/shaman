@@ -25,20 +25,24 @@ shaman-integration-tests/
 Before tests can be enabled and run, the following components must be implemented in Shaman:
 
 ### 1. GraphQL Schema (`shaman-gql-server/src/schema.graphql`)
+
 - Define types for AgentRepository, GitAgent, Run, Step, RunData
 - Define queries for listing and fetching entities
 - Define mutations for management operations (NO execution)
 
 ### 2. GraphQL Resolvers (`shaman-gql-server/src/resolvers/`)
+
 - Implement resolvers for all queries and mutations
 - Connect resolvers to persistence layer
 
 ### 3. Server Binaries
+
 - **GraphQL Server** (`shaman-gql-server/src/start.ts`): Management API
 - **A2A Server** (`shaman-a2a-server/src/start.ts`): Agent execution with --role flag
 - Both servers must be running for full functionality
 
 ### 4. Database Migrations
+
 - Ensure all tables are created with proper indexes
 - Foreign key constraints must be properly set up
 
@@ -47,18 +51,18 @@ Before tests can be enabled and run, the following components must be implemente
 ### Basic Test Structure
 
 ```typescript
-import { expect } from 'chai';
-import { gql } from '@apollo/client/core/index.js';
-import { testDb, client } from '../index.js';
+import { expect } from "chai";
+import { gql } from "@apollo/client/core/index.js";
+import { testDb, client } from "../index.js";
 
-describe('Feature Name', () => {
+describe("Feature Name", () => {
   beforeEach(async () => {
     // Clean database before each test
     await testDb.truncateAllTables();
   });
 
-  describe('operation name', () => {
-    it('should do something', async () => {
+  describe("operation name", () => {
+    it("should do something", async () => {
       // Define GraphQL query/mutation
       const mutation = gql`
         mutation CreateSomething($input: CreateSomethingInput!) {
@@ -73,15 +77,15 @@ describe('Feature Name', () => {
       // Execute operation
       const result = await client.mutate(mutation, {
         input: {
-          field1: 'value1',
-          field2: 'value2'
-        }
+          field1: "value1",
+          field2: "value2",
+        },
       });
 
       // Assert results
       const data = result.data?.createSomething;
-      expect(data?.field1).to.equal('value1');
-      expect(data?.field2).to.equal('value2');
+      expect(data?.field1).to.equal("value1");
+      expect(data?.field2).to.equal("value2");
     });
   });
 });
@@ -90,14 +94,16 @@ describe('Feature Name', () => {
 ### Testing Error Cases
 
 ```typescript
-it('should handle errors correctly', async () => {
+it("should handle errors correctly", async () => {
   try {
     await client.mutate(mutation, {
-      input: { /* invalid input */ }
+      input: {
+        /* invalid input */
+      },
     });
-    expect.fail('Should have thrown an error');
+    expect.fail("Should have thrown an error");
   } catch (error: any) {
-    expect(error.message).to.include('expected error message');
+    expect(error.message).to.include("expected error message");
   }
 });
 ```
@@ -105,13 +111,13 @@ it('should handle errors correctly', async () => {
 ### Testing Complex Workflows
 
 ```typescript
-it('should handle multi-step workflows', async () => {
+it("should handle multi-step workflows", async () => {
   // Step 1: Create initial entity
   const entity1 = await createEntity1();
-  
+
   // Step 2: Create related entity
   const entity2 = await createEntity2(entity1.id);
-  
+
   // Step 3: Verify relationship
   const query = gql`
     query GetEntity1WithRelations($id: ID!) {
@@ -123,7 +129,7 @@ it('should handle multi-step workflows', async () => {
       }
     }
   `;
-  
+
   const result = await client.query(query, { id: entity1.id });
   expect(result.data?.entity1.relatedEntities).to.have.lengthOf(1);
 });
@@ -151,6 +157,7 @@ npm test -- src/tests/agent-repositories.test.ts
 ## Test Database
 
 The test suite automatically:
+
 - Creates a separate `shaman_test` database
 - Runs all migrations before tests
 - Truncates all tables between tests
@@ -178,12 +185,14 @@ SHAMAN_DB_PASSWORD=postgres   # Default: postgres
 ## Test Categories to Implement
 
 ### Agent Management
+
 - [ ] Agent repository CRUD operations
 - [ ] Git synchronization
 - [ ] Agent discovery and parsing
 - [ ] Agent version tracking
 
 ### Workflow Execution
+
 - [ ] Run lifecycle (create, execute, complete)
 - [ ] Step tracking and telemetry
 - [ ] Agent-to-agent communication
@@ -191,16 +200,19 @@ SHAMAN_DB_PASSWORD=postgres   # Default: postgres
 - [ ] Error handling and recovery
 
 ### Data Management
+
 - [ ] Run data storage and retrieval
 - [ ] Data immutability
 - [ ] Query patterns (by key, agent, time range)
 
 ### Authentication & Authorization
+
 - [ ] API key authentication
 - [ ] User context propagation
 - [ ] Rate limiting
 
 ### Performance & Scalability
+
 - [ ] Concurrent run execution
 - [ ] Large dataset handling
 - [ ] Database query optimization

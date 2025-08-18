@@ -23,25 +23,25 @@ All errors follow the JSON-RPC 2.0 error structure:
 
 ## Standard JSON-RPC Error Codes
 
-| Code | Name | Message | When to Use |
-|------|------|---------|-------------|
-| -32700 | Parse error | Invalid JSON payload | Malformed JSON |
-| -32600 | Invalid Request | Invalid JSON-RPC Request | Missing required fields |
-| -32601 | Method not found | Method not found | Unknown method name |
-| -32602 | Invalid params | Invalid method parameters | Wrong parameter types/values |
-| -32603 | Internal error | Internal server error | Unexpected server errors |
+| Code   | Name             | Message                   | When to Use                  |
+| ------ | ---------------- | ------------------------- | ---------------------------- |
+| -32700 | Parse error      | Invalid JSON payload      | Malformed JSON               |
+| -32600 | Invalid Request  | Invalid JSON-RPC Request  | Missing required fields      |
+| -32601 | Method not found | Method not found          | Unknown method name          |
+| -32602 | Invalid params   | Invalid method parameters | Wrong parameter types/values |
+| -32603 | Internal error   | Internal server error     | Unexpected server errors     |
 
 ## A2A-Specific Error Codes
 
-| Code | Name | Message | Description |
-|------|------|---------|-------------|
-| -32001 | TaskNotFoundError | Task not found | Task ID doesn't exist or has expired |
-| -32002 | TaskNotCancelableError | Task cannot be canceled | Task is in terminal state |
-| -32003 | PushNotificationNotSupportedError | Push notifications not supported | Agent doesn't support webhooks |
-| -32004 | UnsupportedOperationError | Operation not supported | Requested feature not available |
-| -32005 | ContentTypeNotSupportedError | Incompatible content types | MIME type not supported |
-| -32006 | InvalidAgentResponseError | Invalid agent response | Agent returned malformed response |
-| -32007 | AuthenticatedExtendedCardNotConfiguredError | Extended card not configured | No extended card available |
+| Code   | Name                                        | Message                          | Description                          |
+| ------ | ------------------------------------------- | -------------------------------- | ------------------------------------ |
+| -32001 | TaskNotFoundError                           | Task not found                   | Task ID doesn't exist or has expired |
+| -32002 | TaskNotCancelableError                      | Task cannot be canceled          | Task is in terminal state            |
+| -32003 | PushNotificationNotSupportedError           | Push notifications not supported | Agent doesn't support webhooks       |
+| -32004 | UnsupportedOperationError                   | Operation not supported          | Requested feature not available      |
+| -32005 | ContentTypeNotSupportedError                | Incompatible content types       | MIME type not supported              |
+| -32006 | InvalidAgentResponseError                   | Invalid agent response           | Agent returned malformed response    |
+| -32007 | AuthenticatedExtendedCardNotConfiguredError | Extended card not configured     | No extended card available           |
 
 ## Error Examples
 
@@ -119,28 +119,28 @@ All errors follow the JSON-RPC 2.0 error structure:
 
 ### HTTP Status Codes (REST)
 
-| A2A Error | HTTP Status | Response Body |
-|-----------|-------------|---------------|
-| Parse error | 400 Bad Request | JSON error object |
-| Method not found | 404 Not Found | JSON error object |
-| Invalid params | 400 Bad Request | JSON error object |
-| Internal error | 500 Internal Server Error | JSON error object |
-| TaskNotFound | 404 Not Found | JSON error object |
-| Authentication required | 401 Unauthorized | JSON error object |
-| Insufficient permissions | 403 Forbidden | JSON error object |
+| A2A Error                | HTTP Status               | Response Body     |
+| ------------------------ | ------------------------- | ----------------- |
+| Parse error              | 400 Bad Request           | JSON error object |
+| Method not found         | 404 Not Found             | JSON error object |
+| Invalid params           | 400 Bad Request           | JSON error object |
+| Internal error           | 500 Internal Server Error | JSON error object |
+| TaskNotFound             | 404 Not Found             | JSON error object |
+| Authentication required  | 401 Unauthorized          | JSON error object |
+| Insufficient permissions | 403 Forbidden             | JSON error object |
 
 ### gRPC Status Codes
 
-| A2A Error | gRPC Status |
-|-----------|-------------|
-| Parse error | INVALID_ARGUMENT |
-| Method not found | UNIMPLEMENTED |
-| Invalid params | INVALID_ARGUMENT |
-| Internal error | INTERNAL |
-| TaskNotFound | NOT_FOUND |
-| TaskNotCancelable | FAILED_PRECONDITION |
-| Authentication required | UNAUTHENTICATED |
-| Insufficient permissions | PERMISSION_DENIED |
+| A2A Error                | gRPC Status         |
+| ------------------------ | ------------------- |
+| Parse error              | INVALID_ARGUMENT    |
+| Method not found         | UNIMPLEMENTED       |
+| Invalid params           | INVALID_ARGUMENT    |
+| Internal error           | INTERNAL            |
+| TaskNotFound             | NOT_FOUND           |
+| TaskNotCancelable        | FAILED_PRECONDITION |
+| Authentication required  | UNAUTHENTICATED     |
+| Insufficient permissions | PERMISSION_DENIED   |
 
 ## Error Handling Best Practices
 
@@ -206,12 +206,12 @@ async function callA2AMethod(method, params, maxRetries = 3) {
         await sleep(Math.pow(2, attempt) * 1000); // Exponential backoff
         continue;
       }
-      
+
       // Don't retry client errors
       if (error.code >= -32099 && error.code <= -32000) {
         throw error;
       }
-      
+
       throw error;
     }
   }
@@ -226,15 +226,15 @@ async function handleTaskError(error, taskId) {
     case -32001: // Task not found
       // Create new task
       return createNewTask();
-      
+
     case -32002: // Task not cancelable
       // Task already in terminal state
       return getTaskFinalState(taskId);
-      
+
     case -32003: // Push notifications not supported
       // Fall back to polling
       return pollTaskStatus(taskId);
-      
+
     default:
       throw error;
   }
@@ -250,6 +250,7 @@ Always use the defined A2A error codes for common scenarios.
 ### 2. Detailed Error Data
 
 Include relevant context in the `data` field:
+
 - Which field failed validation
 - What was expected vs received
 - Suggestions for fixing the error
@@ -263,6 +264,7 @@ Include relevant context in the `data` field:
 ### 4. Graceful Degradation
 
 When optional features fail, provide alternatives:
+
 - If streaming fails, suggest polling
 - If push notifications fail, provide polling instructions
 - If extended card unavailable, work with basic card

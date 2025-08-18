@@ -12,13 +12,17 @@ type Organization {
   subscriptionInfo: SubscriptionInfo
   createdAt: DateTime!
   updatedAt: DateTime!
-  
+
   # Relationships
   users(first: Int, after: String): UserConnection!
   repositories(first: Int, after: String): AgentRepositoryConnection!
   apiKeys(first: Int, after: String, filter: ApiKeyFilter): ApiKeyConnection!
   runs(first: Int, after: String, orderBy: RunOrderBy): RunConnection!
-  auditLogs(first: Int, after: String, filter: AuditLogFilter): AuditLogConnection!
+  auditLogs(
+    first: Int
+    after: String
+    filter: AuditLogFilter
+  ): AuditLogConnection!
 }
 
 type OrganizationSettings {
@@ -46,10 +50,10 @@ type User {
   lastLoginAt: DateTime
   createdAt: DateTime!
   updatedAt: DateTime!
-  
+
   # Relationships
   organization: Organization!
-  roles: [String!]!  # Array of role names like Permiso
+  roles: [String!]! # Array of role names like Permiso
   apiKeys(first: Int, after: String): ApiKeyConnection!
   runs(first: Int, after: String): RunConnection!
 }
@@ -80,7 +84,7 @@ type AgentRepository {
   lastSyncErrors: JSON
   createdAt: DateTime!
   updatedAt: DateTime!
-  
+
   # Relationships
   organization: Organization!
   agents(first: Int, after: String, filter: AgentFilter): GitAgentConnection!
@@ -103,10 +107,10 @@ type GitAgent {
   lastModifiedCommitHash: String
   createdAt: DateTime!
   updatedAt: DateTime!
-  
+
   # Relationships
   repository: AgentRepository!
-  
+
   # Computed fields
   usageCount: Int!
   lastUsed: DateTime
@@ -120,11 +124,10 @@ type Agent {
   description: String!
   source: AgentSource!
   tags: [String!]!
-  
+
   # Source-specific minimal details
-  repositoryName: String  # For Git agents
-  endpoint: String        # For A2A agents discovered via protocol
-  
+  repositoryName: String # For Git agents
+  endpoint: String # For A2A agents discovered via protocol
   # Analytics
   usageCount: Int!
   lastUsed: DateTime
@@ -134,7 +137,7 @@ type Agent {
 
 enum AgentSource {
   GIT
-  A2A_DISCOVERED  # Discovered via A2A protocol, not stored
+  A2A_DISCOVERED # Discovered via A2A protocol, not stored
 }
 
 # API Key Management
@@ -147,7 +150,7 @@ type ApiKey {
   expiresAt: DateTime
   lastUsedAt: DateTime
   createdAt: DateTime!
-  
+
   # Relationships
   user: User!
   permissions: [ApiKeyPermission!]!
@@ -175,7 +178,7 @@ type Run {
   duration: Int
   traceId: String
   metadata: JSON
-  
+
   # Relationships
   organization: Organization!
   initiatingUser: User!
@@ -218,7 +221,7 @@ type Step {
   cost: Float
   toolName: String
   metadata: JSON
-  
+
   # Relationships
   run: Run!
   parentStep: Step
@@ -275,7 +278,7 @@ type GitCredential {
   lastUsedAt: DateTime
   createdAt: DateTime!
   updatedAt: DateTime!
-  
+
   # Relationships
   repository: AgentRepository!
 }
@@ -557,29 +560,37 @@ enum OrderDirection {
 type Query {
   # Current user/org
   viewer: User!
-  
+
   # Organization queries
   organization(id: ID!): Organization
   organizations(first: Int, after: String): OrganizationConnection!
-  
+
   # User queries
   user(id: ID!): User
   users(first: Int, after: String, organizationId: ID): UserConnection!
-  
+
   # Repository queries
   repository(id: ID!): AgentRepository
-  repositories(first: Int, after: String, organizationId: ID): AgentRepositoryConnection!
-  
+  repositories(
+    first: Int
+    after: String
+    organizationId: ID
+  ): AgentRepositoryConnection!
+
   # Agent queries (unified view)
   agents(first: Int, after: String, filter: AgentFilter): AgentConnection!
   agent(name: String!): Agent
-  
+
   # Workflow monitoring
   run(id: ID!): Run
   runs(first: Int, after: String, orderBy: RunOrderBy): RunConnection!
-  
+
   # Audit logs
-  auditLogs(first: Int, after: String, filter: AuditLogFilter): AuditLogConnection!
+  auditLogs(
+    first: Int
+    after: String
+    filter: AuditLogFilter
+  ): AuditLogConnection!
 }
 
 type OrganizationConnection {
@@ -597,28 +608,38 @@ type OrganizationEdge {
 type Mutation {
   # Workflow management
   createRun(input: CreateRunInput!): CreateRunPayload!
-  
+
   # Organization management
-  createOrganization(input: CreateOrganizationInput!): CreateOrganizationPayload!
-  updateOrganization(id: ID!, input: UpdateOrganizationInput!): UpdateOrganizationPayload!
+  createOrganization(
+    input: CreateOrganizationInput!
+  ): CreateOrganizationPayload!
+  updateOrganization(
+    id: ID!
+    input: UpdateOrganizationInput!
+  ): UpdateOrganizationPayload!
   deleteOrganization(id: ID!): DeleteOrganizationPayload!
-  
+
   # Repository management
   createRepository(input: CreateRepositoryInput!): CreateRepositoryPayload!
-  updateRepository(id: ID!, input: UpdateRepositoryInput!): UpdateRepositoryPayload!
+  updateRepository(
+    id: ID!
+    input: UpdateRepositoryInput!
+  ): UpdateRepositoryPayload!
   deleteRepository(id: ID!): DeleteRepositoryPayload!
   syncRepository(id: ID!): SyncRepositoryPayload!
-  
+
   # Git credentials
   setGitCredentials(input: GitCredentialInput!): SetGitCredentialsPayload!
   removeGitCredentials(repositoryId: ID!): RemoveGitCredentialsPayload!
   testGitCredentials(repositoryId: ID!): TestGitCredentialsPayload!
-  
+
   # User & API key management
-  createServiceAccount(input: CreateServiceAccountInput!): CreateServiceAccountPayload!
+  createServiceAccount(
+    input: CreateServiceAccountInput!
+  ): CreateServiceAccountPayload!
   createApiKey(input: CreateApiKeyInput!): CreateApiKeyPayload!
   revokeApiKey(id: ID!): RevokeApiKeyPayload!
-  
+
   # NO AGENT EXECUTION MUTATIONS - All execution via A2A server
 }
 

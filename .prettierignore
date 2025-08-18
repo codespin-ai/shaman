@@ -1,0 +1,48 @@
+# Dependencies
+node_modules/
+**/node_modules/
+
+# Build outputs
+dist/
+build/
+**/dist/
+**/build/
+
+# Package manager files
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+
+# Generated files
+**/generated/
+*.generated.*
+
+# Database migrations (preserve formatting)
+database/
+**/migrations/
+**/seeds/
+
+# Git
+.git/
+
+# IDE
+.vscode/
+.idea/
+
+# Logs
+*.log
+
+# Environment files
+.env*
+
+# Coverage
+coverage/
+.nyc_output/
+
+# Documentation assets
+docs/images/
+docs/assets/
+
+# Temporary files
+*.tmp
+*.temp

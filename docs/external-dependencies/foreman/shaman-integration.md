@@ -5,6 +5,7 @@ This document describes how Shaman integrates with Foreman for workflow orchestr
 ## Overview
 
 Shaman uses Foreman as an external service for all workflow orchestration needs. Foreman handles:
+
 - Run management
 - Task queuing and execution
 - Run data storage for inter-agent communication
@@ -29,16 +30,16 @@ SHAMAN_RESULT_QUEUE=shaman:results       # Default: shaman:results
 In `shaman-a2a-server/src/start.ts`:
 
 ```typescript
-import { initializeForemanClient } from '@codespin/foreman-client';
+import { initializeForemanClient } from "@codespin/foreman-client";
 
 await initializeForemanClient({
-  endpoint: process.env.FOREMAN_ENDPOINT || 'http://localhost:3000',
-  apiKey: process.env.FOREMAN_API_KEY || 'fmn_dev_default_key',
+  endpoint: process.env.FOREMAN_ENDPOINT || "http://localhost:3000",
+  apiKey: process.env.FOREMAN_API_KEY || "fmn_dev_default_key",
   timeout: 30000,
   queues: {
-    taskQueue: process.env.SHAMAN_TASK_QUEUE || 'shaman:tasks',
-    resultQueue: process.env.SHAMAN_RESULT_QUEUE || 'shaman:results'
-  }
+    taskQueue: process.env.SHAMAN_TASK_QUEUE || "shaman:tasks",
+    resultQueue: process.env.SHAMAN_RESULT_QUEUE || "shaman:results",
+  },
 });
 ```
 
@@ -49,31 +50,31 @@ await initializeForemanClient({
 When an agent execution request comes through the A2A server:
 
 ```typescript
-import { createRun, createTask } from '@codespin/foreman-client';
+import { createRun, createTask } from "@codespin/foreman-client";
 
 // Create a run for the agent execution
 const runResult = await createRun(config, {
   inputData: {
-    agentName: 'CustomerSupport',
-    input: { message: 'Hello' },
-    contextId: 'ctx-123'
+    agentName: "CustomerSupport",
+    input: { message: "Hello" },
+    contextId: "ctx-123",
   },
-  metadata: { 
-    source: 'a2a',
-    organizationId: 'org-123',
-    userId: 'user-456'
-  }
+  metadata: {
+    source: "a2a",
+    organizationId: "org-123",
+    userId: "user-456",
+  },
 });
 
 if (runResult.success) {
   // Create initial task
   const taskResult = await createTask(config, {
     runId: runResult.data.id,
-    type: 'agent-execution',
+    type: "agent-execution",
     inputData: {
-      agentName: 'CustomerSupport',
-      input: { message: 'Hello' }
-    }
+      agentName: "CustomerSupport",
+      input: { message: "Hello" },
+    },
   });
 }
 ```
@@ -83,22 +84,24 @@ if (runResult.success) {
 Shaman provides built-in platform tools that agents can use to store and retrieve run data:
 
 #### run_data_write
+
 ```typescript
 await createRunData(config, runId, {
   taskId: currentTaskId,
-  key: 'customer-info',
-  value: { 
-    customerId: '123',
-    preferences: { theme: 'dark' }
+  key: "customer-info",
+  value: {
+    customerId: "123",
+    preferences: { theme: "dark" },
   },
-  tags: ['customer', 'profile']
+  tags: ["customer", "profile"],
 });
 ```
 
 #### run_data_read
+
 ```typescript
 const result = await queryRunData(config, runId, {
-  key: 'customer-info'
+  key: "customer-info",
 });
 
 if (result.success && result.data.data.length > 0) {
@@ -107,22 +110,24 @@ if (result.success && result.data.data.length > 0) {
 ```
 
 #### run_data_query
+
 ```typescript
 const result = await queryRunData(config, runId, {
-  keyStartsWith: 'agent-',
-  tags: ['response'],
-  sortBy: 'created_at',
-  sortOrder: 'desc',
-  limit: 10
+  keyStartsWith: "agent-",
+  tags: ["response"],
+  sortBy: "created_at",
+  sortOrder: "desc",
+  limit: 10,
 });
 ```
 
 #### run_data_list
+
 ```typescript
 const result = await queryRunData(config, runId, {
   includeAll: true,
-  sortBy: 'created_at',
-  sortOrder: 'desc'
+  sortBy: "created_at",
+  sortOrder: "desc",
 });
 ```
 
@@ -131,47 +136,50 @@ const result = await queryRunData(config, runId, {
 The Shaman worker processes tasks from Foreman:
 
 ```typescript
-import { createWorker } from '@codespin/foreman-client';
+import { createWorker } from "@codespin/foreman-client";
 
-const worker = await createWorker({
-  'agent-execution': async (task) => {
-    const { agentName, input } = task.inputData;
-    
-    try {
-      // Execute agent
-      const result = await executeAgent(agentName, input, {
-        runId: task.runId,
-        taskId: task.id
-      });
-      
-      // Store result
-      await createRunData(config, task.runId, {
-        taskId: task.id,
-        key: `agent-${agentName}-result`,
-        value: result,
-        tags: ['result', `agent:${agentName}`]
-      });
-      
-      return result;
-    } catch (error) {
-      // Store error for debugging
-      await createRunData(config, task.runId, {
-        taskId: task.id,
-        key: `error-${Date.now()}`,
-        value: { 
-          error: error.message, 
-          stack: error.stack,
-          agent: agentName 
-        },
-        tags: ['error', `agent:${agentName}`]
-      });
-      throw error;
-    }
-  }
-}, {
-  concurrency: 5,
-  maxRetries: 3
-});
+const worker = await createWorker(
+  {
+    "agent-execution": async (task) => {
+      const { agentName, input } = task.inputData;
+
+      try {
+        // Execute agent
+        const result = await executeAgent(agentName, input, {
+          runId: task.runId,
+          taskId: task.id,
+        });
+
+        // Store result
+        await createRunData(config, task.runId, {
+          taskId: task.id,
+          key: `agent-${agentName}-result`,
+          value: result,
+          tags: ["result", `agent:${agentName}`],
+        });
+
+        return result;
+      } catch (error) {
+        // Store error for debugging
+        await createRunData(config, task.runId, {
+          taskId: task.id,
+          key: `error-${Date.now()}`,
+          value: {
+            error: error.message,
+            stack: error.stack,
+            agent: agentName,
+          },
+          tags: ["error", `agent:${agentName}`],
+        });
+        throw error;
+      }
+    },
+  },
+  {
+    concurrency: 5,
+    maxRetries: 3,
+  },
+);
 
 await worker.start();
 ```
@@ -191,11 +199,13 @@ await worker.start();
 ## Best Practices
 
 1. **Use Tags**: Tag run data for easy filtering
+
    ```typescript
-   tags: ['response', 'agent:CustomerSupport', 'v1.0']
+   tags: ["response", "agent:CustomerSupport", "v1.0"];
    ```
 
 2. **Store Context**: Save agent conversation context
+
    ```typescript
    await createRunData(config, runId, {
      key: 'conversation-context',
@@ -205,11 +215,12 @@ await worker.start();
    ```
 
 3. **Error Tracking**: Store detailed error information
+
    ```typescript
    await createRunData(config, runId, {
      key: `error-${Date.now()}`,
      value: { error: error.message, stack: error.stack },
-     tags: ['error', 'debug']
+     tags: ["error", "debug"],
    });
    ```
 
@@ -217,8 +228,8 @@ await worker.start();
    ```typescript
    await createRunData(config, runId, {
      key: `audit-${Date.now()}`,
-     value: { action: 'agent-called', agent: agentName, user: userId },
-     tags: ['audit']
+     value: { action: "agent-called", agent: agentName, user: userId },
+     tags: ["audit"],
    });
    ```
 
@@ -235,14 +246,14 @@ console.log(`Tasks: ${run.data.completedTasks}/${run.data.totalTasks}`);
 // List recent runs
 const runs = await listRuns(config, {
   limit: 10,
-  sortBy: 'created_at',
-  sortOrder: 'desc'
+  sortBy: "created_at",
+  sortOrder: "desc",
 });
 
 // Get task details
 const task = await getTask(config, taskId);
 console.log(`Task ${taskId}: ${task.data.status}`);
 if (task.data.errorData) {
-  console.error('Task error:', task.data.errorData);
+  console.error("Task error:", task.data.errorData);
 }
 ```

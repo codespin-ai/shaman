@@ -41,7 +41,7 @@ selfservice:
         haveibeenpwned_enabled: false
         min_password_length: 8
         identifier_similarity_check_enabled: true
-    
+
     oidc:
       enabled: true
       config:
@@ -55,7 +55,7 @@ selfservice:
               - email
               - profile
             mapper_url: file:///etc/config/kratos/oidc.google.jsonnet
-          
+
           # GitHub OAuth
           - id: github
             provider: github
@@ -65,7 +65,7 @@ selfservice:
               - user:email
               - read:user
             mapper_url: file:///etc/config/kratos/oidc.github.jsonnet
-          
+
           # Generic OIDC for enterprise SSO
           - id: enterprise-sso
             provider: generic
@@ -192,6 +192,6 @@ session:
     persistent: true
     name: ory_kratos_session
     same_site: Lax
-    domain: .shaman.ai  # Works across all subdomains
+    domain: .shaman.ai # Works across all subdomains
     path: /
     http_only: true

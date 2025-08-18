@@ -29,11 +29,11 @@ export interface OrganizationSettings {
   defaultModel?: string;
   maxConcurrentRuns?: number;
   maxRunDuration?: number; // in seconds
-  
+
   // Security settings
   allowExternalAgents?: boolean;
   allowedExternalDomains?: string[];
-  
+
   // Feature flags
   features?: string[];
 }
@@ -66,11 +66,11 @@ export interface User {
 export interface OrganizationUser {
   orgId: string;
   userId: string;
-  roles: string[];  // Array of role names
+  roles: string[]; // Array of role names
   joinedAt: Date;
 }
 
-export type StandardRole = 'OWNER' | 'ADMIN' | 'USER';
+export type StandardRole = "OWNER" | "ADMIN" | "USER";
 
 /**
  * Represents a record in the 'agent_repository' table.
@@ -84,7 +84,7 @@ export interface AgentRepository {
   isRoot: boolean;
   lastSyncCommitHash: string | null;
   lastSyncAt: Date | null;
-  lastSyncStatus: 'NEVER_SYNCED' | 'SUCCESS' | 'IN_PROGRESS' | 'FAILED';
+  lastSyncStatus: "NEVER_SYNCED" | "SUCCESS" | "IN_PROGRESS" | "FAILED";
   lastSyncErrors: Record<string, unknown> | null;
   createdBy: string; // User ID
   createdAt: Date;
@@ -155,9 +155,9 @@ export type Run = {
 /**
  * Step types for granular tracking
  */
-export type StepType = 
+export type StepType =
   | "agent_execution"
-  | "llm_call" 
+  | "llm_call"
   | "tool_call"
   | "agent_call";
 
@@ -242,7 +242,12 @@ export type RunData = {
 /**
  * Input request types
  */
-export type InputType = "TEXT" | "CHOICE" | "FILE" | "APPROVAL" | "STRUCTURED_DATA";
+export type InputType =
+  | "TEXT"
+  | "CHOICE"
+  | "FILE"
+  | "APPROVAL"
+  | "STRUCTURED_DATA";
 
 /**
  * Input request from an agent
@@ -279,7 +284,7 @@ export interface McpServer {
   orgId: string;
   name: string;
   description: string | null;
-  type: 'HTTP' | 'STDIO' | 'A2A';
+  type: "HTTP" | "STDIO" | "A2A";
   endpoint: string;
   isActive: boolean;
   authConfig: Record<string, unknown> | null;
@@ -360,10 +365,10 @@ export type AgentCompletion = {
  * Git provider types
  */
 export enum GitProvider {
-  GITHUB = 'github',
-  GITLAB = 'gitlab',
-  BITBUCKET = 'bitbucket',
-  GENERIC = 'generic'
+  GITHUB = "github",
+  GITLAB = "gitlab",
+  BITBUCKET = "bitbucket",
+  GENERIC = "generic",
 }
 
 /**

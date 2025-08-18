@@ -2,7 +2,7 @@
  * JWT utilities
  */
 
-import jwt from 'jsonwebtoken';
+import jwt from "jsonwebtoken";
 
 /**
  * Create a JWT token
@@ -10,10 +10,10 @@ import jwt from 'jsonwebtoken';
 export async function createJWT(
   payload: Record<string, unknown>,
   secret: string,
-  options?: { expiresIn?: string }
+  options?: { expiresIn?: string },
 ): Promise<string> {
   return jwt.sign(payload, secret, {
-    expiresIn: options?.expiresIn || '1h'
+    expiresIn: options?.expiresIn || "1h",
   } as jwt.SignOptions);
 }
 
@@ -22,7 +22,7 @@ export async function createJWT(
  */
 export async function verifyJWT(
   token: string,
-  secret: string
+  secret: string,
 ): Promise<Record<string, unknown>> {
   return jwt.verify(token, secret) as Record<string, unknown>;
 }

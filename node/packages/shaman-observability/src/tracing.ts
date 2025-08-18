@@ -2,24 +2,31 @@
  * OpenTelemetry tracing setup and utilities
  */
 
-import { trace, context, SpanStatusCode, SpanKind } from '@opentelemetry/api';
-import type { Span, SpanOptions, Tracer } from '@opentelemetry/api';
-import { NodeTracerProvider } from '@opentelemetry/sdk-trace-node';
-import { Resource } from '@opentelemetry/resources';
-import { 
-  SEMRESATTRS_SERVICE_NAME, 
+import { trace, context, SpanStatusCode, SpanKind } from "@opentelemetry/api";
+import type { Span, SpanOptions, Tracer } from "@opentelemetry/api";
+import { NodeTracerProvider } from "@opentelemetry/sdk-trace-node";
+import { Resource } from "@opentelemetry/resources";
+import {
+  SEMRESATTRS_SERVICE_NAME,
   SEMRESATTRS_SERVICE_VERSION,
-  SEMRESATTRS_DEPLOYMENT_ENVIRONMENT 
-} from '@opentelemetry/semantic-conventions';
-import { ConsoleSpanExporter, BatchSpanProcessor } from '@opentelemetry/sdk-trace-base';
-import { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-proto';
-import { registerInstrumentations } from '@opentelemetry/instrumentation';
-import { HttpInstrumentation } from '@opentelemetry/instrumentation-http';
-import { ExpressInstrumentation } from '@opentelemetry/instrumentation-express';
-import { createLogger } from '@codespin/shaman-logger';
-import type { ObservabilityConfig, CreateSpanOptions, ShamanSpanAttributes } from './types.js';
+  SEMRESATTRS_DEPLOYMENT_ENVIRONMENT,
+} from "@opentelemetry/semantic-conventions";
+import {
+  ConsoleSpanExporter,
+  BatchSpanProcessor,
+} from "@opentelemetry/sdk-trace-base";
+import { OTLPTraceExporter } from "@opentelemetry/exporter-trace-otlp-proto";
+import { registerInstrumentations } from "@opentelemetry/instrumentation";
+import { HttpInstrumentation } from "@opentelemetry/instrumentation-http";
+import { ExpressInstrumentation } from "@opentelemetry/instrumentation-express";
+import { createLogger } from "@codespin/shaman-logger";
+import type {
+  ObservabilityConfig,
+  CreateSpanOptions,
+  ShamanSpanAttributes,
+} from "./types.js";
 
-const logger = createLogger('Tracing');
+const logger = createLogger("Tracing");
 
 let tracerProvider: NodeTracerProvider | undefined;
 let tracer: Tracer | undefined;
@@ -29,7 +36,7 @@ let tracer: Tracer | undefined;
  */
 export function initializeTracing(config: ObservabilityConfig): void {
   if (!config.tracing?.enabled) {
-    logger.info('Tracing is disabled');
+    logger.info("Tracing is disabled");
     return;
   }
 
@@ -37,8 +44,8 @@ export function initializeTracing(config: ObservabilityConfig): void {
     // Create resource with service information
     const resource = new Resource({
       [SEMRESATTRS_SERVICE_NAME]: config.serviceName,
-      [SEMRESATTRS_SERVICE_VERSION]: config.serviceVersion || 'unknown',
-      [SEMRESATTRS_DEPLOYMENT_ENVIRONMENT]: config.environment || 'development',
+      [SEMRESATTRS_SERVICE_VERSION]: config.serviceVersion || "unknown",
+      [SEMRESATTRS_DEPLOYMENT_ENVIRONMENT]: config.environment || "development",
     });
 
     // Create tracer provider
@@ -50,7 +57,7 @@ export function initializeTracing(config: ObservabilityConfig): void {
     if (config.tracing.consoleExporter) {
       const consoleExporter = new ConsoleSpanExporter();
       tracerProvider.addSpanProcessor(new BatchSpanProcessor(consoleExporter));
-      logger.info('Added console span exporter');
+      logger.info("Added console span exporter");
     }
 
     if (config.tracing.endpoint) {
@@ -58,7 +65,9 @@ export function initializeTracing(config: ObservabilityConfig): void {
         url: config.tracing.endpoint,
       });
       tracerProvider.addSpanProcessor(new BatchSpanProcessor(otlpExporter));
-      logger.info('Added OTLP span exporter', { endpoint: config.tracing.endpoint });
+      logger.info("Added OTLP span exporter", {
+        endpoint: config.tracing.endpoint,
+      });
     }
 
     // Register tracer provider
@@ -72,10 +81,15 @@ export function initializeTracing(config: ObservabilityConfig): void {
       instrumentations: [
         new HttpInstrumentation({
           requestHook: (span, request) => {
-            if ('headers' in request && typeof request.headers === 'object' && request.headers !== null && 'content-length' in request.headers) {
-              const contentLength = request.headers['content-length'];
+            if (
+              "headers" in request &&
+              typeof request.headers === "object" &&
+              request.headers !== null &&
+              "content-length" in request.headers
+            ) {
+              const contentLength = request.headers["content-length"];
               span.setAttributes({
-                'http.request.body.size': contentLength || 0,
+                "http.request.body.size": contentLength || 0,
               });
             }
           },
@@ -84,9 +98,9 @@ export function initializeTracing(config: ObservabilityConfig): void {
       ],
     });
 
-    logger.info('Tracing initialized successfully');
+    logger.info("Tracing initialized successfully");
   } catch (error) {
-    logger.error('Failed to initialize tracing', { error });
+    logger.error("Failed to initialize tracing", { error });
     throw error;
   }
 }
@@ -98,9 +112,9 @@ export async function shutdownTracing(): Promise<void> {
   if (tracerProvider) {
     try {
       await tracerProvider.shutdown();
-      logger.info('Tracing shutdown successfully');
+      logger.info("Tracing shutdown successfully");
     } catch (error) {
-      logger.error('Error shutting down tracing', { error });
+      logger.error("Error shutting down tracing", { error });
     }
   }
 }
@@ -111,7 +125,7 @@ export async function shutdownTracing(): Promise<void> {
 export function createSpan(name: string, options?: CreateSpanOptions): Span {
   if (!tracer) {
     // Return a no-op span if tracing is not initialized
-    return trace.getTracer('noop').startSpan('noop');
+    return trace.getTracer("noop").startSpan("noop");
   }
 
   const spanOptions: SpanOptions = {
@@ -122,7 +136,11 @@ export function createSpan(name: string, options?: CreateSpanOptions): Span {
     root: options?.root,
   };
 
-  return tracer.startSpan(name, spanOptions, options?.root ? undefined : context.active());
+  return tracer.startSpan(
+    name,
+    spanOptions,
+    options?.root ? undefined : context.active(),
+  );
 }
 
 /**
@@ -138,13 +156,16 @@ export function getActiveSpan(): Span | undefined {
 export async function withSpan<T>(
   name: string,
   options: CreateSpanOptions | undefined,
-  fn: (span: Span) => Promise<T>
+  fn: (span: Span) => Promise<T>,
 ): Promise<T> {
   const span = createSpan(name, options);
-  
+
   try {
     // Execute function within span context
-    const result = await context.with(trace.setSpan(context.active(), span), () => fn(span));
+    const result = await context.with(
+      trace.setSpan(context.active(), span),
+      () => fn(span),
+    );
     span.setStatus({ code: SpanStatusCode.OK });
     return result;
   } catch (error) {
@@ -165,15 +186,15 @@ export async function withSpan<T>(
 export function createGenAISpan(
   operationName: string,
   model: string,
-  attributes?: ShamanSpanAttributes
+  attributes?: ShamanSpanAttributes,
 ): Span {
   const spanName = `${operationName} ${model}`;
-  
+
   return createSpan(spanName, {
     kind: SpanKind.CLIENT,
     attributes: {
-      'gen_ai.operation.name': operationName,
-      'gen_ai.request.model': model,
+      "gen_ai.operation.name": operationName,
+      "gen_ai.request.model": model,
       ...attributes,
     },
   });
@@ -184,16 +205,16 @@ export function createGenAISpan(
  */
 export function createAgentSpan(
   agentName: string,
-  agentSource: 'git' | 'external' | 'a2a',
-  attributes?: ShamanSpanAttributes
+  agentSource: "git" | "external" | "a2a",
+  attributes?: ShamanSpanAttributes,
 ): Span {
   const spanName = `agent ${agentName}`;
-  
+
   return createSpan(spanName, {
     kind: SpanKind.INTERNAL,
     attributes: {
-      'agent.name': agentName,
-      'agent.source': agentSource,
+      "agent.name": agentName,
+      "agent.source": agentSource,
       ...attributes,
     },
   });
@@ -204,16 +225,16 @@ export function createAgentSpan(
  */
 export function createToolSpan(
   toolName: string,
-  toolType: 'sync' | 'async' | 'agent_call' | 'mcp',
-  attributes?: ShamanSpanAttributes
+  toolType: "sync" | "async" | "agent_call" | "mcp",
+  attributes?: ShamanSpanAttributes,
 ): Span {
   const spanName = `tool ${toolName}`;
-  
+
   return createSpan(spanName, {
     kind: SpanKind.INTERNAL,
     attributes: {
-      'tool.name': toolName,
-      'tool.type': toolType,
+      "tool.name": toolName,
+      "tool.type": toolType,
       ...attributes,
     },
   });
@@ -222,7 +243,11 @@ export function createToolSpan(
 /**
  * Extract trace context for propagation
  */
-export function extractTraceContext(span: Span): { traceId: string; spanId: string; traceFlags: number } {
+export function extractTraceContext(span: Span): {
+  traceId: string;
+  spanId: string;
+  traceFlags: number;
+} {
   const spanContext = span.spanContext();
   return {
     traceId: spanContext.traceId,

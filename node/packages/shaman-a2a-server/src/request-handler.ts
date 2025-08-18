@@ -1,27 +1,31 @@
-import { TaskState } from '@codespin/shaman-a2a-protocol';
-import type { 
+import { TaskState } from "@codespin/shaman-a2a-protocol";
+import type {
   MessageSendParams,
   TaskQueryParams,
   TaskIdParams,
   AgentCard,
   Task,
-  Message
-} from '@codespin/shaman-a2a-protocol';
-import type { A2AMethodContext } from '@codespin/shaman-a2a-transport';
-import { createLogger } from '@codespin/shaman-logger';
-import { 
-  createRun, 
-  createTask, 
-  getRun, 
+  Message,
+} from "@codespin/shaman-a2a-protocol";
+import type { A2AMethodContext } from "@codespin/shaman-a2a-transport";
+import { createLogger } from "@codespin/shaman-logger";
+import {
+  createRun,
+  createTask,
+  getRun,
   updateRun,
   type ForemanConfig,
-  type Run
-} from '@codespin/foreman-client';
-import { v4 as uuidv4 } from 'uuid';
-import type { A2AServerConfig, TaskExecutionRequest } from './types.js';
-import { taskNotFound, taskNotCancelable, internalError } from '@codespin/shaman-jsonrpc';
+  type Run,
+} from "@codespin/foreman-client";
+import { v4 as uuidv4 } from "uuid";
+import type { A2AServerConfig, TaskExecutionRequest } from "./types.js";
+import {
+  taskNotFound,
+  taskNotCancelable,
+  internalError,
+} from "@codespin/shaman-jsonrpc";
 
-const logger = createLogger('A2ARequestHandler');
+const logger = createLogger("A2ARequestHandler");
 
 /**
  * Request handler for A2A protocol methods
@@ -32,8 +36,8 @@ export class A2ARequestHandler {
   constructor(private readonly config: A2AServerConfig) {
     // Get Foreman config from environment
     this.foremanConfig = {
-      endpoint: process.env.FOREMAN_ENDPOINT || 'http://localhost:3000',
-      apiKey: process.env.FOREMAN_API_KEY || 'fmn_dev_default_key'
+      endpoint: process.env.FOREMAN_ENDPOINT || "http://localhost:3000",
+      apiKey: process.env.FOREMAN_API_KEY || "fmn_dev_default_key",
     };
   }
 
@@ -49,11 +53,11 @@ export class A2ARequestHandler {
    */
   async sendMessage(
     params: MessageSendParams,
-    context: A2AMethodContext
+    context: A2AMethodContext,
   ): Promise<Task | Message> {
-    logger.info('Handling message/send request', { 
+    logger.info("Handling message/send request", {
       message: params.message,
-      organizationId: context.organizationId
+      organizationId: context.organizationId,
     });
 
     try {
@@ -63,11 +67,12 @@ export class A2ARequestHandler {
       // Create task execution request
       const taskRequest: TaskExecutionRequest = {
         taskId,
-        agent: (params.message.metadata?.agent as string | undefined) || 'default',
+        agent:
+          (params.message.metadata?.agent as string | undefined) || "default",
         input: params.message,
         contextId: params.message.contextId,
         organizationId: context.organizationId!,
-        userId: context.userId
+        userId: context.userId,
       };
 
       // Create a run in Foreman
@@ -75,15 +80,15 @@ export class A2ARequestHandler {
         inputData: {
           agentName: taskRequest.agent,
           input: taskRequest.input,
-          organizationId: context.organizationId!
+          organizationId: context.organizationId!,
         },
         metadata: {
           taskId,
           contextId: taskRequest.contextId,
           userId: taskRequest.userId,
-          source: 'shaman-a2a',
-          organizationId: context.organizationId!
-        }
+          source: "shaman-a2a",
+          organizationId: context.organizationId!,
+        },
       });
 
       if (!runResult.success) {
@@ -95,36 +100,36 @@ export class A2ARequestHandler {
       // Create initial task for agent execution
       const taskResult = await createTask(this.foremanConfig, {
         runId: run.id,
-        type: 'agent-execution',
+        type: "agent-execution",
         inputData: {
           agentName: taskRequest.agent,
-          input: taskRequest.input
+          input: taskRequest.input,
         },
         metadata: {
-          organizationId: context.organizationId!
-        }
+          organizationId: context.organizationId!,
+        },
       });
 
       if (!taskResult.success) {
-        logger.error('Failed to create task', taskResult.error);
-        throw internalError('Failed to start task');
+        logger.error("Failed to create task", taskResult.error);
+        throw internalError("Failed to start task");
       }
 
       // Task created successfully
 
       const task: Task = {
-        kind: 'task',
+        kind: "task",
         id: taskId,
         contextId: taskRequest.contextId || taskId,
         status: {
           state: TaskState.Submitted,
-          timestamp: new Date().toISOString()
-        }
+          timestamp: new Date().toISOString(),
+        },
       };
-      
+
       return task;
     } catch (error) {
-      logger.error('Error in sendMessage', error);
+      logger.error("Error in sendMessage", error);
       throw error;
     }
   }
@@ -134,11 +139,11 @@ export class A2ARequestHandler {
    */
   async *streamMessage(
     params: MessageSendParams,
-    context: A2AMethodContext
+    context: A2AMethodContext,
   ): AsyncGenerator<Task | Message> {
-    logger.info('Handling message/stream request', { 
+    logger.info("Handling message/stream request", {
       message: params.message,
-      organizationId: context.organizationId
+      organizationId: context.organizationId,
     });
 
     // For MVP, we'll return a simple acknowledgment
@@ -147,27 +152,29 @@ export class A2ARequestHandler {
 
     // First yield the task
     const task: Task = {
-      kind: 'task',
+      kind: "task",
       id: taskId,
       contextId: taskId,
       status: {
         state: TaskState.Submitted,
-        timestamp: new Date().toISOString()
-      }
+        timestamp: new Date().toISOString(),
+      },
     };
     yield task;
 
     // TODO: Subscribe to run events and stream them
-    
+
     // For now, yield a completion message
     const message: Message = {
-      kind: 'message',
+      kind: "message",
       messageId: uuidv4(),
-      role: 'agent',
-      parts: [{
-        kind: 'text',
-        text: 'Task completed successfully'
-      }]
+      role: "agent",
+      parts: [
+        {
+          kind: "text",
+          text: "Task completed successfully",
+        },
+      ],
     };
     yield message;
   }
@@ -177,11 +184,11 @@ export class A2ARequestHandler {
    */
   async getTask(
     params: TaskQueryParams,
-    context: A2AMethodContext
+    context: A2AMethodContext,
   ): Promise<Task> {
-    logger.info('Getting task status', { 
+    logger.info("Getting task status", {
       taskId: params.id,
-      organizationId: context.organizationId
+      organizationId: context.organizationId,
     });
 
     try {
@@ -189,29 +196,29 @@ export class A2ARequestHandler {
       // For MVP, we'll need to implement a lookup mechanism
       // This is a limitation of the current design - we need to map task IDs to run IDs
       const runResult = await getRun(this.foremanConfig, params.id);
-      
+
       if (!runResult.success) {
         throw taskNotFound(params.id);
       }
 
       const run: Run = runResult.data;
-      
+
       // Map run status to task state
       let taskState: TaskState;
       switch (run.status) {
-        case 'pending':
+        case "pending":
           taskState = TaskState.Submitted;
           break;
-        case 'running':
+        case "running":
           taskState = TaskState.Working;
           break;
-        case 'completed':
+        case "completed":
           taskState = TaskState.Completed;
           break;
-        case 'failed':
+        case "failed":
           taskState = TaskState.Failed;
           break;
-        case 'cancelled':
+        case "cancelled":
           taskState = TaskState.Canceled;
           break;
         default:
@@ -219,18 +226,18 @@ export class A2ARequestHandler {
       }
 
       const task: Task = {
-        kind: 'task',
+        kind: "task",
         id: params.id,
         contextId: params.id, // Using task ID as context ID for now
         status: {
           state: taskState,
-          timestamp: new Date().toISOString()
-        }
+          timestamp: new Date().toISOString(),
+        },
       };
 
       return task;
     } catch (error) {
-      logger.error('Error getting task', error);
+      logger.error("Error getting task", error);
       throw error;
     }
   }
@@ -240,50 +247,54 @@ export class A2ARequestHandler {
    */
   async cancelTask(
     params: TaskIdParams,
-    context: A2AMethodContext
+    context: A2AMethodContext,
   ): Promise<Task> {
-    logger.info('Canceling task', { 
+    logger.info("Canceling task", {
       taskId: params.id,
-      organizationId: context.organizationId
+      organizationId: context.organizationId,
     });
 
     try {
       // Get current status first
       const runResult = await getRun(this.foremanConfig, params.id);
-      
+
       if (!runResult.success) {
         throw taskNotFound(params.id);
       }
 
       const run: Run = runResult.data;
-      
+
       // Check if task can be canceled
-      if (run.status === 'completed' || run.status === 'failed' || run.status === 'cancelled') {
+      if (
+        run.status === "completed" ||
+        run.status === "failed" ||
+        run.status === "cancelled"
+      ) {
         throw taskNotCancelable(params.id, run.status);
       }
 
       // Cancel the run by updating its status
       const updateResult = await updateRun(this.foremanConfig, params.id, {
-        status: 'cancelled'
+        status: "cancelled",
       });
-      
+
       if (!updateResult.success) {
-        throw internalError('Failed to cancel task');
+        throw internalError("Failed to cancel task");
       }
 
       const task: Task = {
-        kind: 'task',
+        kind: "task",
         id: params.id,
         contextId: params.id,
         status: {
           state: TaskState.Canceled,
-          timestamp: new Date().toISOString()
-        }
+          timestamp: new Date().toISOString(),
+        },
       };
 
       return task;
     } catch (error) {
-      logger.error('Error canceling task', error);
+      logger.error("Error canceling task", error);
       throw error;
     }
   }
@@ -293,16 +304,16 @@ export class A2ARequestHandler {
    */
   async *resubscribeTask(
     params: TaskIdParams,
-    context: A2AMethodContext
+    context: A2AMethodContext,
   ): AsyncGenerator<Task | Message> {
-    logger.info('Resubscribing to task', { 
+    logger.info("Resubscribing to task", {
       taskId: params.id,
-      organizationId: context.organizationId
+      organizationId: context.organizationId,
     });
 
     // For MVP, return current status
     const task = await this.getTask(params, context);
-    
+
     yield task;
 
     // TODO: Subscribe to run events and stream them

@@ -1,5 +1,5 @@
-import type { GitAgent } from '@codespin/shaman-types';
-import type { GitAgentDbRow } from '../types.js';
+import type { GitAgent } from "@codespin/shaman-types";
+import type { GitAgentDbRow } from "../types.js";
 
 /**
  * Map database row to domain type
@@ -19,6 +19,6 @@ export function mapGitAgentFromDb(row: GitAgentDbRow): GitAgent {
     tags: row.tags as string[] | null,
     lastModifiedCommitHash: row.last_modified_commit_hash,
     createdAt: row.created_at,
-    updatedAt: row.updated_at
+    updatedAt: row.updated_at,
   };
 }

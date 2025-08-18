@@ -9,6 +9,7 @@ This document describes how Shaman will integrate with Permiso for Role-Based Ac
 ## Overview
 
 Shaman will use Permiso as an external service for all authorization needs:
+
 - Multi-tenant organization management
 - User and role management
 - Fine-grained permission control
@@ -27,11 +28,11 @@ PERMISO_API_KEY=your-secret-api-key      # API key for authentication
 ### Client Initialization
 
 ```typescript
-import { PermisoConfig } from '@codespin/permiso-client';
+import { PermisoConfig } from "@codespin/permiso-client";
 
 const permisoConfig: PermisoConfig = {
-  endpoint: process.env.PERMISO_ENDPOINT || 'http://localhost:5001',
-  apiKey: process.env.PERMISO_API_KEY
+  endpoint: process.env.PERMISO_ENDPOINT || "http://localhost:5001",
+  apiKey: process.env.PERMISO_API_KEY,
 };
 ```
 
@@ -42,46 +43,50 @@ const permisoConfig: PermisoConfig = {
 When a new organization signs up for Shaman:
 
 ```typescript
-import { createOrganization, createRole, grantRolePermission } from '@codespin/permiso-client';
+import {
+  createOrganization,
+  createRole,
+  grantRolePermission,
+} from "@codespin/permiso-client";
 
 // Create organization
 const orgResult = await createOrganization(permisoConfig, {
-  id: 'org-123',
-  name: 'ACME Corporation',
+  id: "org-123",
+  name: "ACME Corporation",
   properties: [
-    { name: 'plan', value: 'enterprise' },
-    { name: 'maxAgents', value: 100 }
-  ]
+    { name: "plan", value: "enterprise" },
+    { name: "maxAgents", value: 100 },
+  ],
 });
 
 // Create default roles
 const adminRole = await createRole(permisoConfig, {
-  id: 'admin',
-  orgId: 'org-123',
-  name: 'Administrator',
-  description: 'Full system access'
+  id: "admin",
+  orgId: "org-123",
+  name: "Administrator",
+  description: "Full system access",
 });
 
 const agentUserRole = await createRole(permisoConfig, {
-  id: 'agent-user',
-  orgId: 'org-123',
-  name: 'Agent User',
-  description: 'Can execute agents'
+  id: "agent-user",
+  orgId: "org-123",
+  name: "Agent User",
+  description: "Can execute agents",
 });
 
 // Grant permissions to roles
 await grantRolePermission(permisoConfig, {
-  orgId: 'org-123',
-  roleId: 'admin',
-  resourceId: '/*',
-  action: 'admin'
+  orgId: "org-123",
+  roleId: "admin",
+  resourceId: "/*",
+  action: "admin",
 });
 
 await grantRolePermission(permisoConfig, {
-  orgId: 'org-123',
-  roleId: 'agent-user',
-  resourceId: '/agents/*',
-  action: 'execute'
+  orgId: "org-123",
+  roleId: "agent-user",
+  resourceId: "/agents/*",
+  action: "execute",
 });
 ```
 
@@ -90,23 +95,23 @@ await grantRolePermission(permisoConfig, {
 When users are created or authenticated:
 
 ```typescript
-import { createUser, assignUserRole } from '@codespin/permiso-client';
+import { createUser, assignUserRole } from "@codespin/permiso-client";
 
 // Create user from OAuth provider
 const userResult = await createUser(permisoConfig, {
-  id: 'user-456',
-  orgId: 'org-123',
-  identityProvider: 'google',
-  identityProviderUserId: 'google-oauth-id-12345',
+  id: "user-456",
+  orgId: "org-123",
+  identityProvider: "google",
+  identityProviderUserId: "google-oauth-id-12345",
   properties: [
-    { name: 'email', value: 'john@acme.com' },
-    { name: 'department', value: 'engineering' }
+    { name: "email", value: "john@acme.com" },
+    { name: "department", value: "engineering" },
   ],
-  roleIds: ['agent-user']
+  roleIds: ["agent-user"],
 });
 
 // Assign additional role later
-await assignUserRole(permisoConfig, 'org-123', 'user-456', 'admin');
+await assignUserRole(permisoConfig, "org-123", "user-456", "admin");
 ```
 
 ### Resource Definitions
@@ -115,25 +120,25 @@ Shaman resources will follow a hierarchical pattern:
 
 ```typescript
 // Agent resources
-'/agents'                    // List agents
-'/agents/*'                  // All agent operations
-'/agents/{agentId}'         // Specific agent
-'/agents/{agentId}/execute' // Execute specific agent
+"/agents"; // List agents
+"/agents/*"; // All agent operations
+"/agents/{agentId}"; // Specific agent
+"/agents/{agentId}/execute"; // Execute specific agent
 
 // Repository resources
-'/repositories'              // List repositories
-'/repositories/*'            // All repository operations
-'/repositories/{repoId}'     // Specific repository
+"/repositories"; // List repositories
+"/repositories/*"; // All repository operations
+"/repositories/{repoId}"; // Specific repository
 
 // Workflow resources
-'/workflows'                 // List workflows
-'/workflows/*'               // All workflow operations
-'/workflows/{workflowId}'    // Specific workflow
+"/workflows"; // List workflows
+"/workflows/*"; // All workflow operations
+"/workflows/{workflowId}"; // Specific workflow
 
 // Admin resources
-'/admin/users'               // User management
-'/admin/roles'               // Role management
-'/admin/settings'            // System settings
+"/admin/users"; // User management
+"/admin/roles"; // Role management
+"/admin/settings"; // System settings
 ```
 
 ### Permission Checking
@@ -141,7 +146,7 @@ Shaman resources will follow a hierarchical pattern:
 #### In GraphQL Resolvers
 
 ```typescript
-import { hasPermission } from '@codespin/permiso-client';
+import { hasPermission } from "@codespin/permiso-client";
 
 // GraphQL resolver example
 export const executeAgent = async (parent, args, context) => {
@@ -153,11 +158,11 @@ export const executeAgent = async (parent, args, context) => {
     orgId,
     userId,
     resourceId: `/agents/${agentId}/execute`,
-    action: 'execute'
+    action: "execute",
   });
 
   if (!canExecute.success || !canExecute.data) {
-    throw new ForbiddenError('Insufficient permissions to execute agent');
+    throw new ForbiddenError("Insufficient permissions to execute agent");
   }
 
   // Execute agent...
@@ -176,18 +181,18 @@ export async function checkA2APermission(req, res, next) {
     orgId,
     userId,
     resourceId: `/agents/${agentName}/execute`,
-    action: 'execute'
+    action: "execute",
   });
 
   if (!hasAccess.success || !hasAccess.data) {
     return res.status(403).json({
-      jsonrpc: '2.0',
+      jsonrpc: "2.0",
       id: req.body.id,
       error: {
         code: -32003,
-        message: 'Forbidden',
-        data: { reason: 'Insufficient permissions' }
-      }
+        message: "Forbidden",
+        data: { reason: "Insufficient permissions" },
+      },
     });
   }
 
@@ -202,26 +207,26 @@ Fine-grained control over individual agents:
 ```typescript
 // Create resources for each agent
 await createResource(permisoConfig, {
-  id: '/agents/customer-support',
-  orgId: 'org-123',
-  name: 'Customer Support Agent',
-  description: 'Customer service automation agent'
+  id: "/agents/customer-support",
+  orgId: "org-123",
+  name: "Customer Support Agent",
+  description: "Customer service automation agent",
 });
 
 // Grant permission to specific users
 await grantUserPermission(permisoConfig, {
-  orgId: 'org-123',
-  userId: 'user-789',
-  resourceId: '/agents/customer-support',
-  action: 'execute'
+  orgId: "org-123",
+  userId: "user-789",
+  resourceId: "/agents/customer-support",
+  action: "execute",
 });
 
 // Or grant to a role
 await grantRolePermission(permisoConfig, {
-  orgId: 'org-123',
-  roleId: 'support-team',
-  resourceId: '/agents/customer-support',
-  action: 'execute'
+  orgId: "org-123",
+  roleId: "support-team",
+  resourceId: "/agents/customer-support",
+  action: "execute",
 });
 ```
 
@@ -235,43 +240,46 @@ const canViewWorkflow = await hasPermission(permisoConfig, {
   orgId,
   userId,
   resourceId: `/workflows/${workflowId}`,
-  action: 'read'
+  action: "read",
 });
 
 // Get all workflows user can access
 const effectivePerms = await getEffectivePermissionsByPrefix(permisoConfig, {
   orgId,
   userId,
-  resourceIdPrefix: '/workflows/',
-  action: 'read'
+  resourceIdPrefix: "/workflows/",
+  action: "read",
 });
 
 // Filter workflows based on permissions
-const accessibleWorkflows = allWorkflows.filter(w => 
-  effectivePerms.data.some(p => p.resourceId === `/workflows/${w.id}`)
+const accessibleWorkflows = allWorkflows.filter((w) =>
+  effectivePerms.data.some((p) => p.resourceId === `/workflows/${w.id}`),
 );
 ```
 
 ## Integration Points
 
 ### 1. Authentication Flow
+
 ```
 User Login → Ory Kratos → Shaman → Permiso (check org/user)
 ```
 
 ### 2. GraphQL Context
+
 ```typescript
 // Add permission checker to GraphQL context
 const context = {
   auth: { orgId, userId },
   permiso: {
-    hasPermission: (resourceId, action) => 
-      hasPermission(permisoConfig, { orgId, userId, resourceId, action })
-  }
+    hasPermission: (resourceId, action) =>
+      hasPermission(permisoConfig, { orgId, userId, resourceId, action }),
+  },
 };
 ```
 
 ### 3. Database Considerations
+
 - Organization IDs will be synchronized between Shaman and Permiso
 - User IDs will map to Permiso users via identity provider
 - No permission data stored in Shaman database

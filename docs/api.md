@@ -39,6 +39,7 @@ Authorization: Bearer {api_key}
 ```
 
 **Response (New Task):**
+
 ```json
 {
   "jsonrpc": "2.0",
@@ -55,6 +56,7 @@ Authorization: Bearer {api_key}
 ```
 
 **Response (Completed Immediately):**
+
 ```json
 {
   "jsonrpc": "2.0",
@@ -66,17 +68,20 @@ Authorization: Bearer {api_key}
       "state": "completed",
       "timestamp": "2024-01-01T00:00:10Z"
     },
-    "artifacts": [{
-      "kind": "text",
-      "name": "response",
-      "mimeType": "text/plain",
-      "data": "I can help you with order #12345. Let me look that up for you."
-    }]
+    "artifacts": [
+      {
+        "kind": "text",
+        "name": "response",
+        "mimeType": "text/plain",
+        "data": "I can help you with order #12345. Let me look that up for you."
+      }
+    ]
   }
 }
 ```
 
 **Response (Direct Message - for simple responses):**
+
 ```json
 {
   "jsonrpc": "2.0",
@@ -85,10 +90,12 @@ Authorization: Bearer {api_key}
     "kind": "message",
     "messageId": "msg-agent-456",
     "role": "agent",
-    "parts": [{
-      "kind": "text",
-      "text": "I can help you with order #12345. Let me look that up for you."
-    }],
+    "parts": [
+      {
+        "kind": "text",
+        "text": "I can help you with order #12345. Let me look that up for you."
+      }
+    ],
     "contextId": "ctx_xyz789",
     "taskId": "task_abc123"
   }
@@ -115,57 +122,69 @@ Authorization: Bearer {api_key}
 ```
 
 **Response:**
+
 ```json
 {
   "jsonrpc": "2.0",
   "id": "req-002",
   "result": {
-    "tasks": [{
-      "id": "task_abc123",
-      "contextId": "ctx_xyz789",
-      "status": {
-        "state": "completed",
-        "timestamp": "2024-01-01T00:00:30Z"
-      },
-      "artifacts": [{
-        "kind": "text",
-        "name": "response",
-        "mimeType": "text/plain",
-        "data": "Order #12345 has been shipped and will arrive tomorrow."
-      }],
-      "history": [
-        {
-          "timestamp": "2024-01-01T00:00:00Z",
-          "type": "message",
-          "message": {
-            "role": "user",
-            "parts": [{"kind": "text", "text": "I need help with my order #12345"}]
-          }
+    "tasks": [
+      {
+        "id": "task_abc123",
+        "contextId": "ctx_xyz789",
+        "status": {
+          "state": "completed",
+          "timestamp": "2024-01-01T00:00:30Z"
         },
-        {
-          "timestamp": "2024-01-01T00:00:10Z",
-          "type": "message",
-          "message": {
-            "role": "assistant",
-            "parts": [{"kind": "text", "text": "I can help you with order #12345. Let me look that up for you."}]
-          }
-        },
-        {
-          "timestamp": "2024-01-01T00:00:30Z",
-          "type": "artifact",
-          "artifact": {
+        "artifacts": [
+          {
             "kind": "text",
             "name": "response",
-            "mimeType": "text/plain"
+            "mimeType": "text/plain",
+            "data": "Order #12345 has been shipped and will arrive tomorrow."
           }
-        },
-        {
-          "timestamp": "2024-01-01T00:00:30Z",
-          "type": "status",
-          "status": {"state": "completed"}
-        }
-      ]
-    }]
+        ],
+        "history": [
+          {
+            "timestamp": "2024-01-01T00:00:00Z",
+            "type": "message",
+            "message": {
+              "role": "user",
+              "parts": [
+                { "kind": "text", "text": "I need help with my order #12345" }
+              ]
+            }
+          },
+          {
+            "timestamp": "2024-01-01T00:00:10Z",
+            "type": "message",
+            "message": {
+              "role": "assistant",
+              "parts": [
+                {
+                  "kind": "text",
+                  "text": "I can help you with order #12345. Let me look that up for you."
+                }
+              ]
+            }
+          },
+          {
+            "timestamp": "2024-01-01T00:00:30Z",
+            "type": "artifact",
+            "artifact": {
+              "kind": "text",
+              "name": "response",
+              "mimeType": "text/plain"
+            }
+          },
+          {
+            "timestamp": "2024-01-01T00:00:30Z",
+            "type": "status",
+            "status": { "state": "completed" }
+          }
+        ]
+      }
+    ]
   }
 }
 ```
@@ -190,6 +209,7 @@ Authorization: Bearer {api_key}
 ```
 
 **Response:**
+
 ```json
 {
   "jsonrpc": "2.0",
@@ -227,6 +247,7 @@ Authorization: Bearer {api_key}
 ```
 
 **SSE Response:**
+
 ```
 id: 1704067200000
 event: message
@@ -293,6 +314,7 @@ Authorization: Bearer {api_key}
 ```
 
 **Response:**
+
 ```json
 {
   "protocolVersion": "0.3.0",
@@ -337,6 +359,7 @@ Authorization: Bearer {api_key}
 ```
 
 **Response:**
+
 ```json
 {
   "protocolVersion": "0.3.0",
@@ -353,15 +376,15 @@ Authorization: Bearer {api_key}
   "inputSchema": {
     "type": "object",
     "properties": {
-      "orderId": {"type": "string", "pattern": "^[A-Z0-9-]+$"},
-      "customerEmail": {"type": "string", "format": "email"}
+      "orderId": { "type": "string", "pattern": "^[A-Z0-9-]+$" },
+      "customerEmail": { "type": "string", "format": "email" }
     }
   },
   "outputSchema": {
     "type": "object",
     "properties": {
-      "status": {"type": "string"},
-      "message": {"type": "string"}
+      "status": { "type": "string" },
+      "message": { "type": "string" }
     }
   }
 }
@@ -385,6 +408,7 @@ Cookie: ory_kratos_session={session}
 ### Queries
 
 **Get Run**
+
 ```graphql
 query GetRun($id: ID!) {
   getRun(id: $id) {
@@ -409,6 +433,7 @@ query GetRun($id: ID!) {
 ```
 
 **List Runs**
+
 ```graphql
 query ListRuns($status: String, $limit: Int) {
   listRuns(status: $status, limit: $limit) {
@@ -424,6 +449,7 @@ query ListRuns($status: String, $limit: Int) {
 ```
 
 **Get Agent Repositories**
+
 ```graphql
 query GetRepositories {
   getAgentRepositories {
@@ -445,6 +471,7 @@ query GetRepositories {
 ### Mutations
 
 **Add Agent Repository**
+
 ```graphql
 mutation AddRepository($input: AddAgentRepositoryInput!) {
   addAgentRepository(input: $input) {
@@ -465,6 +492,7 @@ mutation AddRepository($input: AddAgentRepositoryInput!) {
 ```
 
 **Sync Repository**
+
 ```graphql
 mutation SyncRepository($id: ID!) {
   syncAgentRepository(id: $id) {
@@ -476,11 +504,12 @@ mutation SyncRepository($id: ID!) {
 ```
 
 **Create API Key**
+
 ```graphql
 mutation CreateAPIKey($input: CreateAPIKeyInput!) {
   createAPIKey(input: $input) {
     id
-    key  # Only shown once!
+    key # Only shown once!
     name
     expiresAt
   }
@@ -488,12 +517,10 @@ mutation CreateAPIKey($input: CreateAPIKeyInput!) {
 ```
 
 **Set Git Credentials**
+
 ```graphql
 mutation SetGitCreds($repoId: ID!, $token: String!) {
-  setGitCredentials(
-    repositoryId: $repoId, 
-    token: $token
-  ) {
+  setGitCredentials(repositoryId: $repoId, token: $token) {
     success
   }
 }
@@ -520,6 +547,7 @@ X-Webhook-Secret: {configured_secret}
 ```
 
 **Response:**
+
 ```json
 {
   "accepted": true
@@ -548,6 +576,7 @@ A2A uses standard JSON-RPC 2.0 error codes plus protocol-specific codes:
 ```
 
 **Standard JSON-RPC Errors:**
+
 - `-32700` - Parse error
 - `-32600` - Invalid request
 - `-32601` - Method not found
@@ -555,6 +584,7 @@ A2A uses standard JSON-RPC 2.0 error codes plus protocol-specific codes:
 - `-32603` - Internal error
 
 **A2A-Specific Errors:**
+
 - `-32001` - TaskNotFoundError
 - `-32002` - TaskNotCancelableError
 - `-32003` - PushNotificationNotSupportedError
@@ -601,10 +631,12 @@ When a task is in an unexpected state:
 ## Rate Limits
 
 Default limits:
+
 - 100 requests/minute per API key
 - 1000 requests/hour per organization
 
 Headers:
+
 ```
 X-RateLimit-Limit: 100
 X-RateLimit-Remaining: 95
@@ -616,6 +648,7 @@ X-RateLimit-Reset: 1704067200
 ### API Keys
 
 Create via GraphQL, use in Authorization header:
+
 ```
 Authorization: Bearer sk_live_abcdef123456
 ```
@@ -628,6 +661,7 @@ Currently only API key authentication is supported.
 ### Internal JWT
 
 Used between internal services (not for external use):
+
 ```
 Authorization: Bearer eyJhbGc...
 ```
@@ -635,6 +669,7 @@ Authorization: Bearer eyJhbGc...
 ## Pagination
 
 ### GraphQL
+
 ```graphql
 query ListRuns($cursor: String, $limit: Int) {
   listRuns(cursor: $cursor, limit: $limit) {
@@ -646,6 +681,7 @@ query ListRuns($cursor: String, $limit: Int) {
 ```
 
 ### REST (A2A)
+
 ```
 GET /agents?limit=20&offset=40
 ```
@@ -653,11 +689,13 @@ GET /agents?limit=20&offset=40
 ## Filtering
 
 ### Run Status
+
 ```graphql
 listRuns(status: "completed", createdAfter: "2024-01-01")
 ```
 
 ### Agent Source
+
 ```graphql
 getAgents(source: "git", exposed: true)
 ```

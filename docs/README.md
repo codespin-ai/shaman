@@ -3,6 +3,7 @@
 ## Overview
 
 Shaman is an AI agent orchestration framework. It lets you:
+
 - Deploy AI agents that can call each other and use tools
 - Track every execution step in PostgreSQL
 - Handle async operations with webhooks

@@ -9,6 +9,7 @@ Shaman uses integration tests to ensure the system works correctly end-to-end. T
 ## Test Infrastructure
 
 ### Technology Stack
+
 - **Test Runner**: Mocha
 - **Assertion Library**: Chai
 - **GraphQL Client**: Apollo Client
@@ -40,6 +41,7 @@ Shaman uses integration tests to ensure the system works correctly end-to-end. T
 Before enabling tests, ensure these components exist:
 
 1. **GraphQL Schema** (`shaman-server/src/schema.graphql`)
+
    ```graphql
    type AgentRepository {
      id: ID!
@@ -83,18 +85,18 @@ Before enabling tests, ensure these components exist:
 ### Test File Structure
 
 ```typescript
-import { expect } from 'chai';
-import { gql } from '@apollo/client/core/index.js';
-import { testDb, client } from '../index.js';
+import { expect } from "chai";
+import { gql } from "@apollo/client/core/index.js";
+import { testDb, client } from "../index.js";
 
-describe('Feature Name', () => {
+describe("Feature Name", () => {
   // Clean database before each test
   beforeEach(async () => {
     await testDb.truncateAllTables();
   });
 
-  describe('specific operation', () => {
-    it('should perform expected behavior', async () => {
+  describe("specific operation", () => {
+    it("should perform expected behavior", async () => {
       // Test implementation
     });
   });
@@ -106,7 +108,7 @@ describe('Feature Name', () => {
 #### 1. Testing Mutations
 
 ```typescript
-it('should create an entity', async () => {
+it("should create an entity", async () => {
   const mutation = gql`
     mutation CreateEntity($input: CreateEntityInput!) {
       createEntity(input: $input) {
@@ -119,11 +121,11 @@ it('should create an entity', async () => {
 
   const result = await client.mutate(mutation, {
     input: {
-      name: 'Test Entity'
-    }
+      name: "Test Entity",
+    },
   });
 
-  expect(result.data?.createEntity.name).to.equal('Test Entity');
+  expect(result.data?.createEntity.name).to.equal("Test Entity");
   expect(result.data?.createEntity.id).to.exist;
 });
 ```
@@ -131,7 +133,7 @@ it('should create an entity', async () => {
 #### 2. Testing Queries
 
 ```typescript
-it('should fetch entities', async () => {
+it("should fetch entities", async () => {
   // First create some test data
   await createTestEntities();
 
@@ -146,7 +148,7 @@ it('should fetch entities', async () => {
   `;
 
   const result = await client.query(query, {
-    filter: { status: 'ACTIVE' }
+    filter: { status: "ACTIVE" },
   });
 
   expect(result.data?.entities).to.have.lengthOf(2);
@@ -156,7 +158,7 @@ it('should fetch entities', async () => {
 #### 3. Testing Error Handling
 
 ```typescript
-it('should handle validation errors', async () => {
+it("should handle validation errors", async () => {
   const mutation = gql`
     mutation CreateEntity($input: CreateEntityInput!) {
       createEntity(input: $input) {
@@ -168,12 +170,12 @@ it('should handle validation errors', async () => {
   try {
     await client.mutate(mutation, {
       input: {
-        name: '' // Invalid empty name
-      }
+        name: "", // Invalid empty name
+      },
     });
-    expect.fail('Should have thrown validation error');
+    expect.fail("Should have thrown validation error");
   } catch (error: any) {
-    expect(error.graphQLErrors[0].message).to.include('Name is required');
+    expect(error.graphQLErrors[0].message).to.include("Name is required");
   }
 });
 ```
@@ -181,22 +183,22 @@ it('should handle validation errors', async () => {
 #### 4. Testing Complex Workflows
 
 ```typescript
-it('should execute agent and track steps', async () => {
+it("should execute agent and track steps", async () => {
   // Create a run
   const run = await createTestRun();
 
   // Execute an agent
   const executeResult = await executeAgent({
     runId: run.id,
-    agentName: 'test-agent',
-    input: 'test input'
+    agentName: "test-agent",
+    input: "test input",
   });
 
   // Verify steps were created
   const steps = await getRunSteps(run.id);
   expect(steps).to.have.length.greaterThan(0);
-  expect(steps[0].type).to.equal('agent_execution');
-  expect(steps[0].agentName).to.equal('test-agent');
+  expect(steps[0].type).to.equal("agent_execution");
+  expect(steps[0].agentName).to.equal("test-agent");
 });
 ```
 
@@ -207,19 +209,19 @@ Create reusable helper functions for common test data:
 ```typescript
 // test-helpers.ts
 export async function createTestRepository(
-  name = 'test-repo',
-  gitUrl = 'https://github.com/example/test.git'
+  name = "test-repo",
+  gitUrl = "https://github.com/example/test.git",
 ) {
   const mutation = gql`...`;
   const result = await client.mutate(mutation, {
-    input: { name, gitUrl, branch: 'main' }
+    input: { name, gitUrl, branch: "main" },
   });
   return result.data.createAgentRepository;
 }
 
 export async function createTestRun(
-  initialInput = 'Test input',
-  createdBy = 'test-user'
+  initialInput = "Test input",
+  createdBy = "test-user",
 ) {
   // Implementation
 }
@@ -228,6 +230,7 @@ export async function createTestRun(
 ## Test Organization
 
 ### By Feature
+
 ```
 tests/
 ├── agent-management/
@@ -244,6 +247,7 @@ tests/
 ```
 
 ### By Operation Type
+
 ```
 tests/
 ├── queries/
@@ -281,13 +285,15 @@ npm run test:integration:all          # Run all integration test suites
 ### Debugging
 
 1. **Enable verbose logging**:
+
    ```typescript
    before(() => {
-     process.env.LOG_LEVEL = 'debug';
+     process.env.LOG_LEVEL = "debug";
    });
    ```
 
 2. **Inspect GraphQL errors**:
+
    ```typescript
    catch (error) {
      console.log('GraphQL Errors:', error.graphQLErrors);
@@ -299,12 +305,13 @@ npm run test:integration:all          # Run all integration test suites
    ```typescript
    // In test
    const tables = await testDb.getTables();
-   console.log('Tables:', tables);
+   console.log("Tables:", tables);
    ```
 
 ## Best Practices
 
 ### DO's
+
 - ✅ Clean database state between tests
 - ✅ Use descriptive test names
 - ✅ Test both success and error cases
@@ -313,6 +320,7 @@ npm run test:integration:all          # Run all integration test suites
 - ✅ Test edge cases and boundaries
 
 ### DON'Ts
+
 - ❌ Share state between tests
 - ❌ Hardcode IDs or timestamps
 - ❌ Make tests dependent on execution order
@@ -324,10 +332,10 @@ npm run test:integration:all          # Run all integration test suites
 For performance-critical operations:
 
 ```typescript
-it('should handle large datasets efficiently', async () => {
+it("should handle large datasets efficiently", async () => {
   // Create many entities
-  const promises = Array.from({ length: 1000 }, (_, i) => 
-    createTestEntity(`entity-${i}`)
+  const promises = Array.from({ length: 1000 }, (_, i) =>
+    createTestEntity(`entity-${i}`),
   );
   await Promise.all(promises);
 
@@ -335,7 +343,7 @@ it('should handle large datasets efficiently', async () => {
   const start = Date.now();
   const result = await client.query(listEntitiesQuery, {
     limit: 100,
-    offset: 0
+    offset: 0,
   });
   const duration = Date.now() - start;
 
@@ -356,7 +364,7 @@ on: [push, pull_request]
 jobs:
   test:
     runs-on: ubuntu-latest
-    
+
     services:
       postgres:
         image: postgres:15
@@ -372,17 +380,17 @@ jobs:
 
     steps:
       - uses: actions/checkout@v3
-      
+
       - uses: actions/setup-node@v3
         with:
-          node-version: '20'
-          
+          node-version: "20"
+
       - name: Install dependencies
         run: ./build.sh --install
-        
+
       - name: Build project
         run: ./build.sh
-        
+
       - name: Run integration tests
         run: npm run test:integration:all
         env:
@@ -406,7 +414,8 @@ jobs:
 ```typescript
 // custom-assertions.ts
 export function expectValidUUID(value: string) {
-  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  const uuidRegex =
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
   expect(value).to.match(uuidRegex);
 }
 

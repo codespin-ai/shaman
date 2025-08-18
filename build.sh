@@ -44,7 +44,13 @@ PACKAGES=(
 # 2 ▸ install root deps (once)
 if [[ ! -d node_modules || "$*" == *--install* ]]; then
   echo "Installing root dependencies…"
-  npm install
+  npm install --legacy-peer-deps
+fi
+
+# Also install node-level dependencies if needed
+if [[ ! -d node/node_modules || "$*" == *--install* ]]; then
+  echo "Installing node-level dependencies…"
+  (cd node && npm install --legacy-peer-deps)
 fi
 
 # 3 ▸ loop through every package in build order
@@ -56,7 +62,7 @@ for pkg_name in "${PACKAGES[@]}"; do
   fi
   if [[ ! -d "$pkg/node_modules" || "$*" == *--install* ]]; then
     echo "Installing deps in $pkg…"
-    (cd "$pkg" && npm install)
+    (cd "$pkg" && npm install --legacy-peer-deps)
   fi
 done
 

@@ -1,6 +1,7 @@
 # Shaman Application Flow: Complete Guide
 
 ## Table of Contents
+
 1. [Overview](#overview)
 2. [Architecture Components](#architecture-components)
 3. [Complete Request Flow](#complete-request-flow)
@@ -115,19 +116,21 @@ The public A2A server (`shaman-a2a-server --role public`) processes the request:
 const server = express();
 
 // Authentication middleware
-server.use(authMiddleware({
-  isInternal: false,
-  jwtSecret: config.jwtSecret,
-}));
+server.use(
+  authMiddleware({
+    isInternal: false,
+    jwtSecret: config.jwtSecret,
+  }),
+);
 
 // JSON-RPC endpoint
-server.post('/', async (req, res) => {
+server.post("/", async (req, res) => {
   const transport = createJsonRpcTransport();
   await transport.handle(req, res, {
-    'message/send': messageSendHandler,
-    'message/stream': messageStreamHandler,
-    'tasks/get': tasksGetHandler,
-    'tasks/cancel': tasksCancelHandler,
+    "message/send": messageSendHandler,
+    "message/stream": messageStreamHandler,
+    "tasks/get": tasksGetHandler,
+    "tasks/cancel": tasksCancelHandler,
   });
 });
 ```
@@ -138,12 +141,15 @@ The `messageSendHandler` validates the request and creates a run in Foreman:
 
 ```typescript
 // In packages/shaman-a2a-server/src/handlers/message-send.ts
-async function messageSendHandler(params: MessageSendParams, context: A2AMethodContext): Promise<MessageSendResult> {
+async function messageSendHandler(
+  params: MessageSendParams,
+  context: A2AMethodContext,
+): Promise<MessageSendResult> {
   const { messages, agent, threadId, organizationId } = params;
-  
+
   // Resolve agent from the agent string
   const resolvedAgent = await resolveAgent(agent);
-  
+
   // Create run in Foreman
   const runResult = await createRun(foremanConfig, {
     inputData: {
@@ -154,25 +160,25 @@ async function messageSendHandler(params: MessageSendParams, context: A2AMethodC
     },
     metadata: {
       requestId: context.requestId,
-      source: 'a2a'
-    }
+      source: "a2a",
+    },
   });
-  
+
   // Create initial task
   const taskResult = await createTask(foremanConfig, {
     runId: runResult.data.id,
-    type: 'agent-execution',
+    type: "agent-execution",
     inputData: {
       agent: resolvedAgent,
-      messages
-    }
+      messages,
+    },
   });
-  
+
   // Return task ID for polling
   return {
-    kind: 'task',
+    kind: "task",
     id: job.id,
-    status: 'pending',
+    status: "pending",
     href: `/tasks/${job.id}`,
   };
 }
@@ -184,12 +190,12 @@ The worker process (`shaman-worker`) monitors the BullMQ queue:
 
 ```typescript
 // In packages/shaman-worker/src/worker-main.ts
-const worker = new Worker('agent-execution', async (job) => {
+const worker = new Worker("agent-execution", async (job) => {
   const { agent, messages, threadId, organizationId } = job.data;
-  
+
   // Create database connection with RLS
   const db = createRlsDb(organizationId);
-  
+
   // Initialize agent executor
   const executor = createAgentExecutor({
     agent,
@@ -197,21 +203,24 @@ const worker = new Worker('agent-execution', async (job) => {
     toolRouter: createToolRouter(),
     db,
   });
-  
+
   // Execute agent
   const result = await executor.execute({
     messages,
     threadId,
   });
-  
+
   // Store result
-  await db.none(`
+  await db.none(
+    `
     UPDATE step SET 
       status = 'completed',
       result = $(result)
     WHERE id = $(stepId)
-  `, { stepId: job.data.stepId, result });
-  
+  `,
+    { stepId: job.data.stepId, result },
+  );
+
   return result;
 });
 ```
@@ -230,56 +239,56 @@ export async function executeAgent({
 }: ExecuteAgentParams): Promise<AgentExecutionResult> {
   // Build system prompt from agent definition
   const systemPrompt = buildSystemPrompt(agent);
-  
+
   // Prepare messages for LLM
   const llmMessages: LLMMessage[] = [
-    { role: 'system', content: systemPrompt },
+    { role: "system", content: systemPrompt },
     ...messages,
   ];
-  
+
   // Get available tools
   const tools = await toolRouter.getTools(agent.tools);
-  
+
   // Call LLM
   const response = await llmProvider.complete({
-    model: agent.model || 'gpt-4',
+    model: agent.model || "gpt-4",
     messages: llmMessages,
     tools,
     temperature: agent.temperature || 0.7,
   });
-  
+
   // Handle tool calls if any
   if (response.tool_calls) {
     const toolResults = await executeToolCalls(response.tool_calls, toolRouter);
-    
+
     // Add tool results to conversation
     llmMessages.push({
-      role: 'assistant',
+      role: "assistant",
       content: response.content,
       tool_calls: response.tool_calls,
     });
-    
+
     for (const result of toolResults) {
       llmMessages.push({
-        role: 'tool',
+        role: "tool",
         content: JSON.stringify(result.result),
         tool_call_id: result.toolCallId,
       });
     }
-    
+
     // Call LLM again with tool results
     const finalResponse = await llmProvider.complete({
-      model: agent.model || 'gpt-4',
+      model: agent.model || "gpt-4",
       messages: llmMessages,
       temperature: agent.temperature || 0.7,
     });
-    
+
     return {
       content: finalResponse.content,
       messages: llmMessages,
     };
   }
-  
+
   return {
     content: response.content,
     messages: llmMessages,
@@ -295,18 +304,18 @@ When the LLM requests tool calls, the tool router handles execution:
 // In packages/shaman-tool-router/src/router.ts
 export async function executeToolCall(
   toolCall: ToolCall,
-  availableTools: Map<string, Tool>
+  availableTools: Map<string, Tool>,
 ): Promise<ToolResult> {
   const tool = availableTools.get(toolCall.function.name);
-  
+
   if (!tool) {
     throw new Error(`Tool ${toolCall.function.name} not found`);
   }
-  
+
   // Parse and validate arguments
   const args = JSON.parse(toolCall.function.arguments);
   const validatedArgs = await tool.inputSchema.parseAsync(args);
-  
+
   // Execute tool
   try {
     const result = await tool.execute(validatedArgs);
@@ -349,7 +358,7 @@ Shaman provides built-in platform tools for workflow data management:
       taskId: context.taskId,
       tags: [`agent:${context.agentId}`, `step:${context.stepId}`]
     });
-    
+
     return { success: true };
   }
 }
@@ -371,18 +380,18 @@ export async function callAgent({
     organizationId: context.organizationId,
     userId: context.userId,
   });
-  
+
   // Make A2A call
   const response = await fetch(`${INTERNAL_A2A_URL}/`, {
-    method: 'POST',
+    method: "POST",
     headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${internalToken}`,
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${internalToken}`,
     },
     body: JSON.stringify({
-      jsonrpc: '2.0',
+      jsonrpc: "2.0",
       id: generateId(),
-      method: 'message/send',
+      method: "message/send",
       params: {
         messages,
         agent: agentUrl,
@@ -390,14 +399,14 @@ export async function callAgent({
       },
     }),
   });
-  
+
   const result = await response.json();
-  
+
   // Handle task response (polling)
-  if (result.result.kind === 'task') {
+  if (result.result.kind === "task") {
     return pollTask(result.result.id);
   }
-  
+
   return result.result;
 }
 ```
@@ -408,48 +417,55 @@ For streaming responses, the A2A server uses Server-Sent Events:
 
 ```typescript
 // In packages/shaman-a2a-server/src/handlers/message-stream.ts
-async function messageStreamHandler(params: MessageStreamParams, context: A2AMethodContext): Promise<void> {
+async function messageStreamHandler(
+  params: MessageStreamParams,
+  context: A2AMethodContext,
+): Promise<void> {
   const { response } = context;
-  
+
   // Set SSE headers
-  response.setHeader('Content-Type', 'text/event-stream');
-  response.setHeader('Cache-Control', 'no-cache');
-  response.setHeader('Connection', 'keep-alive');
-  
+  response.setHeader("Content-Type", "text/event-stream");
+  response.setHeader("Cache-Control", "no-cache");
+  response.setHeader("Connection", "keep-alive");
+
   // Create workflow job
   const job = await workflow.createJob({
-    type: 'agent-execution-stream',
+    type: "agent-execution-stream",
     data: params,
   });
-  
+
   // Subscribe to job events
-  job.on('progress', (data) => {
+  job.on("progress", (data) => {
     // Send SSE event
     response.write(`id: ${Date.now()}\n`);
     response.write(`event: message\n`);
-    response.write(`data: ${JSON.stringify({
-      jsonrpc: '2.0',
-      id: context.requestId,
-      result: {
-        kind: 'chunk',
-        content: data.content,
-      },
-    })}\n\n`);
+    response.write(
+      `data: ${JSON.stringify({
+        jsonrpc: "2.0",
+        id: context.requestId,
+        result: {
+          kind: "chunk",
+          content: data.content,
+        },
+      })}\n\n`,
+    );
   });
-  
-  job.on('completed', (result) => {
+
+  job.on("completed", (result) => {
     // Send final event
     response.write(`id: ${Date.now()}\n`);
     response.write(`event: message\n`);
-    response.write(`data: ${JSON.stringify({
-      jsonrpc: '2.0',
-      id: context.requestId,
-      result: {
-        kind: 'complete',
-        content: result.content,
-      },
-    })}\n\n`);
-    
+    response.write(
+      `data: ${JSON.stringify({
+        jsonrpc: "2.0",
+        id: context.requestId,
+        result: {
+          kind: "complete",
+          content: result.content,
+        },
+      })}\n\n`,
+    );
+
     response.end();
   });
 }
@@ -536,6 +552,7 @@ providers:
 # Code Analyzer Agent
 
 You are a code analysis expert. Your role is to:
+
 1. Search for code files based on user queries
 2. Analyze code structure and dependencies
 3. Provide insights about code quality
@@ -664,8 +681,8 @@ Tools can be provided by external MCP servers:
 ```typescript
 // MCP tool integration
 const mcpTool = {
-  name: 'file_search',
-  description: 'Search for files in the codebase',
+  name: "file_search",
+  description: "Search for files in the codebase",
   inputSchema: z.object({
     query: z.string(),
     path: z.string().optional(),
@@ -673,16 +690,16 @@ const mcpTool = {
   execute: async (input) => {
     // Forward to MCP server
     const response = await fetch(`${MCP_SERVER_URL}/execute`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        tool: 'file_search',
+        tool: "file_search",
         params: input,
       }),
     });
-    
+
     return response.json();
-  }
+  },
 };
 ```
 
@@ -692,11 +709,11 @@ const mcpTool = {
 
 ```typescript
 interface AgentExecutionJob {
-  type: 'agent-execution' | 'agent-execution-stream';
+  type: "agent-execution" | "agent-execution-stream";
   data: {
     agent: ResolvedAgent;
     messages: Array<{
-      role: 'user' | 'assistant' | 'system';
+      role: "user" | "assistant" | "system";
       content: string;
     }>;
     threadId: string;
@@ -722,18 +739,21 @@ When an agent returns a task ID (for long-running operations):
 
 ```typescript
 // Worker detects task response
-if (result.kind === 'task') {
+if (result.kind === "task") {
   // Update step status
-  await db.none(`
+  await db.none(
+    `
     UPDATE step SET 
       status = 'waiting',
       async_id = $(taskId)
     WHERE id = $(stepId)
-  `, { stepId, taskId: result.id });
-  
+  `,
+    { stepId, taskId: result.id },
+  );
+
   // Create polling job
   await workflow.createJob({
-    type: 'task-poll',
+    type: "task-poll",
     data: {
       taskId: result.id,
       stepId,
@@ -776,33 +796,40 @@ if (result.kind === 'task') {
 
 ```typescript
 // In worker process
-const worker = new Worker('agent-execution', async (job) => {
-  try {
-    return await executeAgent(job.data);
-  } catch (error) {
-    // Check if retryable
-    if (isRetryableError(error)) {
-      throw error; // BullMQ will retry
-    }
-    
-    // Non-retryable error
-    await db.none(`
+const worker = new Worker(
+  "agent-execution",
+  async (job) => {
+    try {
+      return await executeAgent(job.data);
+    } catch (error) {
+      // Check if retryable
+      if (isRetryableError(error)) {
+        throw error; // BullMQ will retry
+      }
+
+      // Non-retryable error
+      await db.none(
+        `
       UPDATE step SET 
         status = 'failed',
         error = $(error)
       WHERE id = $(stepId)
-    `, { stepId: job.data.stepId, error: error.message });
-    
-    // Don't retry
-    return { error: error.message };
-  }
-}, {
-  attempts: 3,
-  backoff: {
-    type: 'exponential',
-    delay: 2000,
+    `,
+        { stepId: job.data.stepId, error: error.message },
+      );
+
+      // Don't retry
+      return { error: error.message };
+    }
   },
-});
+  {
+    attempts: 3,
+    backoff: {
+      type: "exponential",
+      delay: 2000,
+    },
+  },
+);
 ```
 
 ### Database Transaction Handling
@@ -812,12 +839,12 @@ const worker = new Worker('agent-execution', async (job) => {
 export async function executeInTransaction<T>(
   db: Database,
   organizationId: string,
-  callback: (t: ITask<{}>) => Promise<T>
+  callback: (t: ITask<{}>) => Promise<T>,
 ): Promise<T> {
-  return db.tx(async t => {
+  return db.tx(async (t) => {
     // Set organization context
-    await t.none('SET LOCAL app.current_org_id = $1', [organizationId]);
-    
+    await t.none("SET LOCAL app.current_org_id = $1", [organizationId]);
+
     // Execute callback
     return callback(t);
   });
@@ -837,24 +864,27 @@ export async function executeInTransaction<T>(
 ```typescript
 // In auth middleware
 async function validateApiKey(apiKey: string): Promise<AuthContext> {
-  const keyHash = crypto.createHash('sha256').update(apiKey).digest('hex');
-  
+  const keyHash = crypto.createHash("sha256").update(apiKey).digest("hex");
+
   const result = await db.oneOrNone<{
     organization_id: string;
     user_id: string;
     permissions: string[];
-  }>(`
+  }>(
+    `
     SELECT organization_id, user_id, permissions
     FROM api_keys
     WHERE key_hash = $(keyHash)
       AND (expires_at IS NULL OR expires_at > NOW())
       AND is_active = true
-  `, { keyHash });
-  
+  `,
+    { keyHash },
+  );
+
   if (!result) {
-    throw new UnauthorizedError('Invalid API key');
+    throw new UnauthorizedError("Invalid API key");
   }
-  
+
   return {
     organizationId: result.organization_id,
     userId: result.user_id,
@@ -868,15 +898,19 @@ async function validateApiKey(apiKey: string): Promise<AuthContext> {
 ```typescript
 // For internal service-to-service calls
 export function generateInternalToken(context: AuthContext): string {
-  return jwt.sign({
-    organizationId: context.organizationId,
-    userId: context.userId,
-    permissions: context.permissions,
-    internal: true,
-  }, JWT_SECRET, {
-    expiresIn: '5m', // Short-lived for security
-    issuer: 'shaman-internal',
-  });
+  return jwt.sign(
+    {
+      organizationId: context.organizationId,
+      userId: context.userId,
+      permissions: context.permissions,
+      internal: true,
+    },
+    JWT_SECRET,
+    {
+      expiresIn: "5m", // Short-lived for security
+      issuer: "shaman-internal",
+    },
+  );
 }
 ```
 
@@ -889,28 +923,26 @@ export function generateInternalToken(context: AuthContext): string {
 export function initTracing() {
   const provider = new NodeTracerProvider({
     resource: new Resource({
-      [SemanticResourceAttributes.SERVICE_NAME]: 'shaman',
+      [SemanticResourceAttributes.SERVICE_NAME]: "shaman",
     }),
   });
-  
-  provider.addSpanProcessor(
-    new BatchSpanProcessor(new OTLPTraceExporter())
-  );
-  
+
+  provider.addSpanProcessor(new BatchSpanProcessor(new OTLPTraceExporter()));
+
   provider.register();
 }
 
 // Usage in agent executor
-const tracer = trace.getTracer('shaman-agent-executor');
+const tracer = trace.getTracer("shaman-agent-executor");
 
 export async function executeAgent(params: ExecuteAgentParams) {
-  return tracer.startActiveSpan('agent.execute', async (span) => {
+  return tracer.startActiveSpan("agent.execute", async (span) => {
     span.setAttributes({
-      'agent.name': params.agent.name,
-      'agent.version': params.agent.version,
-      'thread.id': params.threadId,
+      "agent.name": params.agent.name,
+      "agent.version": params.agent.version,
+      "thread.id": params.threadId,
     });
-    
+
     try {
       const result = await doExecute(params);
       span.setStatus({ code: SpanStatusCode.OK });
@@ -934,19 +966,19 @@ export async function executeAgent(params: ExecuteAgentParams) {
 // Key metrics tracked
 const metrics = {
   // Request metrics
-  'a2a.requests.total': new Counter(),
-  'a2a.requests.duration': new Histogram(),
-  
+  "a2a.requests.total": new Counter(),
+  "a2a.requests.duration": new Histogram(),
+
   // Agent execution metrics
-  'agent.executions.total': new Counter(),
-  'agent.executions.duration': new Histogram(),
-  'agent.tool_calls.total': new Counter(),
-  
+  "agent.executions.total": new Counter(),
+  "agent.executions.duration": new Histogram(),
+  "agent.tool_calls.total": new Counter(),
+
   // Workflow metrics
-  'workflow.jobs.created': new Counter(),
-  'workflow.jobs.completed': new Counter(),
-  'workflow.jobs.failed': new Counter(),
-  'workflow.queue.size': new Gauge(),
+  "workflow.jobs.created": new Counter(),
+  "workflow.jobs.completed": new Counter(),
+  "workflow.jobs.failed": new Counter(),
+  "workflow.queue.size": new Gauge(),
 };
 ```
 

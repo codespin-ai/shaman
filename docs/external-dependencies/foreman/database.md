@@ -44,7 +44,7 @@ Stores top-level execution contexts with overall status and metrics.
 CREATE TABLE run (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   org_id VARCHAR(255) NOT NULL,
-  status VARCHAR(50) NOT NULL DEFAULT 'pending' 
+  status VARCHAR(50) NOT NULL DEFAULT 'pending'
     CHECK (status IN ('pending', 'running', 'completed', 'failed', 'cancelled')),
   input_data JSONB NOT NULL,
   output_data JSONB,
@@ -66,6 +66,7 @@ CREATE INDEX idx_run_created ON run(created_at DESC);
 ```
 
 **Column Notes:**
+
 - `id`: UUID for globally unique identification
 - `org_id`: Organization identifier for multi-tenancy
 - `status`: Current execution state
@@ -87,7 +88,7 @@ CREATE TABLE task (
   org_id VARCHAR(255) NOT NULL,
   type VARCHAR(255) NOT NULL,
   status VARCHAR(50) NOT NULL DEFAULT 'pending'
-    CHECK (status IN ('pending', 'queued', 'running', 'completed', 
+    CHECK (status IN ('pending', 'queued', 'running', 'completed',
                       'failed', 'cancelled', 'retrying')),
   input_data JSONB NOT NULL,
   output_data JSONB,
@@ -113,6 +114,7 @@ CREATE INDEX idx_task_queue_job ON task(queue_job_id) WHERE queue_job_id IS NOT 
 ```
 
 **Column Notes:**
+
 - `parent_task_id`: Enables task hierarchies/dependencies
 - `type`: Task type identifier (e.g., 'send-email', 'process-payment')
 - `queue_job_id`: External queue system's job identifier
@@ -157,12 +159,13 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
-CREATE TRIGGER update_run_data_updated_at 
+CREATE TRIGGER update_run_data_updated_at
   BEFORE UPDATE ON run_data
   FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 ```
 
 **Column Notes:**
+
 - `key`: Can have multiple entries per run (no unique constraint)
 - `task_id`: Which task created/updated this data
 - `value`: Arbitrary JSON data
@@ -170,13 +173,13 @@ CREATE TRIGGER update_run_data_updated_at
 - `updated_at`: Automatically updated on changes
 
 **Index Notes:**
+
 - `GIN index on tags`: Efficient array containment queries
 - `text_pattern_ops on key`: Efficient prefix matching (LIKE 'prefix%')
 
 ### Authentication Note
 
 Foreman uses simplified authentication suitable for a fully trusted environment. API keys follow the format `fmn_[env]_[orgId]_[random]` and are validated by the middleware without database lookups. The organization ID is extracted directly from the API key.
-
 
 ## Design Decisions
 
@@ -214,8 +217,8 @@ Foreman uses simplified authentication suitable for a fully trusted environment.
 
 ```sql
 -- Get active runs for an organization
-SELECT * FROM run 
-WHERE org_id = $1 
+SELECT * FROM run
+WHERE org_id = $1
   AND status IN ('pending', 'running')
 ORDER BY created_at DESC;
 
@@ -229,7 +232,7 @@ WITH RECURSIVE task_tree AS (
 SELECT * FROM task_tree;
 
 -- Get run with task counts
-SELECT r.*, 
+SELECT r.*,
   COUNT(DISTINCT t.id) as total_tasks,
   COUNT(DISTINCT CASE WHEN t.status = 'completed' THEN t.id END) as completed_tasks
 FROM run r
@@ -238,8 +241,8 @@ WHERE r.id = $1
 GROUP BY r.id;
 
 -- Get latest run data per key
-SELECT DISTINCT ON (key) * 
-FROM run_data 
+SELECT DISTINCT ON (key) *
+FROM run_data
 WHERE run_id = $1
 ORDER BY key, created_at DESC;
 
@@ -265,7 +268,7 @@ ORDER BY created_at DESC;
 SELECT * FROM run_data
 WHERE run_id = $1
   AND EXISTS (
-    SELECT 1 FROM unnest(tags) AS tag 
+    SELECT 1 FROM unnest(tags) AS tag
     WHERE tag LIKE '2024-03%'
   );
 ```
@@ -274,7 +277,7 @@ WHERE run_id = $1
 
 ```sql
 -- Analyze table sizes
-SELECT 
+SELECT
   schemaname,
   tablename,
   pg_size_pretty(pg_total_relation_size(schemaname||'.'||tablename)) AS size
@@ -283,7 +286,7 @@ WHERE schemaname = 'public'
 ORDER BY pg_total_relation_size(schemaname||'.'||tablename) DESC;
 
 -- Check index usage
-SELECT 
+SELECT
   schemaname,
   tablename,
   indexname,
@@ -294,7 +297,7 @@ FROM pg_stat_user_indexes
 ORDER BY idx_scan DESC;
 
 -- Find slow queries
-SELECT 
+SELECT
   query,
   calls,
   total_time,
@@ -305,4 +308,3 @@ WHERE query NOT LIKE '%pg_stat%'
 ORDER BY mean_time DESC
 LIMIT 10;
 ```
-

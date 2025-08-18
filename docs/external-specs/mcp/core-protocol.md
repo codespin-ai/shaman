@@ -9,6 +9,7 @@ The Model Context Protocol uses JSON-RPC 2.0 as its base communication format, p
 All MCP messages follow JSON-RPC 2.0 format:
 
 **Request:**
+
 ```json
 {
   "jsonrpc": "2.0",
@@ -19,6 +20,7 @@ All MCP messages follow JSON-RPC 2.0 format:
 ```
 
 **Response:**
+
 ```json
 {
   "jsonrpc": "2.0",
@@ -30,6 +32,7 @@ All MCP messages follow JSON-RPC 2.0 format:
 ```
 
 **Notification:**
+
 ```json
 {
   "jsonrpc": "2.0",
@@ -38,6 +41,7 @@ All MCP messages follow JSON-RPC 2.0 format:
 ```
 
 **Error:**
+
 ```json
 {
   "jsonrpc": "2.0",
@@ -57,6 +61,7 @@ All MCP messages follow JSON-RPC 2.0 format:
 The session begins with capability negotiation:
 
 **Client → Server:**
+
 ```json
 {
   "jsonrpc": "2.0",
@@ -79,6 +84,7 @@ The session begins with capability negotiation:
 ```
 
 **Server → Client:**
+
 ```json
 {
   "jsonrpc": "2.0",
@@ -115,6 +121,7 @@ After initialization, the client sends:
 ### 3. Active Session
 
 During the session, clients and servers exchange:
+
 - Requests/responses
 - Notifications
 - Progress updates
@@ -125,6 +132,7 @@ During the session, clients and servers exchange:
 To end a session cleanly:
 
 **Client → Server:**
+
 ```json
 {
   "jsonrpc": "2.0",
@@ -252,6 +260,7 @@ Clients can cancel in-flight requests:
 ```
 
 Servers should:
+
 1. Stop processing the request
 2. Clean up resources
 3. Return error code `-32000`
@@ -268,6 +277,7 @@ Servers should:
 ### 1. ID Generation
 
 Use unique, meaningful IDs:
+
 ```typescript
 const id = `${methodName}-${timestamp}-${randomId}`;
 ```
@@ -275,6 +285,7 @@ const id = `${methodName}-${timestamp}-${randomId}`;
 ### 2. Timeout Handling
 
 Implement reasonable timeouts:
+
 - Initialization: 30 seconds
 - Tool calls: Configurable (default 60s)
 - Resource reads: 30 seconds
@@ -288,6 +299,7 @@ Implement reasonable timeouts:
 ### 4. Capability Checking
 
 Always check capabilities before using features:
+
 ```typescript
 if (server.capabilities.tools?.listChanged) {
   // Can expect list_changed notifications
@@ -303,35 +315,35 @@ class MCPClient {
 
   async request(method: string, params?: any): Promise<any> {
     const id = this.requestId++;
-    
+
     const message = {
       jsonrpc: "2.0",
       id,
       method,
-      params
+      params,
     };
 
     return new Promise((resolve, reject) => {
       this.pendingRequests.set(id, { resolve, reject });
       this.transport.send(message);
-      
+
       // Timeout handling
       setTimeout(() => {
         if (this.pendingRequests.has(id)) {
           this.pendingRequests.delete(id);
-          reject(new Error('Request timeout'));
+          reject(new Error("Request timeout"));
         }
       }, 60000);
     });
   }
 
   handleMessage(message: any) {
-    if ('id' in message) {
+    if ("id" in message) {
       // Response to our request
       const pending = this.pendingRequests.get(message.id);
       if (pending) {
         this.pendingRequests.delete(message.id);
-        if ('error' in message) {
+        if ("error" in message) {
           pending.reject(message.error);
         } else {
           pending.resolve(message.result);

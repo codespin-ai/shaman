@@ -1,24 +1,21 @@
-import axios from 'axios';
-import type { AxiosInstance, AxiosError } from 'axios';
-import { createLogger } from '@codespin/shaman-logger';
-import type { Result } from '@codespin/shaman-core';
-import type { 
-  JsonRpcRequest, 
-  JsonRpcResponse
-} from '@codespin/shaman-jsonrpc';
-import type { 
-  SendMessageRequest, 
+import axios from "axios";
+import type { AxiosInstance, AxiosError } from "axios";
+import { createLogger } from "@codespin/shaman-logger";
+import type { Result } from "@codespin/shaman-core";
+import type { JsonRpcRequest, JsonRpcResponse } from "@codespin/shaman-jsonrpc";
+import type {
+  SendMessageRequest,
   SendMessageResponse,
   GetTaskRequest,
   GetTaskResponse,
   CancelTaskRequest,
   CancelTaskResponse,
   AgentCard,
-  SendStreamingMessageResponse
-} from '@codespin/shaman-a2a-protocol';
-import type { A2AClient, A2AClientConfig } from './types.js';
+  SendStreamingMessageResponse,
+} from "@codespin/shaman-a2a-protocol";
+import type { A2AClient, A2AClientConfig } from "./types.js";
 
-const logger = createLogger('A2AClient');
+const logger = createLogger("A2AClient");
 
 /**
  * A2A protocol HTTP client implementation
@@ -32,7 +29,7 @@ export class A2AClientImpl implements A2AClient {
     this.axios = axios.create({
       baseURL: config.baseUrl,
       timeout: config.timeout || 30000,
-      headers: this.buildHeaders()
+      headers: this.buildHeaders(),
     });
 
     // Add retry interceptor if configured
@@ -43,20 +40,24 @@ export class A2AClientImpl implements A2AClient {
 
   private buildHeaders(): Record<string, string> {
     const headers: Record<string, string> = {
-      'Content-Type': 'application/json'
+      "Content-Type": "application/json",
     };
 
     if (this.config.apiKey) {
-      headers['X-API-Key'] = this.config.apiKey;
+      headers["X-API-Key"] = this.config.apiKey;
     } else if (this.config.jwtToken) {
-      headers['Authorization'] = `Bearer ${this.config.jwtToken}`;
+      headers["Authorization"] = `Bearer ${this.config.jwtToken}`;
     }
 
     return headers;
   }
 
   private addRetryInterceptor(): void {
-    const { maxAttempts = 3, initialDelay = 1000, maxDelay = 10000 } = this.config.retry!;
+    const {
+      maxAttempts = 3,
+      initialDelay = 1000,
+      maxDelay = 10000,
+    } = this.config.retry!;
 
     this.axios.interceptors.response.use(
       (response) => response,
@@ -66,25 +67,31 @@ export class A2AClientImpl implements A2AClient {
           return Promise.reject(error);
         }
 
-        const retryCount = (config as { __retryCount?: number }).__retryCount || 0;
-        
+        const retryCount =
+          (config as { __retryCount?: number }).__retryCount || 0;
+
         // Don't retry if max attempts reached or non-retryable error
         if (retryCount >= maxAttempts || !this.isRetryableError(error)) {
           return Promise.reject(error);
         }
 
         // Calculate delay with exponential backoff
-        const delay = Math.min(initialDelay * Math.pow(2, retryCount), maxDelay);
-        
-        logger.debug(`Retrying request (attempt ${retryCount + 1}/${maxAttempts}) after ${delay}ms`);
-        
+        const delay = Math.min(
+          initialDelay * Math.pow(2, retryCount),
+          maxDelay,
+        );
+
+        logger.debug(
+          `Retrying request (attempt ${retryCount + 1}/${maxAttempts}) after ${delay}ms`,
+        );
+
         // Increment retry count
         (config as { __retryCount?: number }).__retryCount = retryCount + 1;
-        
+
         // Wait and retry
-        await new Promise(resolve => setTimeout(resolve, delay));
+        await new Promise((resolve) => setTimeout(resolve, delay));
         return this.axios(config);
-      }
+      },
     );
   }
 
@@ -101,160 +108,185 @@ export class A2AClientImpl implements A2AClient {
 
   private async makeJsonRpcCall<TParams, TResult>(
     method: string,
-    params: TParams
+    params: TParams,
   ): Promise<Result<TResult, Error>> {
     const request: JsonRpcRequest = {
-      jsonrpc: '2.0',
+      jsonrpc: "2.0",
       id: String(++this.requestId),
       method,
-      params
+      params,
     };
 
     try {
-      const response = await this.axios.post<JsonRpcResponse>('/', request);
+      const response = await this.axios.post<JsonRpcResponse>("/", request);
       const jsonRpcResponse = response.data;
 
-      if ('error' in jsonRpcResponse) {
+      if ("error" in jsonRpcResponse) {
         const error = jsonRpcResponse.error;
         return {
           success: false,
-          error: new Error(`${error.message} (code: ${error.code})`)
+          error: new Error(`${error.message} (code: ${error.code})`),
         };
       }
 
       return {
         success: true,
-        data: (jsonRpcResponse as { result: TResult }).result
+        data: (jsonRpcResponse as { result: TResult }).result,
       };
     } catch (error) {
       logger.error(`JSON-RPC call failed: ${method}`, error);
       return {
         success: false,
-        error: error instanceof Error ? error : new Error(String(error))
+        error: error instanceof Error ? error : new Error(String(error)),
       };
     }
   }
 
   async discover(): Promise<Result<AgentCard, Error>> {
     try {
-      const response = await this.axios.get<AgentCard>('/.well-known/agent.json');
+      const response = await this.axios.get<AgentCard>(
+        "/.well-known/agent.json",
+      );
       return {
         success: true,
-        data: response.data
+        data: response.data,
       };
     } catch (error) {
-      logger.error('Discovery failed', error);
+      logger.error("Discovery failed", error);
       return {
         success: false,
-        error: error instanceof Error ? error : new Error(String(error))
+        error: error instanceof Error ? error : new Error(String(error)),
       };
     }
   }
 
-  async sendMessage(request: SendMessageRequest): Promise<Result<SendMessageResponse, Error>> {
-    return this.makeJsonRpcCall<SendMessageRequest, SendMessageResponse>('message/send', request);
+  async sendMessage(
+    request: SendMessageRequest,
+  ): Promise<Result<SendMessageResponse, Error>> {
+    return this.makeJsonRpcCall<SendMessageRequest, SendMessageResponse>(
+      "message/send",
+      request,
+    );
   }
 
-  async *streamMessage(request: SendMessageRequest): AsyncGenerator<SendStreamingMessageResponse> {
+  async *streamMessage(
+    request: SendMessageRequest,
+  ): AsyncGenerator<SendStreamingMessageResponse> {
     const jsonRpcRequest: JsonRpcRequest = {
-      jsonrpc: '2.0',
+      jsonrpc: "2.0",
       id: String(++this.requestId),
-      method: 'message/stream',
-      params: request
+      method: "message/stream",
+      params: request,
     };
 
     try {
-      const response = await this.axios.post('/', jsonRpcRequest, {
-        responseType: 'stream',
+      const response = await this.axios.post("/", jsonRpcRequest, {
+        responseType: "stream",
         headers: {
           ...this.buildHeaders(),
-          'Accept': 'text/event-stream'
-        }
+          Accept: "text/event-stream",
+        },
       });
 
       const stream = response.data as AsyncIterable<Buffer>;
-      let buffer = '';
+      let buffer = "";
 
       for await (const chunk of stream) {
-        buffer += (chunk).toString();
-        const lines = buffer.split('\n');
-        buffer = lines.pop() || '';
+        buffer += chunk.toString();
+        const lines = buffer.split("\n");
+        buffer = lines.pop() || "";
 
         for (const line of lines) {
-          if (line.startsWith('data: ')) {
+          if (line.startsWith("data: ")) {
             const data = line.slice(6);
             try {
               const jsonRpcResponse = JSON.parse(data) as JsonRpcResponse;
-              if ('result' in jsonRpcResponse) {
-                yield (jsonRpcResponse as { result: SendStreamingMessageResponse }).result;
-              } else if ('error' in jsonRpcResponse) {
+              if ("result" in jsonRpcResponse) {
+                yield (
+                  jsonRpcResponse as { result: SendStreamingMessageResponse }
+                ).result;
+              } else if ("error" in jsonRpcResponse) {
                 const error = jsonRpcResponse.error;
                 throw new Error(`${error.message} (code: ${error.code})`);
               }
             } catch (parseError) {
-              logger.error('Failed to parse SSE data', parseError);
+              logger.error("Failed to parse SSE data", parseError);
             }
           }
         }
       }
     } catch (error) {
-      logger.error('Stream message failed', error);
+      logger.error("Stream message failed", error);
       throw error instanceof Error ? error : new Error(String(error));
     }
   }
 
-  async getTask(request: GetTaskRequest): Promise<Result<GetTaskResponse, Error>> {
-    return this.makeJsonRpcCall<GetTaskRequest, GetTaskResponse>('tasks/get', request);
+  async getTask(
+    request: GetTaskRequest,
+  ): Promise<Result<GetTaskResponse, Error>> {
+    return this.makeJsonRpcCall<GetTaskRequest, GetTaskResponse>(
+      "tasks/get",
+      request,
+    );
   }
 
-  async cancelTask(request: CancelTaskRequest): Promise<Result<CancelTaskResponse, Error>> {
-    return this.makeJsonRpcCall<CancelTaskRequest, CancelTaskResponse>('tasks/cancel', request);
+  async cancelTask(
+    request: CancelTaskRequest,
+  ): Promise<Result<CancelTaskResponse, Error>> {
+    return this.makeJsonRpcCall<CancelTaskRequest, CancelTaskResponse>(
+      "tasks/cancel",
+      request,
+    );
   }
 
-  async *resubscribeTask(request: GetTaskRequest): AsyncGenerator<SendStreamingMessageResponse> {
+  async *resubscribeTask(
+    request: GetTaskRequest,
+  ): AsyncGenerator<SendStreamingMessageResponse> {
     const jsonRpcRequest: JsonRpcRequest = {
-      jsonrpc: '2.0',
+      jsonrpc: "2.0",
       id: String(++this.requestId),
-      method: 'tasks/resubscribe',
-      params: request
+      method: "tasks/resubscribe",
+      params: request,
     };
 
     try {
-      const response = await this.axios.post('/', jsonRpcRequest, {
-        responseType: 'stream',
+      const response = await this.axios.post("/", jsonRpcRequest, {
+        responseType: "stream",
         headers: {
           ...this.buildHeaders(),
-          'Accept': 'text/event-stream'
-        }
+          Accept: "text/event-stream",
+        },
       });
 
       const stream = response.data as AsyncIterable<Buffer>;
-      let buffer = '';
+      let buffer = "";
 
       for await (const chunk of stream) {
-        buffer += (chunk).toString();
-        const lines = buffer.split('\n');
-        buffer = lines.pop() || '';
+        buffer += chunk.toString();
+        const lines = buffer.split("\n");
+        buffer = lines.pop() || "";
 
         for (const line of lines) {
-          if (line.startsWith('data: ')) {
+          if (line.startsWith("data: ")) {
             const data = line.slice(6);
             try {
               const jsonRpcResponse = JSON.parse(data) as JsonRpcResponse;
-              if ('result' in jsonRpcResponse) {
-                yield (jsonRpcResponse as { result: SendStreamingMessageResponse }).result;
-              } else if ('error' in jsonRpcResponse) {
+              if ("result" in jsonRpcResponse) {
+                yield (
+                  jsonRpcResponse as { result: SendStreamingMessageResponse }
+                ).result;
+              } else if ("error" in jsonRpcResponse) {
                 const error = jsonRpcResponse.error;
                 throw new Error(`${error.message} (code: ${error.code})`);
               }
             } catch (parseError) {
-              logger.error('Failed to parse SSE data', parseError);
+              logger.error("Failed to parse SSE data", parseError);
             }
           }
         }
       }
     } catch (error) {
-      logger.error('Resubscribe task failed', error);
+      logger.error("Resubscribe task failed", error);
       throw error instanceof Error ? error : new Error(String(error));
     }
   }
