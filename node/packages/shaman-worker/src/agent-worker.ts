@@ -205,13 +205,14 @@ export async function createAgentWorker(config: WorkerConfig): Promise<{
           updateStep: async (
             _id: string,
             updates: Partial<Step>,
-          ): Promise<Step> => ({
-            id: _id,
-            runId: task.runId,
-            type: "agent-execution",
-            status: "completed",
-            ...updates,
-          }) as Step,
+          ): Promise<Step> =>
+            ({
+              id: _id,
+              runId: task.runId,
+              type: "agent-execution",
+              status: "completed",
+              ...updates,
+            }) as Step,
           getStep: async (): Promise<Step | null> => null,
         },
       });
