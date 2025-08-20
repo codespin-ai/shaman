@@ -42,12 +42,20 @@ Shaman is a comprehensive backend framework for managing and coordinating AI age
 
 ### Git Workflow Rules
 
+**CRITICAL GIT SAFETY RULES**:
+
+1. **NEVER use `git push --force` or `git push -f`** - Force pushing destroys history and can lose work permanently
+2. **ALL git push commands require EXPLICIT user authorization** - Never push to remote without the user explicitly asking
+3. **Use revert commits instead of force push** - To undo changes, create revert commits that preserve history
+4. **If you need to overwrite remote**, explain the consequences and get explicit confirmation first
+
 **IMPORTANT**: NEVER commit or push changes without explicit user instruction
 
 - Only run `git add`, `git commit`, or `git push` when the user explicitly asks
 - Common explicit instructions include: "commit", "push", "commit and push", "save to git"
 - If unsure, ask the user if they want to commit the changes
 - Always wait for user approval before making any git operations
+- Get explicit user confirmation before any `git push`
 
 When the user asks you to commit and push:
 
