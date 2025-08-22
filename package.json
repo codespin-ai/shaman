@@ -16,9 +16,8 @@
     "migrate:shaman:status": "knex migrate:status --knexfile database/shaman/knexfile.js",
     "seed:shaman:make": "knex seed:make -x mjs --knexfile database/shaman/knexfile.js",
     "seed:shaman:run": "knex seed:run --knexfile database/shaman/knexfile.js",
-    "test:integration:shaman": "cd node/packages/shaman-integration-tests && npm test",
-    "test:integration:shaman:watch": "cd node/packages/shaman-integration-tests && npm run test:watch",
-    "test:integration:all": "npm run test:integration:shaman",
+    "test": "cd node/packages/shaman-integration-tests && npm test",
+    "test:grep": "cd node/packages/shaman-integration-tests && npm run test:grep",
     "start": "concurrently --kill-others-on-fail \"npm run start:server\"",
     "start:server": "echo 'Starting server...'"
   },

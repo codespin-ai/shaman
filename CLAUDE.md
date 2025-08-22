@@ -419,9 +419,31 @@ import { executeAgent } from "./agent-runner";
 ## Testing & Quality
 
 - TypeScript strict mode enabled
-- No dedicated test framework configured yet
+- Mocha test framework with Chai assertions
 - Follow functional testing patterns from CODING-STANDARDS.md
 - Each package builds independently with `tsc`
+
+### Running Tests
+
+```bash
+# Run all tests
+npm test
+
+# Run specific test suite with grep (from root directory)
+npm run test:grep -- "pattern to match"
+
+# Examples:
+npm run test:grep -- "should create agent"
+npm run test:grep -- "GraphQL"
+npm run test:grep -- "execution"
+```
+
+**IMPORTANT**: When running tests with mocha:
+
+- Always use `npm run test:grep -- "pattern"` from the root directory for specific tests
+- NEVER use `2>&1` redirection with mocha commands - it will cause errors
+- Use plain `npm test` or `npx mocha` without stderr redirection
+- If you need to capture output, use `| tee` or similar tools instead
 
 ### Important Build & Lint Workflow
 

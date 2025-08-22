@@ -9,6 +9,7 @@
     "test:integration:all": "npm run test:integration:shaman",
     "test:integration:shaman": "mocha 'dist/tests/**/*.test.js' --timeout 30000 --exit",
     "test:integration:grep": "mocha 'dist/tests/**/*.test.js' --timeout 30000 --exit --grep",
+    "test:grep": "mocha 'dist/tests/**/*.test.js' --timeout 30000 --exit --grep",
     "build": "tsc",
     "typecheck": "tsc --noEmit",
     "lint": "eslint src --ext .ts",
