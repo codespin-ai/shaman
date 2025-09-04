@@ -3,9 +3,10 @@
 # build.sh – monorepo-aware build helper for Codespin Shaman
 #
 # Flags:
-#   --install   Force npm install in every package even if node_modules exists
-#   --migrate   Run DB migrations after build (delegates to root npm script)
-#   --seed      Run DB seeders  after build (delegates to root npm script)
+#   --install    Force npm install in every package even if node_modules exists
+#   --migrate    Run DB migrations after build (delegates to root npm script)
+#   --seed       Run DB seeders  after build (delegates to root npm script)
+#   --no-format  Skip prettier formatting (faster builds during debugging)
 # -------------------------------------------------------------------
 set -euo pipefail
 
@@ -90,6 +91,12 @@ fi
 if [[ "$*" == *--seed* ]]; then
   echo "Running database seeds…"
   npm run seed:run
+fi
+
+# 6 ▸ Format code with Prettier (unless --no-format is specified)
+if [[ "$*" != *--no-format* ]]; then
+  echo "Formatting code with Prettier…"
+  ./format-all.sh
 fi
 
 echo "=== Build completed successfully ==="

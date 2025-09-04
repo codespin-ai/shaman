@@ -10,7 +10,7 @@ When you begin working on this project, you MUST:
 2. **Read PROJECT_STATUS.md** - Contains current implementation state and known issues
 3. **Read the key documentation files** in this order:
    - `/README.md` - Project overview and quick start
-   - `/node/CODING-STANDARDS.md` - Mandatory coding patterns and conventions
+   - `/CODING-STANDARDS.md` - Mandatory coding patterns and conventions
    - `/agents/agent.md` - Agent development guide
    - `/docs/01-overview-and-concepts.md` - Core concepts and principles
    - `/docs/02-use-cases-and-agent-model.md` - Agent patterns and use cases
@@ -67,10 +67,11 @@ When the user asks you to commit and push:
 
 ```bash
 # Build entire project (from root)
-./build.sh              # Standard build
+./build.sh              # Standard build with formatting
 ./build.sh --install    # Force npm install in all packages
 ./build.sh --migrate    # Build + run DB migrations
 ./build.sh --seed       # Build + run DB seeds
+./build.sh --no-format  # Skip prettier formatting (faster builds)
 
 # Clean build artifacts
 ./clean.sh

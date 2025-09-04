@@ -18,6 +18,7 @@
     "seed:shaman:run": "knex seed:run --knexfile database/shaman/knexfile.js",
     "test": "cd node/packages/shaman-integration-tests && npm test",
     "test:grep": "cd node/packages/shaman-integration-tests && npm run test:grep",
+    "test:integration:grep": "cd node/packages/shaman-integration-tests && npm run test:grep",
     "start": "concurrently --kill-others-on-fail \"npm run start:server\"",
     "start:server": "echo 'Starting server...'"
   },

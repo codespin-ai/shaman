@@ -1,19 +1,21 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import pgPromise from "pg-promise";
 import { RlsDatabaseWrapper } from "./rls-wrapper.js";
 
 const pgp = pgPromise();
 
-// Export the Database interface - this is what all consumers use
+// Type for query parameters - can be object with named params or array for positional
+// We use unknown to allow any object type, as pg-promise handles the conversion
+export type QueryParams = unknown;
+
 export interface Database {
-  query: <T = any>(query: string, values?: any) => Promise<T[]>;
-  one: <T = any>(query: string, values?: any) => Promise<T>;
-  oneOrNone: <T = any>(query: string, values?: any) => Promise<T | null>;
-  none: (query: string, values?: any) => Promise<null>;
-  many: <T = any>(query: string, values?: any) => Promise<T[]>;
-  manyOrNone: <T = any>(query: string, values?: any) => Promise<T[]>;
-  any: <T = any>(query: string, values?: any) => Promise<T[]>;
-  result: (query: string, values?: any) => Promise<pgPromise.IResultExt>;
+  query: <T>(query: string, values?: QueryParams) => Promise<T[]>;
+  one: <T>(query: string, values?: QueryParams) => Promise<T>;
+  oneOrNone: <T>(query: string, values?: QueryParams) => Promise<T | null>;
+  none: (query: string, values?: QueryParams) => Promise<null>;
+  many: <T>(query: string, values?: QueryParams) => Promise<T[]>;
+  manyOrNone: <T>(query: string, values?: QueryParams) => Promise<T[]>;
+  any: <T>(query: string, values?: QueryParams) => Promise<T[]>;
+  result: (query: string, values?: QueryParams) => Promise<pgPromise.IResultExt>;
   tx: <T>(callback: (t: Database) => Promise<T>) => Promise<T>;
 }
 
@@ -45,7 +47,7 @@ export function createRlsDb(orgId: string): Database {
     throw new Error("RLS_DB_USER_PASSWORD environment variable is required");
   }
 
-  const db = pgp(config) as pgPromise.IDatabase<any>;
+  const db = pgp(config) as pgPromise.IDatabase<Record<string, unknown>>;
   return new RlsDatabaseWrapper(db, orgId);
 }
 

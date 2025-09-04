@@ -3,3 +3,8 @@
  */
 
 export { createJWT, verifyJWT } from "./jwt.js";
+export {
+  extractBearerToken,
+  validateBearerToken,
+  authenticateBearer,
+} from "./auth/bearer.js";
