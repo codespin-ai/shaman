@@ -33,7 +33,7 @@ import {
 // Configure the client
 const config: PermisoConfig = {
   endpoint: "http://localhost:5001",
-  apiKey: "your-api-key", // optional
+  apiKey: "your-bearer-token", // optional - will be sent as Bearer token
   timeout: 30000, // optional, in milliseconds
 };
 
@@ -70,7 +70,7 @@ import { PermisoConfig } from "@codespin/permiso-client";
 
 const config: PermisoConfig = {
   endpoint: "http://localhost:5001", // GraphQL endpoint URL
-  apiKey: "your-api-key", // Optional: API key for authentication
+  apiKey: "your-bearer-token", // Optional: Bearer token for authentication
   timeout: 30000, // Optional: Request timeout in ms (default: 30000)
   headers: {
     // Optional: Additional headers
@@ -181,7 +181,7 @@ const result = await listUsers(config, "acme-corp", {
   pagination: {
     limit: 10,
     offset: 20,
-    sortDirection: "DESC", // 'ASC' or 'DESC', defaults to 'ASC'
+    sortDirection: "DESC", // "ASC" or "DESC", defaults to "ASC"
   },
 });
 

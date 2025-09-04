@@ -11,7 +11,9 @@ import { Result, success, failure } from "@codespin/shaman-core";
  * @param authHeader - The Authorization header value
  * @returns The extracted token or null if invalid
  */
-export function extractBearerToken(authHeader: string | undefined): string | null {
+export function extractBearerToken(
+  authHeader: string | undefined,
+): string | null {
   if (!authHeader) {
     return null;
   }
@@ -32,7 +34,7 @@ export function extractBearerToken(authHeader: string | undefined): string | nul
  */
 export function validateBearerToken(
   token: string,
-  configuredToken: string | undefined
+  configuredToken: string | undefined,
 ): Result<void, Error> {
   // If no token is configured, authentication is disabled
   if (!configuredToken) {
@@ -55,7 +57,7 @@ export function validateBearerToken(
  */
 export function authenticateBearer(
   authHeader: string | undefined,
-  configuredToken: string | undefined
+  configuredToken: string | undefined,
 ): Result<void, Error> {
   // If no token is configured, authentication is disabled
   if (!configuredToken) {

@@ -15,7 +15,10 @@ export interface Database {
   many: <T>(query: string, values?: QueryParams) => Promise<T[]>;
   manyOrNone: <T>(query: string, values?: QueryParams) => Promise<T[]>;
   any: <T>(query: string, values?: QueryParams) => Promise<T[]>;
-  result: (query: string, values?: QueryParams) => Promise<pgPromise.IResultExt>;
+  result: (
+    query: string,
+    values?: QueryParams,
+  ) => Promise<pgPromise.IResultExt>;
   tx: <T>(callback: (t: Database) => Promise<T>) => Promise<T>;
 }
 

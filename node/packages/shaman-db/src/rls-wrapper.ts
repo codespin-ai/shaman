@@ -63,7 +63,10 @@ export class RlsDatabaseWrapper implements Database {
     return this.withOrgContext((db) => db.any<T>(query, values));
   }
 
-  async result(query: string, values?: QueryParams): Promise<pgPromise.IResultExt> {
+  async result(
+    query: string,
+    values?: QueryParams,
+  ): Promise<pgPromise.IResultExt> {
     return this.withOrgContext((db) => db.result(query, values));
   }
 
@@ -123,7 +126,10 @@ class TransactionWrapper implements Database {
     return this.t.any<T>(query, values);
   }
 
-  async result(query: string, values?: QueryParams): Promise<pgPromise.IResultExt> {
+  async result(
+    query: string,
+    values?: QueryParams,
+  ): Promise<pgPromise.IResultExt> {
     return this.t.result(query, values);
   }
 

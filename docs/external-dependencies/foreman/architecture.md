@@ -27,7 +27,7 @@ The fundamental principle of Foreman is that **queues never store data**. This p
 ### 3. Multi-Tenant by Design
 
 - Every entity has an `org_id` field
-- API keys scoped to organizations
+- Bearer tokens scoped to organizations
 - Complete data isolation between organizations
 - No cross-tenant data leakage
 
@@ -54,7 +54,7 @@ The fundamental principle of Foreman is that **queues never store data**. This p
 - REST API server built with Express
 - Handles all state management operations
 - Provides endpoints for runs, tasks, and run data
-- Authentication via API keys
+- Authentication via Bearer tokens
 - Rate limiting and security middleware
 
 ### 2. Foreman Client (`foreman-client`)
@@ -93,8 +93,7 @@ The fundamental principle of Foreman is that **queues never store data**. This p
 
 ### Authentication
 
-- Simple API key format validation
-- Keys follow pattern: `fmn_[env]_[orgId]_[random]`
+- Simple Bearer token validation
 - No database storage needed in trusted environment
 
 ## Typical Flow
@@ -105,7 +104,7 @@ The fundamental principle of Foreman is that **queues never store data**. This p
 4. **Worker Processing**:
    - Worker picks up task ID from queue
    - Fetches full task data from Foreman
-   - Updates task status to 'running'
+   - Updates task status to "running"
    - Executes task logic
    - Stores results and updates status
 5. **Run Completion**: When all tasks complete, run is marked as completed
@@ -116,7 +115,7 @@ The fundamental principle of Foreman is that **queues never store data**. This p
 // 1. Initialize client (throws on error)
 const config = {
   endpoint: "http://localhost:3000",
-  apiKey: "fmn_prod_myorg_abc123",
+  apiKey: "your-bearer-token",
 };
 const client = await initializeForemanClient(config);
 const { enqueueTask, createWorker } = client;
@@ -147,7 +146,7 @@ await worker.start();
 ## Security
 
 - Fully trusted environment behind firewall
-- Simple API key format validation (`fmn_[env]_[orgId]_[random]`)
+- Simple Bearer token validation
 - Organization isolation at database level
 - Rate limiting on API endpoints
 - Request size limits

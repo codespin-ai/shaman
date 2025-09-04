@@ -320,16 +320,16 @@ npm run migrate:foreman:latest
 cat > ecosystem.config.js << EOF
 module.exports = {
   apps: [{
-    name: 'foreman',
-    script: './start.sh',
+    name: "foreman",
+    script: "./start.sh",
     env_production: {
-      NODE_ENV: 'production'
+      NODE_ENV: "production"
     },
-    instances: 'max',
-    exec_mode: 'cluster',
+    instances: "max",
+    exec_mode: "cluster",
     autorestart: true,
     watch: false,
-    max_memory_restart: '1G'
+    max_memory_restart: "1G"
   }]
 }
 EOF
@@ -358,7 +358,7 @@ server {
         proxy_pass http://foreman_backend;
         proxy_http_version 1.1;
         proxy_set_header Upgrade $http_upgrade;
-        proxy_set_header Connection 'upgrade';
+        proxy_set_header Connection "upgrade";
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
@@ -427,7 +427,7 @@ scrape_configs:
 ## Security Considerations
 
 1. **Always use HTTPS** in production
-2. **Secure API keys** - Use proper key management
+2. **Secure tokens** - Use proper token management
 3. **Database security** - Use SSL connections
 4. **Redis security** - Always set a password
 5. **Network isolation** - Use private networks
